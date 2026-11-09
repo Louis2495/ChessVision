@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ void TimeManagement::init(const Position& pos, Search::LimitsType& limits, Color
   if (pos.two_boards())
   {
       if (Partner.partnerDead && Partner.opptime)
-          timeLeft -= Partner.opptime;
+          timeLeft = std::max(TimePoint(1), timeLeft - Partner.opptime);
       else
       {
           timeLeft = std::min(timeLeft, 5000 + std::min(std::abs(limits.time[us] - Partner.opptime), TimePoint(Partner.opptime)));

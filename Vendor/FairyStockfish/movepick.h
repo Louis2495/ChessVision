@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -88,6 +88,8 @@ enum StatsType { NoCaptures, Captures };
 /// the move's from and to squares, see www.chessprogramming.org/Butterfly_Boards
 typedef Stats<int16_t, 13365, COLOR_NB, int(SQUARE_NB + 1) * int(1 << SQUARE_BITS)> ButterflyHistory;
 
+typedef Stats<int16_t, 13365, COLOR_NB, SQUARE_NB> GateHistory;
+
 /// At higher depths LowPlyHistory records successful quiet moves near the root
 /// and quiet moves which are/were in the PV (ttPv). It is cleared with each new
 /// search and filled during iterative deepening.
@@ -109,7 +111,20 @@ typedef Stats<int16_t, 29952, 2 * PIECE_SLOTS, SQUARE_NB> PieceToHistory;
 /// PieceToHistory instead of ButterflyBoards.
 typedef Stats<PieceToHistory, NOT_USED, 2 * PIECE_SLOTS, SQUARE_NB> ContinuationHistory;
 
-int history_slot(Piece pc);
+/// Since continuation history grows quadratically with the number of piece types,
+/// we need to reserve a limited number of slots and map piece types to these slots
+/// in order to reduce memory consumption to a reasonable level.
+constexpr auto HistorySlots = [] {
+    std::array<uint8_t, PIECE_NB> slots{};
+    for (int pc = 1; pc < PIECE_NB; ++pc)
+    {
+        int pt = pc % PIECE_TYPE_NB;
+        slots[pc] = (pt == KING ? PIECE_SLOTS - 1 : pt % (PIECE_SLOTS - 1)) + pc / PIECE_TYPE_NB * PIECE_SLOTS;
+    }
+    return slots;
+}();
+
+inline int history_slot(Piece pc) { return HistorySlots[pc]; }
 
 /// MovePicker class is used to pick one pseudo-legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
@@ -124,12 +139,15 @@ class MovePicker {
 public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
-  MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
+  ~MovePicker();
+  MovePicker(const Position&, Move, Value, const GateHistory*, const CapturePieceToHistory*);
   MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
+                                           const GateHistory*,
                                            const CapturePieceToHistory*,
                                            const PieceToHistory**,
                                            Square);
   MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
+                                           const GateHistory*,
                                            const LowPlyHistory*,
                                            const CapturePieceToHistory*,
                                            const PieceToHistory**,
@@ -146,6 +164,7 @@ private:
 
   const Position& pos;
   const ButterflyHistory* mainHistory;
+  const GateHistory* gateHistory;
   const LowPlyHistory* lowPlyHistory;
   const CapturePieceToHistory* captureHistory;
   const PieceToHistory** continuationHistory;
@@ -156,7 +175,10 @@ private:
   Value threshold;
   Depth depth;
   int ply;
-  ExtMove moves[MAX_MOVES];
+  // Move buffer taken from a per-thread pool. Keeping it off the stack bounds
+  // the per-frame stack usage of the recursive search, which would otherwise
+  // overflow the 8MB thread stack in deep searches when MAX_MOVES is large.
+  ExtMove* moves;
 };
 
 } // namespace Stockfish

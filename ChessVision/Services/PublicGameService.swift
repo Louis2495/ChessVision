@@ -13,9 +13,9 @@ final class PublicGameService: @unchecked Sendable {
         configuration.httpAdditionalHeaders = ["User-Agent": "ChessVision/0.3 (https://github.com/Louis2495/ChessVision)"]
         session = URLSession(configuration: configuration)
     }
-    private func data(_ url: URL, ndjson: Bool = false) async throws -> Data {
+    private func data(_ url: URL, ndjson: Bool = false, pgn: Bool = false) async throws -> Data {
         var request = URLRequest(url: url)
-        request.setValue(ndjson ? "application/x-ndjson" : "application/json", forHTTPHeaderField: "Accept")
+        request.setValue(pgn ? "application/x-chess-pgn" : ndjson ? "application/x-ndjson" : "application/json", forHTTPHeaderField: "Accept")
         for attempt in 0..<3 {
             try Task.checkCancellation()
             let (data, response) = try await session.data(for: request)
@@ -30,7 +30,7 @@ final class PublicGameService: @unchecked Sendable {
             }
             if response.statusCode == 404 { throw ChessError.invalid("That public profile was not found. Check the username and site.") }
             guard (200..<300).contains(response.statusCode) else { throw ChessError.invalid("The site returned HTTP \(response.statusCode). No account credentials are needed; try again later.") }
-            guard data.count <= 80_000_000 else { throw ChessError.invalid("This export is too large. Choose a smaller game limit.") }
+            guard data.count <= 80_000_000 else { throw ChessError.invalid("This export is too large. Try this profile again later.") }
             return data
         }
         throw ChessError.invalid("The server is busy. Try again later.")
@@ -58,8 +58,25 @@ final class PublicGameService: @unchecked Sendable {
                 guard fetched < limit else { break }
                 guard let source = URLComponents(string: archive), source.scheme == "https", source.host == "api.chess.com" else { throw ChessError.invalid("The archive server returned an unexpected address.") }
                 progress("Downloading \(source.path.split(separator: "/").suffix(2).joined(separator: "/")) · \(fetched) games…")
-                let month = try JSONDecoder().decode(PublicGames.ChessComMonth.self, from: await data(source.url!))
-                for raw in month.games.reversed() {
+                let monthBytes = try await data(source.url!)
+                let month = try? JSONDecoder().decode(PublicGames.ChessComMonth.self, from: monthBytes)
+                let records: [PublicGames.ChessComMonth.Game]
+                if let month, month.games.contains(where: { $0.pgn?.isEmpty == false }) {
+                    records = month.games
+                    skipped += month.unreadable; fetched += month.unreadable
+                } else {
+                    // The documented PGN endpoint also works when the JSON archive omits game exports.
+                    progress("Loading the monthly PGN export…")
+                    let bytes = try await data(source.url!.appendingPathComponent("pgn"), pgn: true)
+                    guard let text = String(data: bytes, encoding: .utf8) else { throw ChessError.invalid("The monthly PGN export could not be read.") }
+                    let separator = try NSRegularExpression(pattern: #"(?m)(?=^\[Event\s)"#)
+                    let starts = separator.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { Range($0.range, in: text)?.lowerBound }
+                    records = starts.enumerated().map { offset, start in
+                        let end = offset + 1 < starts.count ? starts[offset + 1] : text.endIndex
+                        return PublicGames.ChessComMonth.Game(pgn: String(text[start..<end]), rules: "chess")
+                    }
+                }
+                for raw in records.reversed() {
                     guard fetched < limit else { break }
                     fetched += 1
                     do {
@@ -68,6 +85,7 @@ final class PublicGameService: @unchecked Sendable {
                 }
             }
         }
+        guard !games.isEmpty else { throw ChessError.invalid("No completed standard games could be imported for this profile. Try the other site or a profile with recent public standard games.") }
         return GameImport(games: games, skipped: skipped, fetched: fetched)
     }
 }

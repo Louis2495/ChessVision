@@ -1,6 +1,6 @@
 /*
   Fairy-Stockfish, a UCI chess variant playing engine derived from Stockfish
-  Copyright (C) 2018-2021 Fabian Fichter
+  Copyright (C) 2018-2022 Fabian Fichter
 
   Fairy-Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -34,9 +34,9 @@ enum MoveModality {MODALITY_QUIET, MODALITY_CAPTURE, MOVE_MODALITY_NB};
 struct PieceInfo {
   std::string name = "";
   std::string betza = "";
-  std::map<Direction, int> steps[MOVE_MODALITY_NB] = {};
-  std::map<Direction, int> slider[MOVE_MODALITY_NB] = {};
-  std::map<Direction, int> hopper[MOVE_MODALITY_NB] = {};
+  std::map<Direction, int> steps[2][MOVE_MODALITY_NB] = {};
+  std::map<Direction, int> slider[2][MOVE_MODALITY_NB] = {};
+  std::map<Direction, int> hopper[2][MOVE_MODALITY_NB] = {};
 };
 
 struct PieceMap : public std::map<PieceType, const PieceInfo*> {

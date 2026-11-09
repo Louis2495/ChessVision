@@ -22,7 +22,7 @@ Verify the source hash in provenance before regenerating. These commands are for
 
 ## Difficulty and adaptive selection
 
-Estimated difficulty = max(200, round-half-up(source Lichess rating × 0.8 / 50) × 50). This is an explicitly uncalibrated Chess.com-style proxy. There is no evidence that it equals a player's Chess.com game or puzzle rating. Learner estimate starts at 1000 and updates with a K=40 Elo-style expected-score rule. First mistake/hint/skip grades the attempt incorrect; an entirely unassisted multi-ply solve grades it correct. Retries within the same attempt do not multiply rating changes. Selection chooses nearby unseen difficulties, then repeats the library once exhausted. Progress stores attempt/solve counts and used IDs locally.
+Estimated difficulty = max(200, round-half-up(source Lichess rating × 0.8 / 50) × 50). This is an explicitly uncalibrated Chess.com-style proxy. There is no evidence that it equals a player's Chess.com game or puzzle rating. Learner estimate starts at 1000 and updates with a provisional K=400/120, then K=40 Elo-style expected-score rule. First mistake/hint/skip grades the attempt incorrect; an entirely unassisted multi-ply solve grades it correct. Retries within the same attempt do not multiply rating changes. Selection chooses nearby unseen difficulties, then repeats the library once exhausted. Progress stores attempt/solve counts and used IDs locally.
 
 ## Personal repertoire
 
@@ -30,7 +30,7 @@ The PGN importer accepts SAN or legal UCI, tags, move numbers, annotations, comm
 
 ## Public profile import
 
-Chess.com: fetch archive index, then newest monthly public exports sequentially until the requested sample is filled. Lichess: fetch NDJSON with SAN moves and no clocks/evals. Both normalize into legal opening histories; non-standard games, custom starts, incomplete or malformed games are skipped and counted. Samples are capped at the explicit UI choices 200/1,000/5,000 recent games; opening trees cover 40 half-moves. Only the user-entered public name is sent to the selected service. HTTPS/TLS remain enabled; no passwords, API tokens, private games or cloud backend are required.
+Chess.com: fetch archive index, then newest monthly public exports sequentially until the requested sample is filled. Lichess: fetch NDJSON with SAN moves and no clocks/evals. Both normalize into legal opening histories; non-standard games, custom starts, incomplete or malformed games are skipped and counted. The UI imports a sample of up to 1,000 recent games; opening trees cover 40 half-moves. Only the user-entered public name is sent to the selected service. HTTPS/TLS remain enabled; no passwords, API tokens, private games or cloud backend are required.
 
 Tree insertion validates an entire game before mutating statistics. Each position counts at most once per game, so repeated knight shuffles do not inflate frequencies. Results show White wins, draws and Black wins; filters select which side the queried player played. Imported profile identity remains attached to results when the search field is edited. Imports are cancellable and rate-limit responses honor Retry-After; long requested cooldowns are reported instead of retried early.
 
@@ -38,8 +38,18 @@ The cloud policy prevented live API/database connections. A network draft adding
 
 ## Engine and variants
 
-Fairy-Stockfish fairy_sf_14, commit f3e6969d11d1bec17eba26e7ae0e629ad4af71dd, is compiled into the app with NNUE disabled. It owns actual game legality, SAN, drop pockets, check counters and terminal conditions. The bridge reconstructs a position from the official variant start and validates each history move, rather than accepting arbitrary FEN into native code. Swift waits for variant-ready and bestmove barriers before changing rule tables or replacing searches.
+Fairy-Stockfish pinned snapshot, commit 4e3d0147d5b8da1b780a29f0b3e1d24311d028fa, is compiled into the app with NNUE disabled. It owns actual game legality, SAN, drop pockets, check counters and terminal conditions. The bridge reconstructs a position from the official variant start and validates each history move, rather than accepting arbitrary FEN into native code. Swift waits for variant-ready and bestmove barriers before changing rule tables or replacing searches.
 
 Engine requests have identities and cancellation continuations. A departing analysis screen cancels only its own analysis kind, so it cannot cancel a newly opened computer tab. CPU play uses single-PV finite searches and target-strength options; analysis restores full-strength three-PV infinite search. Typed blindfold moves are matched to the current legal SAN/UCI list; hidden board mode also removes piece names from accessibility labels. Crazyhouse drops can be entered in notation or by selecting a pocket piece and target square.
 
 Ratings are approximate requests. The engine exposes UCI_Elo 500–2850; sub-500 requests use its minimum skill, over-2850 requests use full strength. No calibration experiments against Chess.com users or each variant have been performed. Full strength is limited by the pinned classical engine and per-move think time.
+
+## Version 0.4 updates
+
+Opening explorer offers White or Black and imports up to 1,000 recent public games. Missing PGN records no longer abort an archive; if JSON has no exports, the documented monthly PGN endpoint is used. Empty/unsupported exports show an actionable message. Direct live requests remain unverified in the cloud because its network policy blocks both chess sites.
+
+Puzzle placement uses K=400 for the first ten placement attempts, K=120 through attempt 25, then K=40. Six uninterrupted successes from 1000 normally reach about 2200. Mistakes/hints/skips lower the estimate; these remain estimated training ratings, not official Chess.com ratings. Existing progress migrates without losing rating, attempts or completed IDs, and gets a fresh provisional placement counter.
+
+Play adds Duck, Atomic, Fog of War, Pawn Wars and Antichess. Duck turns are one compound legal move: move a piece (choose a promotion if needed), then place the duck on a highlighted empty square. Pawn Wars defaults to kings; disabling kings selects the pawn race rules documented with the engine. Fog hides pieces and square contents outside the human's visibility, including accessibility labels and move history. Its computer currently sees the full position. Blindfold modes show only the last computer reply instead of a full move table.
+
+The rating slider spans 100–3500 in steps of 50; the number field also accepts 1–10000. The underlying engine strength control remains approximate. Repertoire training has continuous evaluation and a bar, without displaying engine continuations.

@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor final class ComputerGameModel: ObservableObject {
     @Published var mode = GameMode.normal
     @Published var human = Side.white
+    @Published var pawnWarsKings = true
     @Published var ratingText = "1000"
     @Published var requestedOpening: OpeningLine?
     @Published private(set) var game: SavedComputerGame?
@@ -27,6 +28,7 @@ import SwiftUI
     func start() -> Bool {
         guard let target = Int(ratingText), (1...10000).contains(target) else { error = "Enter a target rating from 1 to 10000. Ratings above the supported range use full strength."; return false }
         game = SavedComputerGame(mode: mode, human: human, targetRating: target, openingID: mode == .normal ? requestedOpening?.id : nil)
+        game?.pawnWarsKings = pawnWarsKings
         snapshot = nil; error = nil; library?.state.computer = game
         run(); return true
     }
@@ -36,15 +38,15 @@ import SwiftUI
         busy = true; error = nil
         task = Task {
             do {
-                try await EngineController.shared.prepareVariant(game.mode.variant)
+                try await EngineController.shared.prepareVariant(game.variant)
                 try Task.checkCancellation(); guard token == generation else { return }
-                var state = try VariantRules.snapshot(variant: game.mode.variant, history: game.moves)
+                var state = try VariantRules.snapshot(variant: game.variant, history: game.moves)
                 if let resigned = game.resigned { state.status = resigned == .white ? "black" : "white" }
                 snapshot = state
                 if !state.finished && state.board.turn != game.human {
                     let move: String
                     if let opening, bookMatches, game.moves.count < opening.moves.count { move = opening.moves[game.moves.count] }
-                    else { move = try await EngineController.shared.computerMove(variant: game.mode.variant, history: game.moves, rating: game.targetRating, side: state.board.turn) }
+                    else { move = try await EngineController.shared.computerMove(variant: game.variant, history: game.moves, rating: game.targetRating, side: state.board.turn) }
                     try Task.checkCancellation(); guard token == generation else { return }
                     try apply(move)
                 }
@@ -64,7 +66,7 @@ import SwiftUI
     private func apply(_ uci: String) throws {
         guard var current = game, let move = snapshot?.moves.first(where: { $0.uci == uci }) else { throw ChessError.invalid("The engine returned a move that is not legal in this position.") }
         current.moves.append(uci); current.notation.append(move.san)
-        let next = try VariantRules.snapshot(variant: current.mode.variant, history: current.moves)
+        let next = try VariantRules.snapshot(variant: current.variant, history: current.moves)
         game = current; snapshot = next; library?.state.computer = current
     }
     func undo() {
@@ -92,6 +94,7 @@ struct ComputerPlayView: View {
     @State private var selectedDrop: Character?
     @State private var promotions: [VariantMove] = []
     @State private var resigning = false
+    @State private var duckChoices: [VariantMove] = []
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -101,10 +104,10 @@ struct ComputerPlayView: View {
                         HStack { Text("You play \(game.human.title)"); Spacer(); TurnBadge(side: snapshot.board.turn) }
                         if game.mode != .blindText {
                             let hidden = game.mode == .blindBoard
-                            BoardView(position: snapshot.board, selected: hidden ? nil : selected,
-                                      legalTargets: hidden ? [] : targets(snapshot), flipped: game.human == .black, hidePieces: hidden, onTap: tap)
+                            BoardView(position: displayedBoard(snapshot, game: game), selected: hidden ? nil : selected,
+                                      legalTargets: hidden ? [] : targets(snapshot), flipped: game.human == .black, hidePieces: hidden, obscured: game.mode == .fogOfWar && !snapshot.finished ? FogVisibility.hidden(in: snapshot.board, for: game.human) : [], duckSquare: snapshot.duckSquare, onTap: tap)
                         } else {
-                            ContentUnavailableView("Keep the position in your mind", systemImage: "eye.slash", description: Text("Enter SAN below. The move list records both sides without revealing the board."))
+                            Text("Enter your move").font(.title2.bold()).padding(.vertical, 24)
                         }
                         if game.mode == .crazyhouse { pockets(snapshot, human: game.human) }
                         if let checks = snapshot.checksRemaining {
@@ -113,8 +116,9 @@ struct ComputerPlayView: View {
                         }
                         if let result = snapshot.result { Text(result).font(.title2.bold()) }
                         else if model.busy { ProgressView("Computer is thinking…") }
-                        else { Text(snapshot.inCheck ? "Your king is in check." : "Your move").font(.headline) }
-                        if !snapshot.finished {
+                        else { Text(!duckChoices.isEmpty ? "Place the duck" : snapshot.inCheck ? "Your king is in check." : "Your move").font(.headline) }
+                        if !duckChoices.isEmpty { Button("Cancel piece move") { duckChoices = [] } }
+                        if !snapshot.finished && duckChoices.isEmpty {
                             HStack {
                                 TextField(game.mode == .crazyhouse ? "Move, e.g. Nf3 or N@f7" : "Move, e.g. Nf3", text: $textMove).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).onSubmit(enter)
                                 Button("Play", action: enter).buttonStyle(.borderedProminent).disabled(model.busy || snapshot.board.turn != game.human || textMove.isEmpty)
@@ -122,11 +126,12 @@ struct ComputerPlayView: View {
                         }
                         if let opening = model.opening { Text("Requested: \(opening.name)\(model.bookMatches ? "" : " · game has left this line")").font(.caption).foregroundStyle(.secondary) }
                         if let error = model.error { Text(error).foregroundStyle(.red).font(.footnote) }
-                        GameMoveTable(moves: game.notation)
+                        if game.mode == .blindBoard || game.mode == .blindText {
+                            if snapshot.board.turn == game.human, let last = game.notation.last { Text("Computer: \(last)").font(.headline.monospaced()) }
+                        } else if game.mode != .fogOfWar { GameMoveTable(moves: game.notation) }
                         HStack { Button("Take back two plies") { model.undo() }.disabled(game.moves.count < 2); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished) }
                     } else if model.busy { ProgressView("Preparing the game…").frame(maxWidth: .infinity).padding(.vertical, 40) }
                     else { GameSetupForm(model: model, onStart: { _ = model.start() }) }
-                    Text("Target strength is approximate, not an official Chess.com rating. The engine's calibrated control spans 500–2850; lower targets use its weakest setting and higher targets use full strength. Hardware and variants affect strength.").font(.caption).foregroundStyle(.secondary)
                 }.padding()
             }.scrollDismissesKeyboard(.interactively).navigationTitle("Play computer")
             .toolbar { if model.game != nil { Button("New game") { settingUp = true } } }
@@ -134,27 +139,51 @@ struct ComputerPlayView: View {
                 NavigationStack { ScrollView { GameSetupForm(model: model) { if model.start() { settingUp = false } }.padding() }.scrollDismissesKeyboard(.interactively).navigationTitle("New game").toolbar { Button("Cancel") { settingUp = false } } }
             }
             .confirmationDialog("Resign this game?", isPresented: $resigning, titleVisibility: .visible) { Button("Resign", role: .destructive) { model.resign() } }
-            .confirmationDialog("Promote pawn", isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } }), titleVisibility: .visible) {
-                ForEach(promotions) { move in Button(String(move.promotion ?? "q").uppercased()) { model.play(move); promotions = []; selected = nil } }
+            .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
+                PromotionPicker(side: model.snapshot?.board.turn ?? .white, kinds: promotions.compactMap(\.promotion)) { kind in
+                    if let move = promotions.first(where: { $0.promotion == kind }) { choose(move) }
+                    promotions = []; selected = nil
+                }
             }
             .onAppear { visible = true; model.activate(library) }
             .onDisappear { visible = false; model.pause() }
             .onChange(of: scenePhase) { _, phase in guard visible else { return }; if phase == .active { model.activate(library) } else { model.pause() } }
-            .onChange(of: model.snapshot?.fen) { _, _ in selected = nil; selectedDrop = nil; promotions = [] }
+            .onChange(of: model.snapshot?.fen) { _, _ in selected = nil; selectedDrop = nil; promotions = []; duckChoices = [] }
         }
+    }
+    private func choose(_ move: VariantMove) {
+        guard move.duckDestination != nil, let snapshot = model.snapshot else { model.play(move); return }
+        duckChoices = snapshot.moves.filter { $0.pieceMove == move.pieceMove }; selected = nil
+    }
+    private func displayedBoard(_ snapshot: VariantSnapshot, game: SavedComputerGame) -> Position {
+        var board = snapshot.board
+        if let move = duckChoices.first, let from = move.from, let to = move.to {
+            let piece = board.squares[from]
+            if piece?.kind == "p", from % 8 != to % 8, board.squares[to] == nil { board.squares[to + (game.human == .white ? 8 : -8)] = nil }
+            if piece?.kind == "k", abs(to - from) == 2 {
+                let rookFrom = to > from ? from + 3 : from - 4, rookTo = to > from ? from + 1 : from - 1
+                board.squares[rookTo] = board.squares[rookFrom]; board.squares[rookFrom] = nil
+            }
+            board.squares[to] = piece; board.squares[from] = nil
+            if let kind = move.promotion { board.squares[to] = Piece(game.human == .white ? Character(kind.uppercased()) : kind) }
+        }
+        return board
     }
     private func enter() { if model.enter(textMove) { textMove = "" } }
     private func targets(_ snapshot: VariantSnapshot) -> Set<Int> {
+        if !duckChoices.isEmpty { return Set(duckChoices.compactMap(\.duckDestination)) }
         guard selectedDrop != nil || selected != nil else { return [] }
         let moves = snapshot.moves.filter { move in selectedDrop != nil ? move.drop == selectedDrop : move.from == selected }
         return Set(moves.compactMap(\.to))
     }
     private func tap(_ index: Int) {
         guard let snapshot = model.snapshot, let game = model.game, !model.busy, !snapshot.finished, snapshot.board.turn == game.human else { return }
+        if !duckChoices.isEmpty { if let move = duckChoices.first(where: { $0.duckDestination == index }) { duckChoices = []; model.play(move) }; return }
         if selected == index { selected = nil; selectedDrop = nil; return }
         let choices = snapshot.moves.filter { move in move.to == index && (selectedDrop != nil ? move.drop == selectedDrop : selected != nil && move.from == selected) }
-        if choices.count > 1 { promotions = choices; return }
-        if let move = choices.first { model.play(move); return }
+        let distinct = Dictionary(grouping: choices, by: \.pieceMove).values.compactMap(\.first)
+        if distinct.count > 1 { promotions = distinct; return }
+        if let move = choices.first { choose(move); return }
         selectedDrop = nil
         selected = snapshot.board.squares[index]?.side == game.human ? index : nil
     }
@@ -188,10 +217,13 @@ private struct GameSetupForm: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Choose your challenge").font(.title2.bold())
             Picker("Game style", selection: $model.mode) { ForEach(GameMode.allCases) { Text($0.title).tag($0) } }
-            Text(model.mode.explanation).font(.subheadline).foregroundStyle(.secondary)
+            if model.mode != .blindBoard && model.mode != .blindText { Text(model.mode.explanation).font(.subheadline).foregroundStyle(.secondary) }
+            if model.mode == .pawnWars { Toggle("Include kings", isOn: $model.pawnWarsKings) }
             Picker("Your color", selection: $model.human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
             Text("Computer strength · estimated Elo").font(.caption).foregroundStyle(.secondary)
             TextField("Requested rating", text: $model.ratingText).keyboardType(.numberPad).textFieldStyle(.roundedBorder)
+            Slider(value: Binding(get: { min(3500, max(100, Double(model.ratingText) ?? 1000)) }, set: { model.ratingText = String(Int($0)) }), in: 100...3500, step: 50)
+                .accessibilityLabel("Computer rating")
             if model.mode == .normal {
                 Button { choosingOpening = true } label: { Label(model.requestedOpening?.name ?? "Request an opening", systemImage: "books.vertical") }
                 if model.requestedOpening != nil { Button("No opening request") { model.requestedOpening = nil } }

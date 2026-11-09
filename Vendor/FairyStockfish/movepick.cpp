@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,17 +17,12 @@
 */
 
 #include <cassert>
+#include <memory>
+#include <vector>
 
 #include "movepick.h"
 
 namespace Stockfish {
-
-// Since continuation history grows quadratically with the number of piece types,
-// we need to reserve a limited number of slots and map piece types to these slots
-// in order to reduce memory consumption to a reasonable level.
-int history_slot(Piece pc) {
-    return pc == NO_PIECE ? 0 : (type_of(pc) == KING ? PIECE_SLOTS - 1 : type_of(pc) % (PIECE_SLOTS - 1)) + color_of(pc) * PIECE_SLOTS;
-}
 
 namespace {
 
@@ -53,8 +48,30 @@ namespace {
         }
   }
 
+  // Per-thread LIFO pool of move buffers. MovePicker instances have strictly
+  // nested lifetimes within a search thread, so buffers can be handed out and
+  // returned stack-wise. This keeps the large MAX_MOVES array off the machine
+  // stack, whose 8MB limit deep searches can otherwise exceed (see issue #957).
+  thread_local std::vector<std::unique_ptr<ExtMove[]>> moveBuffers;
+  thread_local size_t usedMoveBuffers = 0;
+
+  ExtMove* acquire_move_buffer() {
+    if (usedMoveBuffers == moveBuffers.size())
+        moveBuffers.emplace_back(new ExtMove[MAX_MOVES]);
+    return moveBuffers[usedMoveBuffers++].get();
+  }
+
+  void release_move_buffer() {
+    assert(usedMoveBuffers > 0);
+    --usedMoveBuffers;
+  }
+
 } // namespace
 
+
+MovePicker::~MovePicker() {
+  release_move_buffer();
+}
 
 /// Constructors of the MovePicker class. As arguments we pass information
 /// to help it to return the (presumably) good moves first, to decide which
@@ -63,10 +80,10 @@ namespace {
 /// ordering is at the current node.
 
 /// MovePicker constructor for the main search
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh, const LowPlyHistory* lp,
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh, const GateHistory* dh, const LowPlyHistory* lp,
                        const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, const Move* killers, int pl)
-           : pos(p), mainHistory(mh), lowPlyHistory(lp), captureHistory(cph), continuationHistory(ch),
-             ttMove(ttm), refutations{{killers[0], 0}, {killers[1], 0}, {cm, 0}}, depth(d), ply(pl) {
+           : pos(p), mainHistory(mh), gateHistory(dh), lowPlyHistory(lp), captureHistory(cph), continuationHistory(ch),
+             ttMove(ttm), refutations{{killers[0], 0}, {killers[1], 0}, {cm, 0}}, depth(d), ply(pl), moves(acquire_move_buffer()) {
 
   assert(d > 0);
 
@@ -75,9 +92,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 }
 
 /// MovePicker constructor for quiescence search
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh, const GateHistory* dh,
                        const CapturePieceToHistory* cph, const PieceToHistory** ch, Square rs)
-           : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch), ttMove(ttm), recaptureSquare(rs), depth(d) {
+           : pos(p), mainHistory(mh), gateHistory(dh), captureHistory(cph), continuationHistory(ch), ttMove(ttm), recaptureSquare(rs), depth(d), moves(acquire_move_buffer()) {
 
   assert(d <= 0);
 
@@ -89,8 +106,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
 /// MovePicker constructor for ProbCut: we generate captures with SEE greater
 /// than or equal to the given threshold.
-MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph)
-           : pos(p), captureHistory(cph), ttMove(ttm), threshold(th) {
+MovePicker::MovePicker(const Position& p, Move ttm, Value th, const GateHistory* dh, const CapturePieceToHistory* cph)
+           : pos(p), gateHistory(dh), captureHistory(cph), ttMove(ttm), threshold(th), moves(acquire_move_buffer()) {
 
   assert(!pos.checkers());
 
@@ -110,10 +127,12 @@ void MovePicker::score() {
   for (auto& m : *this)
       if constexpr (Type == CAPTURES)
           m.value =  int(PieceValue[MG][pos.piece_on(to_sq(m))]) * 6
+                   + (*gateHistory)[pos.side_to_move()][gating_square(m)]
                    + (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))];
 
       else if constexpr (Type == QUIETS)
           m.value =      (*mainHistory)[pos.side_to_move()][from_to(m)]
+                   +     (*gateHistory)[pos.side_to_move()][gating_square(m)]
                    + 2 * (*continuationHistory[0])[history_slot(pos.moved_piece(m))][to_sq(m)]
                    +     (*continuationHistory[1])[history_slot(pos.moved_piece(m))][to_sq(m)]
                    +     (*continuationHistory[3])[history_slot(pos.moved_piece(m))][to_sq(m)]

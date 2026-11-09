@@ -34,9 +34,6 @@ struct PuzzleTrainingView: View {
                         }
                         if !puzzle.themes.isEmpty { Text(puzzle.themes.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) }
                     } else { ContentUnavailableView("Puzzle library unavailable", systemImage: "puzzlepiece", description: Text("Install the complete build to use the bundled puzzle library.")) }
-                    DisclosureGroup("About difficulty") {
-                        Text("Training starts at 1000. Unassisted solutions raise the estimate; mistakes, hints and skips lower it. The next puzzle follows your current estimate. These are estimated Chess.com-style levels, not official Chess.com ratings. Source puzzles and source ratings come from Lichess.").font(.footnote).foregroundStyle(.secondary)
-                    }
                 }.padding()
             }.navigationTitle("Puzzles")
             .onAppear { if puzzle == nil { nextPuzzle() } else { replyIfNeeded() } }

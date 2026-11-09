@@ -1,1 +1,1 @@
-Original image-generation artwork for the ChessVision home-screen icon: an ivory chess knight using binoculars on a forest-green background. The original is preserved here; the asset catalog contains the opaque 1024×1024 iOS export.
+The current home-screen icon uses KnightLens-source.png: a sculpted ivory knight with a camera-lens detail on forest green. The original generated artwork is preserved; the asset catalog contains an opaque RGB 1024×1024 export. KnightBinoculars-source.png preserves the previous icon for provenance.

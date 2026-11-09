@@ -1509,6 +1509,6 @@ Original SVG sources and notices accompany Vendor/CBurnett. Artwork was rendered
 
 
 FAIRY-STOCKFISH AND CHESS TRAINING DATA
-Fairy-Stockfish fairy_sf_14 — Copyright 2018–2021 Fabian Fichter and the Stockfish developers. GPL-3.0-or-later. Source and notices: Vendor/FairyStockfish; https://github.com/fairy-stockfish/Fairy-Stockfish. The complete GPL text appears above.
+Fairy-Stockfish snapshot 4e3d0147d5b8da1b780a29f0b3e1d24311d028fa — Copyright Fabian Fichter and the Stockfish developers. GPL-3.0-or-later. Source and notices: Vendor/FairyStockfish; https://github.com/fairy-stockfish/Fairy-Stockfish. The complete GPL text appears above.
 Lichess puzzle facts and lichess-org/chess-openings: CC0 1.0 public domain dedication; https://database.lichess.org/#puzzles and https://github.com/lichess-org/chess-openings. Full CC0 text and exact provenance accompany Vendor/ChessData.
-The current binocular-knight icon is original generated artwork. The earlier DejaVu icon is not used in this build.
+The current knight-and-camera-lens icon is original generated artwork. The earlier DejaVu icon is not used in this build.

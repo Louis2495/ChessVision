@@ -36,6 +36,56 @@ final class ExpansionTests: XCTestCase {
         XCTAssertNotEqual(progress.next(in: puzzles)?.id, first.id)
         progress.rating = 2000; XCTAssertLessThanOrEqual(abs(try XCTUnwrap(progress.next(in: puzzles)).estimatedRating - 2000), 100)
     }
+    func testStrongPlayerPlacementReaches2000WithinSixPuzzles() throws {
+        let puzzles = try TrainingAssets.puzzles()
+        var progress = PuzzleProgress()
+        for _ in 0..<6 { progress.record(try XCTUnwrap(progress.next(in: puzzles)), correct: true) }
+        XCTAssertGreaterThanOrEqual(progress.rating, 2000)
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(progress.next(in: puzzles)).estimatedRating, 1950)
+        let before = progress.rating
+        progress.record(try XCTUnwrap(progress.next(in: puzzles)), correct: false)
+        XCTAssertLessThan(progress.rating, before)
+    }
+    func testMissingPGNDoesNotDiscardArchive() throws {
+        let data = Data(#"{"games":[{"rules":"chess"},{"pgn":42},{"pgn":"1. e4 e5 1-0","rules":"chess"}]}"#.utf8)
+        let month = try JSONDecoder().decode(PublicGames.ChessComMonth.self, from: data)
+        XCTAssertEqual(month.unreadable, 1)
+        XCTAssertNil(try PublicGames.chessComGame(month.games[0]))
+        XCTAssertEqual(try PublicGames.chessComGame(month.games[1])?.moves, ["e2e4", "e7e5"])
+    }
+    func testFogNeverRevealsOpponentArmyAtStart() {
+        let hidden = FogVisibility.hidden(in: .initial, for: .white)
+        for index in 0..<16 { XCTAssertTrue(hidden.contains(index)) }
+        for index in 48..<64 { XCTAssertFalse(hidden.contains(index)) }
+        XCTAssertFalse(hidden.contains(Position.index("e4")!))
+    }
+    func testDuckCompoundMovesAndNeutralSquare() throws {
+        let state = try VariantSnapshot.parse("fen\trnbqkbnr/pppppppp/8/8/4P3/3*4/PPPP1PPP/RNBQKBNR b KQkq - 0 1\nstatus\tongoing\nmove\ta7a6,a6e4\ta6,e4")
+        XCTAssertEqual(state.duckSquare, Position.index("d3"))
+        XCTAssertNil(state.board.squares[Position.index("d3")!])
+        XCTAssertEqual(state.moves[0].from, Position.index("a7"))
+        XCTAssertEqual(state.moves[0].duckDestination, Position.index("e4"))
+    }
+    func testOldPuzzleProgressKeepsHistoryAndGetsFreshPlacement() throws {
+        let data = Data(#"{"rating":1100,"attempts":80,"solved":70,"completed":["old"]}"#.utf8)
+        var progress = try JSONDecoder().decode(PuzzleProgress.self, from: data)
+        XCTAssertEqual(progress.attempts, 80); XCTAssertEqual(progress.completed, ["old"])
+        XCTAssertEqual(progress.placementAttempts, 0)
+        let puzzles = try TrainingAssets.puzzles()
+        progress.record(try XCTUnwrap(progress.next(in: puzzles)), correct: true)
+        XCTAssertGreaterThan(progress.rating, 1250)
+    }
+    func testRecordedChessComExport() throws {
+        #if SWIFT_PACKAGE
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "ChessComRecorded", withExtension: "pgn"))
+        #else
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "ChessComRecorded", withExtension: "pgn", subdirectory: "Reference"))
+        #endif
+        let pgn = try String(contentsOf: url, encoding: .utf8)
+        let game = try PGNGame.parse(pgn, maxPlies: 40)
+        XCTAssertEqual(game.tags["White"], "FabianoCaruana")
+        XCTAssertEqual(game.moves.count, 40)
+    }
     func testAllOpeningLinesAndKeysAreValid() throws {
         let lines = try TrainingAssets.openings(); XCTAssertGreaterThan(lines.count, 1000)
         XCTAssertEqual(Set(lines.map(\.id)).count, lines.count)
@@ -97,7 +147,7 @@ final class ExpansionTests: XCTestCase {
         state.computer?.notation = ["e4"]
         let decoded = try JSONDecoder().decode(LibraryState.self, from: JSONEncoder().encode(state))
         XCTAssertEqual(decoded.repertoire.first?.name, "Italian"); XCTAssertEqual(decoded.computer?.notation, ["e4"])
-        XCTAssertEqual(GameMode.allCases.count, 7); XCTAssertEqual(GameMode.blindText.variant, "chess")
+        XCTAssertEqual(GameMode.allCases.count, 12); XCTAssertEqual(GameMode.blindText.variant, "chess")
         XCTAssertEqual(GameMode.horde.variant, "horde"); XCTAssertEqual(GameMode.crazyhouse.variant, "crazyhouse")
     }
     func testPublicGameExportDecodingAndUsernameValidation() throws {

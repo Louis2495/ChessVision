@@ -1,6 +1,6 @@
 /*
   Fairy-Stockfish, a UCI chess variant playing engine derived from Stockfish
-  Copyright (C) 2018-2021 Fabian Fichter
+  Copyright (C) 2018-2022 Fabian Fichter
 
   Fairy-Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -272,10 +272,15 @@ void StateMachine::process_command(std::string token, std::istringstream& is) {
               num = std::stoi(token) * 60;
           limits.time[WHITE] = num * 1000;
           limits.time[BLACK] = num * 1000;
-          // increment
-          is >> num;
-          limits.inc[WHITE] = num * 1000;
-          limits.inc[BLACK] = num * 1000;
+          // Increment, read as a real number of seconds. The protocol only
+          // documents whole seconds here, but the clocks themselves are
+          // exchanged in centiseconds via time/otim, so the increment is the
+          // only part of a time control such as 10+0.1 that could not be
+          // expressed. Whole-second increments parse exactly as before.
+          double inc;
+          is >> inc;
+          limits.inc[WHITE] = TimePoint(inc * 1000);
+          limits.inc[BLACK] = TimePoint(inc * 1000);
       }
       else if (token == "sd")
           is >> limits.depth;
@@ -308,7 +313,7 @@ void StateMachine::process_command(std::string token, std::istringstream& is) {
       std::getline(is >> std::ws, fen);
       // Check if setboard actually indicates a passing move
       // to avoid unnecessarily clearing the move history
-      if (pos.pass())
+      if (pos.pass(~pos.side_to_move()))
       {
           StateInfo st;
           Position p;
@@ -375,6 +380,17 @@ void StateMachine::process_command(std::string token, std::istringstream& is) {
       stop();
       if (moveList.size())
       {
+          undo_move();
+          if (Options["UCI_AnalyseMode"])
+              go(analysisLimits);
+      }
+  }
+  else if (token == "remove")
+  {
+      stop();
+      if (moveList.size())
+      {
+          undo_move();
           undo_move();
           if (Options["UCI_AnalyseMode"])
               go(analysisLimits);

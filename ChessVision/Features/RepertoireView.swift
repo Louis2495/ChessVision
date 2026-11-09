@@ -111,6 +111,10 @@ private struct RepertoireLineDetail: View {
 }
 
 struct RepertoireTrainerView: View {
+    @ObservedObject private var engine = EngineController.shared
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var visible = false
+    private var principal: EngineLine? { engine.analyzedFEN == board.fen ? engine.lines.first { $0.rank == 1 } : nil }
     @EnvironmentObject private var library: LibraryStore
     var preferred: UUID? = nil
     @State private var line: RepertoireLine?
@@ -126,16 +130,21 @@ struct RepertoireTrainerView: View {
             VStack(alignment: .leading, spacing: 18) {
                 if let line {
                     Text(line.name).font(.title2.bold())
-                    MoveBoard(position: board, enabled: !finished && board.turn == line.side, flipped: line.side == .black, onMove: attempt)
+                    BoardEvaluationLayout {
+                        MoveBoard(position: board, enabled: !finished && board.turn == line.side, flipped: line.side == .black, onMove: attempt)
+                        EvaluationBar(whiteFraction: EvaluationScale.whiteFraction(centipawns: principal?.centipawns, mate: principal?.mate))
+                    }
+                    Text(principal?.evaluation ?? "—").font(.title2.bold().monospacedDigit()).accessibilityLabel("Evaluation: \(principal?.evaluation ?? "pending")")
                     Text(finished ? "Line completed" : board.turn == line.side ? "Your move: follow your repertoire" : "Playing the opponent's reply…").font(.headline)
                     if !message.isEmpty { Text(message).foregroundStyle(.secondary) }
                     HStack { Button("Show move") { hint() }.disabled(finished || board.turn != line.side); Spacer(); Button(preferred == nil ? "Next line" : "Restart line") { start() }.buttonStyle(.borderedProminent) }
-                    Text("Any saved branch from this position is accepted. Incorrect attempts do not move the board.").font(.caption).foregroundStyle(.secondary)
                 } else { ContentUnavailableView("Add a repertoire line first", systemImage: "books.vertical") }
             }.padding()
         }.scrollDismissesKeyboard(.interactively).navigationTitle("Train repertoire")
-        .onAppear { if line == nil { start() } else { reply() } }
-        .onDisappear { replyTask?.cancel() }
+        .onAppear { visible = true; if line == nil { start() } else { reply() }; if scenePhase == .active { engine.analyze(board) } }
+        .onChange(of: board.fen) { _, _ in if visible && scenePhase == .active { engine.analyze(board) } }
+        .onChange(of: scenePhase) { _, phase in if visible && phase == .active { engine.analyze(board) } else if visible { engine.stopAnalysis() } }
+        .onDisappear { visible = false; replyTask?.cancel(); engine.stopAnalysis() }
     }
     private func start() {
         replyTask?.cancel(); generation = UUID()

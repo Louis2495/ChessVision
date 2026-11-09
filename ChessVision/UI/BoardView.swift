@@ -17,6 +17,8 @@ struct BoardView: View {
     var legalTargets: Set<Int> = []
     var flipped = false
     var hidePieces = false
+    var obscured: Set<Int> = []
+    var duckSquare: Int? = nil
     var onTap: ((Int) -> Void)? = nil
     var body: some View {
         GeometryReader { geometry in
@@ -30,7 +32,9 @@ struct BoardView: View {
                             Button { onTap?(index) } label: {
                                 ZStack {
                                     Rectangle().fill(light ? Color(red: 0.91, green: 0.89, blue: 0.82) : Color(red: 0.36, green: 0.47, blue: 0.40))
-                                    if !hidePieces, let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
+                                    if !hidePieces && !obscured.contains(index), let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
+                                    if duckSquare == index { Text("🦆").font(.system(size: cell * 0.65)).accessibilityLabel("Duck") }
+                                    if obscured.contains(index) { Rectangle().fill(Color(white: 0.18).opacity(0.94)) }
                                     if legalTargets.contains(index) {
                                         if position.squares[index] == nil { Circle().fill(.black.opacity(0.20)).frame(width: cell * 0.24, height: cell * 0.24) }
                                         else { Circle().strokeBorder(.cyan.opacity(0.8), lineWidth: 3).padding(2) }
@@ -47,7 +51,7 @@ struct BoardView: View {
                                 .frame(width: cell, height: cell)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("\(Position.name(index)), \(hidePieces ? "hidden" : (position.squares[index]?.name ?? "empty"))\(uncertain.contains(index) ? ", uncertain recognition" : "")")
+                            .accessibilityLabel("\(Position.name(index)), \(hidePieces || obscured.contains(index) ? "hidden" : (position.squares[index]?.name ?? "empty"))\(uncertain.contains(index) ? ", uncertain recognition" : "")")
                             .accessibilityIdentifier("square-\(Position.name(index))")
                         }
                     }
@@ -98,7 +102,7 @@ struct EvaluationBar: View {
     }
 }
 
-private struct BoardEvaluationLayout: Layout {
+struct BoardEvaluationLayout: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? 346
         return CGSize(width: width, height: max(0, width - 26))

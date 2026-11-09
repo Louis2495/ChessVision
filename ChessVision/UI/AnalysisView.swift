@@ -121,11 +121,10 @@ struct AnalysisView: View {
             if phase == .active && visible { engine.analyze(position) } else if visible { engine.stopAnalysis() }
         }
         .onDisappear { visible = false; engine.stopAnalysis() }
-        .confirmationDialog("Promote pawn", isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } }), titleVisibility: .visible) {
-            ForEach(promotions, id: \.self) { move in
-                Button(Piece(position.turn == .white ? Character(String(move.promotion!).uppercased()) : move.promotion!).name) {
-                    play(move); promotions = []
-                }
+        .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
+            PromotionPicker(side: position.turn, kinds: promotions.compactMap(\.promotion)) { kind in
+                if let move = promotions.first(where: { $0.promotion == kind }) { play(move) }
+                promotions = []
             }
         }
     }

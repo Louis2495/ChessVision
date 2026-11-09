@@ -22,10 +22,21 @@ public struct PuzzleProgress: Codable, Sendable {
     public var attempts = 0
     public var solved = 0
     public var completed: [String] = []
+    public var placementAttempts = 0
     public init() {}
+    private enum CodingKeys: CodingKey { case rating, attempts, solved, completed, placementAttempts }
+    public init(from decoder: Decoder) throws {
+        let fields = try decoder.container(keyedBy: CodingKeys.self)
+        rating = try fields.decode(Double.self, forKey: .rating)
+        attempts = try fields.decode(Int.self, forKey: .attempts)
+        solved = try fields.decode(Int.self, forKey: .solved)
+        completed = try fields.decode([String].self, forKey: .completed)
+        placementAttempts = try fields.decodeIfPresent(Int.self, forKey: .placementAttempts) ?? 0
+    }
     public mutating func record(_ puzzle: ChessPuzzle, correct: Bool) {
         let expected = 1 / (1 + pow(10, Double(puzzle.estimatedRating - Int(rating)) / 400))
-        rating = max(200, min(3500, rating + 40 * ((correct ? 1 : 0) - expected)))
+        rating = max(200, min(3500, rating + (placementAttempts < 10 ? 400.0 : placementAttempts < 25 ? 120.0 : 40.0) * ((correct ? 1 : 0) - expected)))
+        placementAttempts += 1
         attempts += 1; if correct { solved += 1 }
         if !completed.contains(puzzle.id) { completed.append(puzzle.id) }
     }
@@ -89,7 +100,7 @@ public enum RepertoireTraining {
 }
 
 public enum GameMode: String, CaseIterable, Codable, Identifiable, Sendable {
-    case normal, blindBoard, blindText, threeCheck, kingOfTheHill, horde, crazyhouse
+    case normal, blindBoard, blindText, threeCheck, kingOfTheHill, horde, crazyhouse, duck, atomic, fogOfWar, pawnWars, antichess
     public var id: String { rawValue }
     public var title: String {
         switch self {
@@ -100,13 +111,23 @@ public enum GameMode: String, CaseIterable, Codable, Identifiable, Sendable {
         case .kingOfTheHill: return "King of the Hill"
         case .horde: return "Horde"
         case .crazyhouse: return "Crazyhouse"
+        case .duck: return "Duck chess"
+        case .atomic: return "Atomic chess"
+        case .fogOfWar: return "Fog of War"
+        case .pawnWars: return "Pawn Wars"
+        case .antichess: return "Antichess"
         }
     }
     public var variant: String {
-        switch self { case .threeCheck: return "3check"; case .kingOfTheHill: return "kingofthehill"; case .horde: return "horde"; case .crazyhouse: return "crazyhouse"; default: return "chess" }
+        switch self { case .threeCheck: return "3check"; case .kingOfTheHill: return "kingofthehill"; case .horde: return "horde"; case .crazyhouse: return "crazyhouse"; case .duck: return "duck"; case .atomic: return "atomic"; case .fogOfWar: return "cvfog"; case .pawnWars: return "cvpawns"; case .antichess: return "antichess"; default: return "chess" }
     }
     public var explanation: String {
         switch self {
+        case .duck: return "Move a piece, then place the duck on an empty square. The duck blocks movement. Capture the king to win."
+        case .atomic: return "Captures explode the capturing piece and adjacent non-pawns. Explode the enemy king to win."
+        case .fogOfWar: return "Only your pieces and squares they can move to are visible. Capture the enemy king to win."
+        case .pawnWars: return "With kings: pawn-and-king chess, with promotions and checkmate. Without kings: race a pawn to the last rank or capture every enemy pawn."
+        case .antichess: return "Captures are mandatory. Lose all your pieces, or have no legal move, to win."
         case .normal: return "Standard chess. You can ask the computer to follow a named opening."
         case .blindBoard: return "The squares stay visible, but pieces and legal-move hints are hidden."
         case .blindText: return "No board or pieces. Enter moves such as Nf3, exd5 or O-O."
@@ -125,6 +146,8 @@ public struct SavedComputerGame: Codable, Sendable {
     public var openingID: String?
     public var notation: [String] = []
     public var resigned: Side?
+    public var pawnWarsKings: Bool?
+    public var variant: String { mode == .pawnWars && pawnWarsKings == false ? "cvpawnrace" : mode.variant }
     public init(mode: GameMode, human: Side, targetRating: Int, moves: [String] = [], openingID: String? = nil) {
         self.mode = mode; self.human = human; self.targetRating = targetRating; self.moves = moves; self.openingID = openingID
     }

@@ -52,12 +52,13 @@ Choose your color and requested rating, then choose one of:
 - King of the Hill: safely bring the king to a central square.
 - Horde: White's pawn horde versus Black's regular army.
 - Crazyhouse: captured-piece pockets and legal drops, including promoted-piece reversion to pawns.
+- Duck, Atomic, Fog of War, Pawn Wars (kings on by default, optional pawn race), and Antichess.
 
-A real **Fairy-Stockfish 14** engine handles the rules and computer moves. Targets from 1 to 10,000 may be entered; its built-in limited-strength control spans 500–2850, lower requests use the weakest setting and higher requests full strength. These are approximate targets, affected by hardware/variant/classical evaluation, not guaranteed measured Elo. The pinned engine uses classical evaluation with NNUE disabled, so there are no network weights or external services.
+A real **Fairy-Stockfish** engine handles the rules and computer moves. Targets from 1 to 10,000 may be entered; its built-in limited-strength control spans 500–2850, lower requests use the weakest setting and higher requests full strength. These are approximate targets, affected by hardware/variant/classical evaluation, not guaranteed measured Elo. The pinned engine uses classical evaluation with NNUE disabled, so there are no network weights or external services.
 
 For **Normal** only, **Request an opening** searches 3,865 named lines. The computer follows that book line while your moves match it, then returns to normal play when you deviate or leave the line. You are not forced to play the requested moves. Games persist, can be resumed, taken back or resigned. Switching tabs pauses their engine work.
 
-The home-screen icon is new original artwork of an ivory knight looking through binoculars on a forest-green background. The 1024px opaque asset is checked in; its original is preserved in `Artwork/`.
+The home-screen icon is new original artwork of a sculpted ivory knight with a camera-lens detail on a forest-green background. The 1024px opaque asset is checked in; its original is preserved in `Artwork/`.
 
 ## Validation commands
 
@@ -78,3 +79,7 @@ For independent variant comparisons, optionally install `chess==1.11.2` in a vir
 The combined app remains **AGPL-3.0-or-later**. Fairy-Stockfish/Stockfish and piece artwork retain their GPL notices. Puzzles and opening facts are CC0; provenance and notices accompany the project. Source, model conversion/training code and artwork sources are included. See [Third-party details](Documentation/THIRD_PARTY.md).
 
 No App Store submission or distribution approval is implied. SDK/device validation, recognition improvements, exact public-service terms and GPL/AGPL corresponding-source/App Store compatibility still need review before a production release. GitHub source updates do not establish a successful Xcode build or published app.
+
+## Version 0.4
+
+Cleaner screens, an info button for privacy/licenses, illustrated promotion choices, faster provisional puzzle placement, a repertoire-training evaluation bar, and a new knight-and-lens icon. Play has a linked rating slider/number field and adds Duck, Atomic, Fog of War, Pawn Wars (kings optional, on by default), and Antichess. Opening imports tolerate incomplete records and can fall back to monthly PGN exports. See [training details](Documentation/TRAINING.md) for variant rules and limitations.

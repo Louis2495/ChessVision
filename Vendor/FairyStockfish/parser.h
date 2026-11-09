@@ -1,6 +1,6 @@
 /*
   Fairy-Stockfish, a UCI chess variant playing engine derived from Stockfish
-  Copyright (C) 2018-2021 Fabian Fichter
+  Copyright (C) 2018-2022 Fabian Fichter
 
   Fairy-Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@
 #define PARSER_H_INCLUDED
 
 #include <iostream>
+#include <string>
+#include <vector>
 
 #include "variant.h"
 
@@ -34,7 +36,7 @@ public:
         consumedKeys.insert(s);
         return std::map<std::string, std::string>::find(s);
     }
-    const std::set<std::string>& get_comsumed_keys() {
+    const std::set<std::string>& get_consumed_keys() {
         return consumedKeys;
     }
 private:
@@ -47,11 +49,13 @@ public:
     VariantParser(const Config& c) : config (c) {};
     Variant* parse();
     Variant* parse(Variant* v);
+    const std::vector<std::string>& get_errors() const { return errors; }
 
 private:
     Config config;
-    template <class T> void parse_attribute(const std::string& key, T& target);
-    void parse_attribute(const std::string& key, PieceType& target, std::string pieceToChar);
+    std::vector<std::string> errors = {};
+    template <bool Current = true, class T> bool parse_attribute(const std::string& key, T& target);
+    template <bool Current = true, class T> bool parse_attribute(const std::string& key, T& target, std::string pieceToChar);
 };
 
 } // namespace Stockfish

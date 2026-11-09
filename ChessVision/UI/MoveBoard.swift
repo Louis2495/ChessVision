@@ -23,10 +23,31 @@ struct MoveBoard: View {
             selected = position.squares[index]?.side == position.turn ? index : nil
         }
         .onChange(of: position.fen) { _, _ in selected = nil; promotions = [] }
-        .confirmationDialog("Promote pawn", isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } }), titleVisibility: .visible) {
-            ForEach(promotions, id: \.self) { move in
-                Button(String(move.promotion ?? "q").uppercased()) { selected = nil; onMove(move); promotions = [] }
+        .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
+            PromotionPicker(side: position.turn, kinds: promotions.compactMap(\.promotion)) { kind in
+                if let move = promotions.first(where: { $0.promotion == kind }) { selected = nil; onMove(move) }
+                promotions = []
             }
         }
+    }
+}
+
+struct PromotionPicker: View {
+    var side: Side
+    var kinds: [Character]
+    var choose: (Character) -> Void
+    var body: some View {
+        VStack(spacing: 24) {
+            Text("Promote pawn").font(.title2.bold())
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 64))], spacing: 12) {
+                ForEach(Array("qrbnk").filter { kinds.contains($0) }, id: \.self) { kind in
+                    let piece = Piece(side == .white ? Character(kind.uppercased()) : kind)
+                    Button { choose(kind) } label: {
+                        PieceView(piece: piece).frame(width: 44, height: 54).padding(8)
+                            .background(Color.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                    }.buttonStyle(.plain).accessibilityLabel(piece.name)
+                }
+            }
+        }.padding().presentationDetents([.height(kinds.count > 4 ? 320 : 220)])
     }
 }

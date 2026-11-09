@@ -7,7 +7,9 @@ public struct VariantMove: Hashable, Identifiable, Sendable {
     public var drop: Character? { uci.contains("@") ? uci.first : nil }
     public var from: Int? { drop == nil ? Position.index(String(uci.prefix(2))) : nil }
     public var to: Int? { Position.index(drop == nil ? String(uci.dropFirst(2).prefix(2)) : String(uci.suffix(2))) }
-    public var promotion: Character? { drop == nil && uci.count == 5 ? uci.last : nil }
+    public var pieceMove: String { String(uci.split(separator: ",").first ?? "") }
+    public var duckDestination: Int? { uci.contains(",") ? Position.index(String(uci.suffix(2))) : nil }
+    public var promotion: Character? { drop == nil && pieceMove.count == 5 ? pieceMove.last : nil }
 }
 public struct VariantSnapshot: Sendable {
     public var fen: String
@@ -17,6 +19,8 @@ public struct VariantSnapshot: Sendable {
     public var inCheck: Bool
     public var pockets: [Piece]
     public var checksRemaining: String?
+    public var duckSquare: Int?
+    public var hidden: Set<Int> = []
     public var finished: Bool { status != "ongoing" }
     public var result: String? {
         switch status { case "white": return "White wins"; case "black": return "Black wins"; case "draw": return "Draw"; default: return nil }
@@ -39,11 +43,18 @@ public struct VariantSnapshot: Sendable {
             placement = String(placement[..<open])
         }
         placement = placement.replacingOccurrences(of: "~", with: "")
+        var cursor = 0, duckSquare: Int?
+        for ch in placement {
+            if ch == "/" { continue }
+            if let count = ch.wholeNumberValue { cursor += count }
+            else { if ch == "*" { duckSquare = cursor }; cursor += 1 }
+        }
+        placement = placement.replacingOccurrences(of: "*", with: "1")
         // The board view shares standard piece art, but variant legality always comes from Fairy-Stockfish.
         var board = try Position(fen: "\(placement) \(turn.rawValue) \(parts[2]) \(parts[3]) \(parts[parts.count-2]) \(parts[parts.count-1])")
         board.turn = turn
         let checks = parts.first { $0.range(of: #"^\d+\+\d+$"#, options: .regularExpression) != nil }
-        return VariantSnapshot(fen: fen, board: board, moves: moves, status: status, inCheck: fields["check"] == "1", pockets: pockets, checksRemaining: checks)
+        return VariantSnapshot(fen: fen, board: board, moves: moves, status: status, inCheck: fields["check"] == "1", pockets: pockets, checksRemaining: checks, duckSquare: duckSquare, hidden: Set((fields["hidden"] ?? "").split(separator: ",").compactMap { Position.index(String($0)) }))
     }
     public func move(named text: String) throws -> VariantMove {
         func normalize(_ value: String) -> String {
@@ -53,5 +64,46 @@ public struct VariantSnapshot: Sendable {
         let found = moves.filter { normalize($0.san) == key || $0.uci.lowercased() == key }
         guard found.count == 1, let move = found.first else { throw ChessError.invalid("That move is illegal or ambiguous. Use notation such as Nf3, exd5 or O-O.") }
         return move
+    }
+}
+
+public enum FogVisibility {
+    /// Visibility belongs to the human, including while the computer is thinking.
+    public static func hidden(in board: Position, for side: Side) -> Set<Int> {
+        var visible: Set<Int> = []
+        func reveal(_ row: Int, _ col: Int) -> Bool {
+            guard (0..<8).contains(row), (0..<8).contains(col) else { return false }
+            let square = row * 8 + col; visible.insert(square)
+            return board.squares[square] == nil
+        }
+        for index in 0..<64 {
+            guard let piece = board.squares[index], piece.side == side else { continue }
+            visible.insert(index)
+            let row = index / 8, col = index % 8
+            switch piece.kind {
+            case "p":
+                let step = side == .white ? -1 : 1
+                if (0..<8).contains(row + step) {
+                    if board.squares[(row + step) * 8 + col] == nil {
+                        _ = reveal(row + step, col)
+                        if row == (side == .white ? 6 : 1), board.squares[(row + 2 * step) * 8 + col] == nil { _ = reveal(row + 2 * step, col) }
+                    }
+                    for delta in [-1, 1] where (0..<8).contains(col + delta) {
+                        let target = (row + step) * 8 + col + delta
+                        if board.squares[target]?.side == side.opposite || Position.name(target) == board.enPassant { visible.insert(target) }
+                    }
+                }
+            case "n":
+                for (dr, dc) in [(-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1)] { _ = reveal(row + dr, col + dc) }
+            default:
+                let diagonals = [(-1,-1),(-1,1),(1,-1),(1,1)]
+                let straight = [(-1,0),(1,0),(0,-1),(0,1)]
+                let directions = piece.kind == "b" ? diagonals : piece.kind == "r" ? straight : diagonals + straight
+                for (dr, dc) in directions {
+                    for distance in 1...(piece.kind == "k" ? 1 : 7) { if !reveal(row + dr * distance, col + dc * distance) { break } }
+                }
+            }
+        }
+        return Set(0..<64).subtracting(visible)
     }
 }

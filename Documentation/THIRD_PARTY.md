@@ -18,10 +18,12 @@ The board and correction palette use Colin M. L. Burnett's **CBurnett** set from
 
 ## Five-tab expansion
 
-The active engine is now Fairy-Stockfish `fairy_sf_14`, commit `f3e6969d11d1bec17eba26e7ae0e629ad4af71dd`, GPL-3.0-or-later. Its original complete source/AUTHORS/COPYING accompany `Vendor/FairyStockfish`. The previous Stockfish 11 source is retained for historical provenance but not linked. NNUE embedding/evaluation are disabled; no engine weights are downloaded. See `Vendor/FairyStockfish/CHESSVISION.md` for build details.
+The active engine is now Fairy-Stockfish pinned snapshot, commit `4e3d0147d5b8da1b780a29f0b3e1d24311d028fa`, GPL-3.0-or-later. Its original complete source/AUTHORS/Copying.txt accompany `Vendor/FairyStockfish`. The previous Stockfish 11 source is retained for historical provenance but not linked. NNUE embedding/evaluation are disabled; no engine weights are downloaded. See `Vendor/FairyStockfish/CHESSVISION.md` for build details.
 
 Lichess puzzle facts and the lichess-org/chess-openings catalog are CC0. Pinned mirror/upstream commits, source hash and estimation/sampling recipes are in `Vendor/ChessData/PROVENANCE.json`, with full CC0 text. No puzzle mirror Flask/server code is copied. python-chess 1.11.2 (GPL-3.0-or-later) is an optional generation/test tool, not an iPhone dependency.
 
 The current binocular-knight app icon is original generated artwork, preserved in `Artwork/`. The earlier DejaVu-derived icon is no longer used; its old notice/source remain only as historical provenance. Filled playing pieces still use the attributed CBurnett set.
 
 Public Chess.com/Lichess API calls use their supported anonymous game-export interfaces when requested by the user. Their service terms/rate limits remain applicable. No OAuth credentials, paid service, analytics SDK or remote engine is added.
+
+Import regression PGN: a public Chess.com game recorded in sarartur/chess.com commit 4ea67f858260802f7d42fccaf679962321356a0d, tests/fixtures/vcr_cassettes/get_player_games_by_month.yaml (FabianoCaruana–viditchess, 2020-05-05). Only the public game record is included, not client code.

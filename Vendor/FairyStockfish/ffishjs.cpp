@@ -1,6 +1,6 @@
 /*
   ffish.js, a JavaScript chess variant library derived from Fairy-Stockfish
-  Copyright (C) 2021 Fabian Fichter, Johannes Czech
+  Copyright (C) 2022 Fabian Fichter, Johannes Czech
 
   ffish.js is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -84,6 +84,9 @@ private:
   Position pos;
   Thread* thread;
   std::vector<Move> moveStack;
+  // UCI notation of the moves in moveStack, recorded at the time the move is made,
+  // since conversion of a move to UCI notation can depend on the position, e.g., for castling.
+  std::vector<std::string> uciMoveStack;
   bool is960;
 
 public:
@@ -160,6 +163,7 @@ public:
   void pop() {
     pos.undo_move(this->moveStack.back());
     moveStack.pop_back();
+    uciMoveStack.pop_back();
     states->pop_back();
   }
 
@@ -175,9 +179,18 @@ public:
     return this->pos.fen();
   }
 
+  std::string fen(bool showPromoted) const {
+    return this->pos.fen(false, showPromoted);
+  }
+
+  std::string fen(bool showPromoted, int countStarted) const {
+    return this->pos.fen(false, showPromoted, countStarted);
+  }
+
   void set_fen(std::string fen) {
     resetStates();
     moveStack.clear();
+    uciMoveStack.clear();
     pos.set(v, fen, is960, &states->back(), thread);
   }
 
@@ -263,24 +276,86 @@ public:
     return pos.game_ply();
   }
 
+  bool has_insufficient_material(bool turn) const {
+    return Stockfish::has_insufficient_material(turn ? WHITE : BLACK, pos);
+  }
+
+  bool is_insufficient_material() const {
+    return Stockfish::has_insufficient_material(WHITE, pos) && Stockfish::has_insufficient_material(BLACK, pos);
+  }
+
   bool is_game_over() const {
-    for (const ExtMove& move: MoveList<LEGAL>(pos))
-      return false;
-    return true;
+    return is_game_over(false);
+  }
+
+  bool is_game_over(bool claim_draw) const {
+    if (is_insufficient_material())
+      return true;
+    if (claim_draw && pos.is_optional_game_end())
+      return true;
+    return MoveList<LEGAL>(pos).size() == 0;
+  }
+
+  std::string result() const {
+    return result(false);
+  }
+
+  std::string result(bool claim_draw) const {
+    Value result;
+    bool gameEnd = pos.is_immediate_game_end(result);
+    if (!gameEnd) {
+      if (is_insufficient_material()) {
+        gameEnd = true;
+        result = VALUE_DRAW;
+      }
+    }
+    if (!gameEnd && MoveList<LEGAL>(pos).size() == 0) {
+      gameEnd = true;
+      result = pos.checkers() ? pos.checkmate_value() : pos.stalemate_value();
+    }
+    if (!gameEnd && claim_draw)
+      gameEnd = pos.is_optional_game_end(result);
+
+    if (!gameEnd)
+      return "*";
+    if (result == 0)
+      return "1/2-1/2";
+    if (pos.side_to_move() == BLACK)
+      result = -result;
+    if (result > 0)
+      return "1-0";
+    else
+      return "0-1";
+  }
+
+  std::string checked_pieces() const {
+    Bitboard checked = Stockfish::checked(pos);
+    std::string squares;
+    while (checked) {
+      Square sr = pop_lsb(checked);
+      squares += UCI::square(pos, sr);
+      squares += DELIM;
+    }
+    save_pop_back(squares);
+    return squares;
   }
 
   bool is_check() const {
-    return pos.checkers();
+    return Stockfish::checked(pos);
   }
 
   bool is_bikjang() const {
     return pos.bikjang();
   }
 
+  bool is_capture(std::string uciMove) const {
+    return pos.capture(UCI::to_move(pos, uciMove));
+  }
+
   std::string move_stack() const {
     std::string moves;
-    for(auto it = std::begin(moveStack); it != std::end(moveStack); ++it) {
-      moves += UCI::move(pos, *it);
+    for(auto it = std::begin(uciMoveStack); it != std::end(uciMoveStack); ++it) {
+      moves += *it;
       moves += DELIM;
     }
     save_pop_back(moves);
@@ -361,6 +436,7 @@ private:
   }
 
   void do_move(Move move) {
+    this->uciMoveStack.emplace_back(UCI::move(pos, move));
     states->emplace_back();
     this->pos.do_move(move, states->back());
     this->moveStack.emplace_back(move);
@@ -412,6 +488,11 @@ namespace ffish {
     variants.parse_istream<false>(ss);
     Options["UCI_Variant"].set_combo(variants.get_keys());
     Board::sfInitialized = true;
+  }
+
+  bool captures_to_hand(std::string uciVariant) {
+    const Variant* v = get_variant(uciVariant);
+    return v->capturesToHand;
   }
 
   std::string starting_fen(std::string uciVariant) {
@@ -507,10 +588,14 @@ Game read_game_pgn(std::string pgn) {
         headersParsed = true;
         auto it = game.header.find("Variant");
         if (it != game.header.end()) {
-          game.variant = it->second;
+          game.is960 = it->second.find("960", it->second.size() - 3) != std::string::npos;
+          if (game.is960) {
+            game.variant = it->second.substr(0, it->second.size() - 3);
+          } else {
+            game.variant = it->second;
+          }
           std::transform(game.variant.begin(), game.variant.end(), game.variant.begin(),
           [](unsigned char c){ return std::tolower(c); });
-          game.is960 = it->second.find("960") != std::string::npos;
         }
 
         it = game.header.find("FEN");
@@ -615,7 +700,9 @@ EMSCRIPTEN_BINDINGS(ffish_js) {
     .function("pop", &Board::pop)
     .function("reset", &Board::reset)
     .function("is960", &Board::is_960)
-    .function("fen", &Board::fen)
+    .function("fen", select_overload<std::string()const>(&Board::fen))
+    .function("fen", select_overload<std::string(bool)const>(&Board::fen))
+    .function("fen", select_overload<std::string(bool, int)const>(&Board::fen))
     .function("setFen", &Board::set_fen)
     .function("sanMove", select_overload<std::string(std::string)>(&Board::san_move))
     .function("sanMove", select_overload<std::string(std::string, Notation)>(&Board::san_move))
@@ -626,9 +713,16 @@ EMSCRIPTEN_BINDINGS(ffish_js) {
     .function("fullmoveNumber", &Board::fullmove_number)
     .function("halfmoveClock", &Board::halfmove_clock)
     .function("gamePly", &Board::game_ply)
-    .function("isGameOver", &Board::is_game_over)
+    .function("hasInsufficientMaterial", &Board::has_insufficient_material)
+    .function("isInsufficientMaterial", &Board::is_insufficient_material)
+    .function("isGameOver", select_overload<bool() const>(&Board::is_game_over))
+    .function("isGameOver", select_overload<bool(bool) const>(&Board::is_game_over))
+    .function("result", select_overload<std::string() const>(&Board::result))
+    .function("result", select_overload<std::string(bool) const>(&Board::result))
+    .function("checkedPieces", &Board::checked_pieces)
     .function("isCheck", &Board::is_check)
     .function("isBikjang", &Board::is_bikjang)
+    .function("isCapture", &Board::is_capture)
     .function("moveStack", &Board::move_stack)
     .function("pushMoves", &Board::push_moves)
     .function("pushSanMoves", select_overload<void(std::string)>(&Board::push_san_moves))
@@ -650,7 +744,18 @@ EMSCRIPTEN_BINDINGS(ffish_js) {
     .value("SHOGI_HODGES", NOTATION_SHOGI_HODGES)
     .value("SHOGI_HODGES_NUMBER", NOTATION_SHOGI_HODGES_NUMBER)
     .value("JANGGI", NOTATION_JANGGI)
-    .value("XIANGQI_WXF", NOTATION_XIANGQI_WXF);
+    .value("XIANGQI_WXF", NOTATION_XIANGQI_WXF)
+    .value("THAI_SAN", NOTATION_THAI_SAN)
+    .value("THAI_LAN", NOTATION_THAI_LAN);
+  // usage: e.g. ffish.Termination.CHECKMATE
+  enum_<Termination>("Termination")
+    .value("ONGOING", ONGOING)
+    .value("CHECKMATE", CHECKMATE)
+    .value("STALEMATE", STALEMATE)
+    .value("INSUFFICIENT_MATERIAL", INSUFFICIENT_MATERIAL)
+    .value("N_MOVE_RULE", N_MOVE_RULE)
+    .value("N_FOLD_REPETITION", N_FOLD_REPETITION)
+    .value("VARIANT_END", VARIANT_END);
   function("info", &ffish::info);
   function("setOption", &ffish::set_option<std::string>);
   function("setOptionInt", &ffish::set_option<int>);
@@ -658,6 +763,7 @@ EMSCRIPTEN_BINDINGS(ffish_js) {
   function("readGamePGN", &read_game_pgn);
   function("variants", &ffish::available_variants);
   function("loadVariantConfig", &ffish::load_variant_config);
+  function("capturesToHand", &ffish::captures_to_hand);
   function("startingFen", &ffish::starting_fen);
   function("validateFen", select_overload<int(std::string)>(&ffish::validate_fen));
   function("validateFen", select_overload<int(std::string, std::string)>(&ffish::validate_fen));

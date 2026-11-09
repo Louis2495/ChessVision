@@ -1,11 +1,11 @@
 import SwiftUI
 
 @MainActor final class OpeningExplorerModel: ObservableObject {
-    enum Filter: String, CaseIterable, Sendable { case both = "Both colors", white = "White", black = "Black" }
+    enum Filter: String, CaseIterable, Sendable { case white = "White", black = "Black" }
     @Published var site: PublicChessSite = .chesscom
     @Published var username = ""
     @Published var limit = 1000
-    @Published var filter = Filter.both
+    @Published var filter = Filter.white
     @Published var tree = OpeningTree()
     @Published var status = ""
     @Published var error: String?
@@ -27,7 +27,7 @@ import SwiftUI
                 games = imported.games; importedUsername = user; tree = built; profileLabel = "\(user) · \(site.title)"
                 status = "\(tree.gameCount) games in this color filter · \(imported.fetched) fetched · \(imported.skipped) skipped"
             } catch is CancellationError { status = "Import canceled." }
-            catch { self.error = error.localizedDescription; status = "Import did not finish. Previous results are retained." }
+            catch { self.error = Self.importMessage(error); status = tree.gameCount == 0 ? "Could not load this profile." : "Import did not finish. Previous results are retained." }
             busy = false
         }
     }
@@ -49,12 +49,17 @@ import SwiftUI
                 try Task.checkCancellation()
                 if filter == .white && game.white.lowercased() != user { continue }
                 if filter == .black && game.black.lowercased() != user { continue }
-                try tree.add(game)
+                do { try tree.add(game) } catch is CancellationError { throw CancellationError() } catch { continue }
             }
             return tree
         }
         let result = try await withTaskCancellationHandler(operation: { try await worker.value }, onCancel: { worker.cancel() })
         try Task.checkCancellation(); return result
+    }
+    private static func importMessage(_ error: Error) -> String {
+        if case DecodingError.keyNotFound(let key, _) = error { return "The site returned an incomplete response (missing \(key.stringValue)). Please retry in a moment." }
+        if error is DecodingError { return "The site returned an unexpected game export. Please retry in a moment." }
+        return error.localizedDescription
     }
     func cancel() { task?.cancel() }
 }
@@ -73,7 +78,6 @@ struct OpeningExplorerView: View {
                     Text("Import public games from Chess.com or Lichess. No login or password required.").font(.subheadline).foregroundStyle(.secondary)
                     Picker("Site", selection: $model.site) { ForEach(PublicChessSite.allCases) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
                     TextField("Public username", text: $model.username).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
-                    Picker("Recent public games", selection: $model.limit) { Text("200 games").tag(200); Text("1,000 games").tag(1000); Text("5,000 games").tag(5000) }
                     Button { history = [.initial]; notation = []; model.load() } label: { Label("Load opening tree", systemImage: "arrow.down.circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(model.busy || !PublicGames.validUsername(model.username))
                     if model.busy { HStack { ProgressView(); Text(model.status).font(.caption); Spacer(); Button("Cancel") { model.cancel() } } }
                     else if !model.status.isEmpty { Text(model.status).font(.caption).foregroundStyle(.secondary) }
@@ -95,7 +99,6 @@ struct OpeningExplorerView: View {
                         }.buttonStyle(.plain)
                         Divider()
                     }
-                    Text("Result bars: White wins · draws · Black wins. Only public games are fetched; photos and your private repertoire are never uploaded.").font(.caption).foregroundStyle(.secondary)
                 }.padding()
             }.scrollDismissesKeyboard(.interactively).navigationTitle("Opening explorer")
             .onChange(of: model.filter) { _, _ in history = [.initial]; notation = []; model.refilter() }

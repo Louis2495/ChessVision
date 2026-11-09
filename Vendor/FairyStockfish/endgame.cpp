@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -94,6 +94,31 @@ namespace Endgames {
     add<KSFK>("KSFK");
     add<KSFKF>("KSFKF");
     add<KRKS>("KRKS");
+    add<KCKR>("KCKR");
+    add<KAKR>("KAKR");
+
+    // Anti
+    add<RK, EG_EVAL_ANTI>("RvM");
+    add<KN, EG_EVAL_ANTI>("MvN");
+    add<NN, EG_EVAL_ANTI>("NvN");
+
+    // Atomic
+    add<KPK, EG_EVAL_ATOMIC>("MPvM");
+    add<KNK, EG_EVAL_ATOMIC>("MNvM");
+    add<KBK, EG_EVAL_ATOMIC>("MBvM");
+    add<KRK, EG_EVAL_ATOMIC>("MRvM");
+    add<KQK, EG_EVAL_ATOMIC>("MQvM");
+    add<KNNK, EG_EVAL_ATOMIC>("MNNvM");
+
+    // Duck
+    add<KBK, EG_EVAL_DUCK>("MBvM");
+    add<KNK, EG_EVAL_DUCK>("MNvM");
+    add<KPK, EG_EVAL_DUCK>("MPvM");
+
+    // Racing kings
+    add<KQK, EG_EVAL_RK>("KQK");
+    add<KRK, EG_EVAL_RK>("KRK");
+    add<KK, EG_EVAL_RK>("KK");
 
     add<KRPKB>("KRPKB");
     add<KBPKB>("KBPKB");
@@ -183,9 +208,9 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
   Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
   // Non-standard promotion, evaluation unclear
-  if (   pos.promotion_rank() != RANK_8
+  if (   pos.promotion_zone(us) != rank_bb(relative_rank(us, RANK_8, pos.max_rank()))
       || RANK_MAX != RANK_8
-      || pos.promotion_piece_types().find(QUEEN) == pos.promotion_piece_types().end())
+      || !(pos.promotion_piece_types(us) & QUEEN))
   {
       Value result = PawnValueEg + Value(rank_of(strongPawn));
       return strongSide == pos.side_to_move() ? result : -result;
@@ -319,6 +344,42 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
 }
 
 
+/// KC vs KR. Drawish, but good winning chances if king and rook are close.
+template<>
+Value Endgame<KCKR>::operator()(const Position& pos) const {
+
+  assert(verify_material(pos, strongSide, ChancellorValueMg, 0));
+  assert(verify_material(pos, weakSide, RookValueMg, 0));
+
+  Square strongKing = pos.square<KING>(strongSide);
+  Square weakKing = pos.square<KING>(weakSide);
+  Square weakRook = pos.square<ROOK>(weakSide);
+
+  Value result =  Value(push_to_edge(weakKing, pos))
+                + push_close(strongKing, weakKing)
+                + push_close(weakRook, weakKing);
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+
+/// KA vs KR. Very drawish.
+template<>
+Value Endgame<KAKR>::operator()(const Position& pos) const {
+
+  assert(verify_material(pos, strongSide, ArchbishopValueMg, 0));
+  assert(verify_material(pos, weakSide, RookValueMg, 0));
+
+  Square strongKing = pos.square<KING>(strongSide);
+  Square weakKing = pos.square<KING>(weakSide);
+
+  Value result =  Value(push_to_edge(weakKing, pos))
+                + push_close(strongKing, weakKing);
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+
 /// KNN vs KP. Very drawish, but there are some mate opportunities if we can
 /// press the weakSide King to a corner before the pawn advances too much.
 template<>
@@ -371,10 +432,14 @@ Value Endgame<KFsPsK>::operator()(const Position& pos) const {
       Bitboard b = pos.pieces(strongSide, PAWN);
       while (b && (!dark || !light))
       {
-          if (file_of(pop_lsb(b)) % 2 != relative_rank(strongSide, pos.promotion_rank(), pos.max_rank()) % 2)
-              light = true;
-          else
-              dark = true;
+          Square s = pos.promotion_square(strongSide, pop_lsb(b));
+          if (s != SQ_NONE)
+          {
+              if (DarkSquares & s)
+                  dark = true;
+              else
+                  light = true;
+          }
       }
       if (!dark || !light)
           return VALUE_DRAW; // we can not checkmate with same colored ferzes
@@ -933,12 +998,427 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
 
   // Probe the KPK bitbase with the weakest side's pawn removed. If it's a draw,
   // it's probably at least a draw even with the pawn.
-  if (   pos.promotion_rank() != RANK_8
+  if (   pos.promotion_zone(us) != rank_bb(relative_rank(us, RANK_8, pos.max_rank()))
       || RANK_MAX != RANK_8
-      || pos.promotion_piece_types().find(QUEEN) == pos.promotion_piece_types().end())
+      || !(pos.promotion_piece_types(us) & QUEEN))
       return SCALE_FACTOR_NONE;
 
   return Bitbases::probe(strongKing, strongPawn, weakKing, us) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
+}
+
+
+/// Endgame evals for special variants
+/// R vs K. The rook side always wins if there is no immediate forced capture.
+template<>
+Value Endgame<RK, EG_EVAL_ANTI>::operator()(const Position& pos) const {
+
+  assert(pos.endgame_eval() == EG_EVAL_ANTI);
+
+  Square RSq = pos.square<ROOK>(strongSide);
+  Square KSq = pos.square<COMMONER>(weakSide);
+
+  Value result = Value(push_to_edge(KSq, pos)) + push_close(RSq, KSq);
+
+  int dist_min = std::min(distance<Rank>(RSq, KSq), distance<File>(RSq, KSq));
+  int dist_max = std::max(distance<Rank>(RSq, KSq), distance<File>(RSq, KSq));
+
+  if (dist_min == 0)
+      result += strongSide == pos.side_to_move() || dist_max > 1 ? -VALUE_KNOWN_WIN : VALUE_KNOWN_WIN;
+  else if (dist_min == 1)
+      result += weakSide == pos.side_to_move() && dist_max > 1 ? -VALUE_KNOWN_WIN : VALUE_KNOWN_WIN;
+  else
+      result += VALUE_KNOWN_WIN;
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+
+/// K vs N. The king usually wins, but there are a few exceptions.
+template<>
+Value Endgame<KN, EG_EVAL_ANTI>::operator()(const Position& pos) const {
+
+  assert(pos.endgame_eval() == EG_EVAL_ANTI);
+
+  Square KSq = pos.square<COMMONER>(strongSide);
+  Square NSq = pos.square<KNIGHT>(weakSide);
+  Bitboard kingAttacks = attacks_bb<KING>(KSq) & pos.board_bb();
+  Bitboard knightAttacks = attacks_bb<KNIGHT>(NSq) & pos.board_bb();
+  bool strongSideToMove = pos.side_to_move() == strongSide;
+
+  // Loss in 1 play
+  if (strongSideToMove ? kingAttacks & NSq : knightAttacks & KSq)
+      return VALUE_TB_LOSS_IN_MAX_PLY + 1;
+  // Win in 2 ply
+  if (kingAttacks & knightAttacks)
+      return VALUE_TB_WIN_IN_MAX_PLY - 2;
+  // Loss in 3 ply
+  if (strongSideToMove ? knightAttacks & KSq : kingAttacks & NSq)
+      return VALUE_TB_LOSS_IN_MAX_PLY + 3;
+
+  Value result = Value(push_to_edge(NSq, pos)) - push_to_edge(KSq, pos);
+  // The king usually wins, but scenarios with king on the edge are more complicated
+  if (!(KSq & (FileABB | FileHBB | Rank1BB | Rank8BB)))
+      result += VALUE_KNOWN_WIN;
+
+  return strongSideToMove ? result : -result;
+}
+
+/// N vs N. The side to move always wins/loses if the knights are on
+/// same/opposite colored squares.
+template<>
+Value Endgame<NN, EG_EVAL_ANTI>::operator()(const Position& pos) const {
+
+  assert(pos.endgame_eval() == EG_EVAL_ANTI);
+
+  Square N1Sq = pos.square<KNIGHT>(pos.side_to_move());
+  Square N2Sq = pos.square<KNIGHT>(~pos.side_to_move());
+
+  Value result = VALUE_KNOWN_WIN + push_close(N1Sq, N2Sq);
+
+  return !opposite_colors(N1Sq, N2Sq) ? result : -result;
+}
+
+
+template<>
+Value Endgame<KXK, EG_EVAL_ATOMIC>::operator()(const Position& pos) const {
+
+  assert(pos.endgame_eval() == EG_EVAL_ATOMIC);
+
+  // Stalemate/checkmate detection with lone king
+  if (pos.side_to_move() == weakSide && !MoveList<LEGAL>(pos).size())
+      return std::min(pos.stalemate_value(), VALUE_MATE_IN_MAX_PLY - 1);
+
+  Square winnerKSq = pos.square<COMMONER>(strongSide);
+  Square loserKSq = pos.square<COMMONER>(weakSide);
+
+  Value result =  pos.non_pawn_material(strongSide)
+                + pos.count<PAWN>(strongSide) * PawnValueEg
+                + push_to_edge(loserKSq, pos)
+                + push_away(winnerKSq, loserKSq);
+
+  // We need at least a major and a minor, or three minors to force checkmate
+  if (  ((pos.count<QUEEN>(strongSide) || pos.count<ROOK>(strongSide)) && pos.count<ALL_PIECES>(strongSide) >= 3)
+      || (pos.count<BISHOP>(strongSide) + pos.count<KNIGHT>(strongSide) >= 3
+         && (pos.count<KNIGHT>(strongSide) >= 2 || ((pos.pieces(strongSide, BISHOP) & DarkSquares)
+                                                    && (pos.pieces(strongSide, BISHOP) & ~DarkSquares)))))
+      result = std::min(result + VALUE_KNOWN_WIN, VALUE_MATE_IN_MAX_PLY - 1);
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+template<>
+Value Endgame<KPK, EG_EVAL_ATOMIC>::operator()(const Position& pos) const {
+
+  assert(pos.endgame_eval() == EG_EVAL_ATOMIC);
+
+  Square winnerKSq = pos.square<COMMONER>(strongSide);
+  Square loserKSq = pos.square<COMMONER>(weakSide);
+
+  int dist = distance(winnerKSq, loserKSq);
+  // Draw in case of adjacent kings
+  if (dist <= (strongSide == pos.side_to_move() ? 1 : 2))
+      return VALUE_DRAW;
+
+  Value result = PawnValueEg
+                + 20 * relative_rank(strongSide, pos.square<PAWN>(strongSide), pos.max_rank()) - 20
+                + push_away(winnerKSq, loserKSq);
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+template<> Value Endgame<KNK, EG_EVAL_ATOMIC>::operator()(const Position&) const { return VALUE_DRAW; }
+
+template<> Value Endgame<KBK, EG_EVAL_ATOMIC>::operator()(const Position&) const { return VALUE_DRAW; }
+
+template<> Value Endgame<KRK, EG_EVAL_ATOMIC>::operator()(const Position&) const { return VALUE_DRAW; }
+
+template<>
+Value Endgame<KQK, EG_EVAL_ATOMIC>::operator()(const Position& pos) const {
+
+  assert(pos.endgame_eval() == EG_EVAL_ATOMIC);
+
+  // Stalemate/checkmate detection with lone king
+  if (pos.side_to_move() == weakSide && !MoveList<LEGAL>(pos).size())
+      return std::min(pos.stalemate_value(), VALUE_MATE_IN_MAX_PLY - 1);
+
+  Square winnerKSq = pos.square<COMMONER>(strongSide);
+  Square loserKSq = pos.square<COMMONER>(weakSide);
+
+  int dist = distance(winnerKSq, loserKSq);
+  // Draw in case of adjacent kings
+  if (dist ==  1)
+      return VALUE_DRAW;
+  // If the weaker side is to move and there is a way to connect kings, it is a draw
+  if (   pos.side_to_move() == weakSide
+      && (attacks_bb<KING>(winnerKSq) & attacks_bb<KING>(loserKSq) & ~pos.pieces()))
+      return VALUE_DRAW;
+
+  Value result =  Value(push_to_edge(loserKSq, pos))
+                + push_away(winnerKSq, loserKSq);
+
+  if (dist >= (strongSide == pos.side_to_move() ? 3 : 4))
+      result += VALUE_KNOWN_WIN;
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+template<> Value Endgame<KNNK, EG_EVAL_ATOMIC>::operator()(const Position&) const { return VALUE_DRAW; }
+
+
+/// Self-mate with KX vs KX.
+template<>
+Value Endgame<KXKX, EG_EVAL_MISERE>::operator()(const Position& pos) const {
+
+  assert(!pos.checkers()); // Eval is never called when in check
+
+  // The weak side is stalemated, or it has a bare king that can never give mate
+  if ((pos.side_to_move() == weakSide && !MoveList<LEGAL>(pos).size()) || pos.count<ALL_PIECES>(weakSide) == 1)
+      return VALUE_DRAW;
+
+  Square strongKing = pos.square<KING>(strongSide);
+  Square weakKing   = pos.square<KING>(weakSide);
+
+  // Count strong pawns as queens already, so that promoting only gains the value of a pawn
+  Value maxValue = pos.non_pawn_material(strongSide) + pos.count<PAWN>(strongSide) * QueenValueMg;
+  Value result = (maxValue - pos.count<PAWN>(strongSide) * PawnValueMg) * int(VALUE_KNOWN_WIN) / int(VALUE_KNOWN_WIN + maxValue)
+                - pos.non_pawn_material(weakSide)
+                + push_to_edge(strongKing, pos)
+                + push_close(strongKing, weakKing);
+
+  // The strong king should be boxed in, so penalize its free flight squares
+  int strongMobility = popcount(PseudoAttacks[strongSide][KING][strongKing] & ~pos.pieces(strongSide) & ~PseudoAttacks[weakSide][KING][weakKing]);
+  result -= 20 * strongMobility;
+
+  // Restrict the weak king: penalize its flight squares not covered by the strong side
+  int weakMobility = 0;
+  for (Bitboard b = PseudoAttacks[weakSide][KING][weakKing] & ~pos.pieces(weakSide) & ~PseudoAttacks[strongSide][KING][strongKing]; b;)
+      weakMobility += !pos.attackers_to(pop_lsb(b), pos.pieces() ^ weakKing, strongSide);
+  result -= 20 * weakMobility;
+
+  // Weak pawns on their seventh rank promote with their next move and the weak
+  // side picks the promotion piece, so only less advanced pawns can be forced to mate.
+  Bitboard matingPawns = pos.pieces(weakSide, PAWN) & ~rank_bb(relative_rank(weakSide, RANK_7, pos.max_rank()));
+  if (matingPawns)
+  {
+      // Squares on the seventh rank that a mating pawn can reach with its next move
+      Bitboard blocked = matingPawns & (weakSide == WHITE ? shift<SOUTH>(pos.pieces(PAWN)) : shift<NORTH>(pos.pieces(PAWN)));
+      Bitboard pushes = weakSide == WHITE ? shift<NORTH>(matingPawns ^ blocked) : shift<SOUTH>(matingPawns ^ blocked);
+      Bitboard captures = weakSide == WHITE ? pawn_attacks_bb<WHITE>(matingPawns) : pawn_attacks_bb<BLACK>(matingPawns);
+      Bitboard pawnTo7 = (pushes | captures) & rank_bb(relative_rank(weakSide, RANK_7, pos.max_rank()));
+
+      // Reward mate patterns where a pawn arriving on the seventh rank checks the strong king
+      // diagonally in front of it, and the strong side's own units take away its flight squares.
+      for (Bitboard pawnSquares = pawnTo7; pawnSquares;)
+      {
+          Square pawnSquare = pop_lsb(pawnSquares);
+          for (Direction d : {EAST, WEST})
+          {
+              if ((file_of(pawnSquare) == FILE_A && d == WEST) || (file_of(pawnSquare) == FILE_H && d == EAST))
+                  continue;
+              Square kingSquare = pawnSquare + pawn_push(weakSide) + d;  // strong king checked by the pawn
+              Square blockerSquare = pawnSquare + pawn_push(weakSide);   // in front of the pawn, next to the king
+              Square advanceSquare = pawnSquare + d;                     // next to the pawn, in front of the king
+              int bonus = 0;
+              // Both kings in place count most
+              bonus += kingSquare == strongKing;
+              bonus += bool(PseudoAttacks[weakSide][KING][weakKing] & pawnSquare);
+              bonus += bonus / 2;
+              // Which strong units stand next to the strong king matters: some complete the mating net, others spoil it
+              bonus += bool(pos.pieces(strongSide, BISHOP) & blockerSquare);
+              bonus -= bool(pos.pieces(strongSide, ROOK, QUEEN) & blockerSquare);
+              bonus += bool(pos.pieces(strongSide, KNIGHT, PAWN) & advanceSquare);
+              bonus -= bool(pos.pieces(strongSide, ROOK, QUEEN) & advanceSquare);
+              // Away from the edge the strong king also has flight squares on the far side
+              if ((file_of(pawnSquare) > FILE_B && d == WEST) || (file_of(pawnSquare) < FILE_G && d == EAST))
+              {
+                  Square sideSquare = kingSquare + d;
+                  Square sideAdvanceSquare = advanceSquare + d;
+                  bonus += bool(pos.pieces(strongSide, ROOK) & sideSquare);
+                  bonus -= bool(pos.pieces(strongSide, KNIGHT) & sideSquare);
+                  bonus += bool(pos.pieces(strongSide, BISHOP, PAWN) & sideAdvanceSquare);
+                  bonus -= bool((pos.pieces(strongSide, ROOK, QUEEN) & sideAdvanceSquare) && !(pos.pieces(strongSide) & advanceSquare));
+                  bonus -= 2 * bool(captures & sideAdvanceSquare); // the pawn could capture a blocker there
+              }
+              // The weak king must not cover the mating square itself
+              bonus -= bool(PseudoAttacks[weakSide][KING][weakKing] & kingSquare);
+              if (bonus > 0)
+                  result += bonus * bonus * 100 / (1 + distance(kingSquare, strongKing) + strongMobility);
+          }
+      }
+
+      // Bring both kings close to the mating pawns
+      for (Bitboard b = matingPawns; b;)
+      {
+          Square s = pop_lsb(b);
+          // The strong king belongs two squares in front of the pawn, the weak king close to its stop square
+          Square pawnTargetSquare = s + pawn_push(weakSide);
+          Square kingTargetSquare = pawnTargetSquare + pawn_push(weakSide);
+          result -= 50 * distance(strongKing, kingTargetSquare) + 50 * distance(weakKing, pawnTargetSquare);
+          // Advanced weak pawns have fewer spare tempi and are closer to mate
+          result += 20 * relative_rank(weakSide, s, pos.max_rank());
+      }
+  }
+  else
+  {
+      // Without mating pawns the weak pieces have to give mate. Reward squares from
+      // which a weak piece would check the strong king without the king being able
+      // to simply capture it.
+      for (Bitboard pieceSquares = pos.pieces(weakSide) ^ pos.pieces(weakSide, PAWN, KING); pieceSquares;)
+      {
+          Square s = pop_lsb(pieceSquares);
+          PieceType pt = type_of(pos.piece_on(s));
+          Bitboard checkSquares = pos.attacks_from(strongSide, pt, strongKing);
+          Bitboard safeChecks = checkSquares & (~PseudoAttacks[strongSide][KING][strongKing] | PseudoAttacks[weakSide][KING][weakKing]);
+          Bitboard reachableSafeChecks = pos.attacks_from(weakSide, pt, s) & safeChecks;
+          for (Bitboard b = safeChecks; b;)
+          {
+              Square checkSquare = pop_lsb(b);
+              int bonus = 0;
+              // No other strong piece can capture the checking piece
+              bonus += !(pos.attackers_to(checkSquare, strongSide) & ~square_bb(strongKing));
+              // Contact checks and knight checks cannot be blocked
+              bonus += bool(pt == KNIGHT || (PseudoAttacks[strongSide][KING][strongKing] & checkSquare));
+              // The weak piece can give this check with its next move
+              bonus += bool(reachableSafeChecks & checkSquare);
+              // Checking by capturing a strong slider that pins a weak piece
+              bonus += bool(pos.pinners(strongSide) & checkSquare);
+              if (bonus > 0)
+                  result += bonus * bonus * 100 / (1 + strongMobility + weakMobility);
+          }
+      }
+  }
+
+  // Without mating pawns a selfmate can hardly be forced, as the weak side chooses
+  // the promotion pieces. A single mating pawn also needs a strong minor piece or
+  // pawn to cover a flight square of the king. Other weak pieces can still give
+  // mate, so scale down less then. Otherwise, a minor piece and two major pieces
+  // are usually enough to build the mating net.
+  if (!matingPawns || (!more_than_one(matingPawns) && !pos.pieces(strongSide, BISHOP, KNIGHT, PAWN)))
+      result /= pos.count<ALL_PIECES>(weakSide) == pos.count<PAWN>(weakSide) + 1 ? 16 : 4;
+  else if (pos.pieces(strongSide, BISHOP, KNIGHT) && (pos.count<QUEEN>(strongSide) + pos.count<ROOK>(strongSide)) >= 2)
+      result += VALUE_KNOWN_WIN;
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+
+/// Mate with KX vs K. This function is used to evaluate positions with
+/// king and plenty of material vs a lone king. It simply gives the
+/// attacking side a bonus for driving the defending king towards the edge
+/// of the board, and for keeping the distance between the two kings small.
+template<>
+Value Endgame<KXK, EG_EVAL_DUCK>::operator()(const Position& pos) const {
+
+  Square strongKing = pos.square<COMMONER>(strongSide);
+  Square weakKing   = pos.square<COMMONER>(weakSide);
+
+  Value result =  pos.non_pawn_material(strongSide)
+                + pos.count<PAWN>(strongSide) * PawnValueEg
+                + push_to_edge(weakKing, pos)
+                + push_close(strongKing, weakKing);
+
+  result = std::min(result + VALUE_KNOWN_WIN, VALUE_TB_WIN_IN_MAX_PLY - 1);
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+
+/// Drawish, but king should stay away from the edge
+template<>
+Value Endgame<KNK, EG_EVAL_DUCK>::operator()(const Position& pos) const {
+
+  Square strongKing = pos.square<COMMONER>(strongSide);
+  Square weakKing   = pos.square<COMMONER>(weakSide);
+
+  Value result =  Value(push_to_edge(weakKing, pos))
+                + push_close(strongKing, weakKing);
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+
+/// Drawish, but king should stay away from the edge
+template<>
+Value Endgame<KBK, EG_EVAL_DUCK>::operator()(const Position& pos) const {
+
+  Square strongKing = pos.square<COMMONER>(strongSide);
+  Square weakKing   = pos.square<COMMONER>(weakSide);
+
+  Value result =  Value(push_to_edge(weakKing, pos))
+                + push_close(strongKing, weakKing);
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+
+/// Winning as long as pawn is safe
+template<>
+Value Endgame<KPK, EG_EVAL_DUCK>::operator()(const Position& pos) const {
+
+  Square strongKing = pos.square<COMMONER>(strongSide);
+  Square weakKing   = pos.square<COMMONER>(weakSide);
+  Square strongPawn = pos.square<PAWN>(strongSide);
+
+  Value result =  PawnValueEg + 50 * relative_rank(strongSide, strongPawn, pos.max_rank())
+                + push_to_edge(weakKing, pos)
+                + push_close(strongKing, weakKing)
+                + push_close(strongKing, strongPawn) / 2
+                + push_away(weakKing, strongPawn) / 2;
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+/// Winning as long as last rank can be blocked
+template<>
+Value Endgame<KQK, EG_EVAL_RK>::operator()(const Position& pos) const {
+
+  Square strongKing  = pos.square<KING>(strongSide);
+  Square weakKing    = pos.square<KING>(weakSide);
+  Square strongQueen = pos.square<QUEEN>(strongSide);
+
+  Value result;
+
+  if (   rank_of(weakKing) < rank_of(strongQueen)
+      || rank_of(weakKing) + (weakSide == pos.side_to_move()) < RANK_7
+      || (Rank8BB & attacks_bb<QUEEN>(strongQueen, pos.pieces()) & ~(attacks_bb<QUEEN>(weakKing) | attacks_bb<SHOGI_KNIGHT>(weakKing))))
+      result = VALUE_KNOWN_WIN + 100 * rank_of(strongKing);
+  else
+      result = -VALUE_KNOWN_WIN;
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+/// Winning as long as last rank can be blocked
+template<>
+Value Endgame<KRK, EG_EVAL_RK>::operator()(const Position& pos) const {
+
+  Square strongKing = pos.square<KING>(strongSide);
+  Square weakKing   = pos.square<KING>(weakSide);
+  Square strongRook = pos.square<ROOK>(strongSide);
+
+  Value result;
+
+  if (   rank_of(weakKing) < rank_of(strongRook)
+      || rank_of(weakKing) + (weakSide == pos.side_to_move()) < RANK_7
+      || (Rank8BB & attacks_bb<ROOK>(strongRook, pos.pieces()) & ~(attacks_bb<QUEEN>(weakKing) | attacks_bb<SHOGI_KNIGHT>(weakKing))))
+      result = VALUE_KNOWN_WIN + 100 * rank_of(strongKing);
+  else
+      result = -VALUE_KNOWN_WIN;
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+/// KvK. Pure race
+template<>
+Value Endgame<KK, EG_EVAL_RK>::operator()(const Position& pos) const {
+
+  Square whiteKing = pos.square<KING>(WHITE);
+  Square blackKing = pos.square<KING>(BLACK);
+
+  Value result = (VALUE_KNOWN_WIN + 100 * std::max(rank_of(whiteKing), rank_of(blackKing)))
+                * std::clamp(rank_of(whiteKing) - rank_of(blackKing) - (pos.side_to_move() == BLACK), -1, 1);
+
+  return pos.side_to_move() == WHITE ? result : -result;
 }
 
 } // namespace Stockfish

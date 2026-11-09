@@ -54,7 +54,7 @@ void buildPosition(Position& pos, StateListPtr& states, const char *variant, con
 }
 
 extern "C" PyObject* pyffish_version(PyObject* self) {
-    return Py_BuildValue("(iii)", 0, 0, 60);
+    return Py_BuildValue("(iii)", 0, 0, 90);
 }
 
 extern "C" PyObject* pyffish_info(PyObject* self) {
@@ -127,6 +127,17 @@ extern "C" PyObject* pyffish_twoBoards(PyObject* self, PyObject *args) {
     }
 
     return Py_BuildValue("O", variants.find(std::string(variant))->second->twoBoards ? Py_True : Py_False);
+}
+
+// INPUT variant
+extern "C" PyObject* pyffish_capturesToHand(PyObject* self, PyObject *args) {
+    const char *variant;
+
+    if (!PyArg_ParseTuple(args, "s", &variant)) {
+        return NULL;
+    }
+
+    return Py_BuildValue("O", variants.find(std::string(variant))->second->capturesToHand ? Py_True : Py_False);
 }
 
 // INPUT variant, fen, move
@@ -230,7 +241,6 @@ extern "C" PyObject* pyffish_getFEN(PyObject* self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "ssO!|pppi", &variant, &fen, &PyList_Type, &moveList, &chess960, &sfen, &showPromoted, &countStarted)) {
         return NULL;
     }
-    countStarted = std::min<unsigned int>(countStarted, INT_MAX); // pseudo-unsigned
 
     StateListPtr states(new std::deque<StateInfo>(1));
     buildPosition(pos, states, variant, fen, moveList, chess960);
@@ -249,7 +259,39 @@ extern "C" PyObject* pyffish_givesCheck(PyObject* self, PyObject *args) {
 
     StateListPtr states(new std::deque<StateInfo>(1));
     buildPosition(pos, states, variant, fen, moveList, chess960);
-    return Py_BuildValue("O", pos.checkers() ? Py_True : Py_False);
+    return Py_BuildValue("O", Stockfish::checked(pos) ? Py_True : Py_False);
+}
+
+// INPUT variant, fen, move list, move
+extern "C" PyObject* pyffish_isCapture(PyObject* self, PyObject *args) {
+    Position pos;
+    PyObject *moveList;
+    const char *variant, *fen, *move;
+    int chess960 = false;
+    if (!PyArg_ParseTuple(args, "ssO!s|p", &variant, &fen, &PyList_Type, &moveList, &move, &chess960)) {
+        return NULL;
+    }
+
+    StateListPtr states(new std::deque<StateInfo>(1));
+    buildPosition(pos, states, variant, fen, moveList, chess960);
+    std::string moveStr = move;
+
+    return Py_BuildValue("O", pos.capture(UCI::to_move(pos, moveStr)) ? Py_True : Py_False);
+}
+
+// INPUT variant, fen, move list
+extern "C" PyObject* pyffish_pieceToPartner(PyObject* self, PyObject *args) {
+    PyObject *moveList;
+    Position pos;
+    const char *fen, *variant;
+    int chess960 = false;
+    if (!PyArg_ParseTuple(args, "ssO!|p", &variant, &fen,  &PyList_Type, &moveList, &chess960)) {
+        return NULL;
+    }
+
+    StateListPtr states(new std::deque<StateInfo>(1));
+    buildPosition(pos, states, variant, fen, moveList, chess960);
+    return Py_BuildValue("s", pos.piece_to_partner().c_str());
 }
 
 // INPUT variant, fen, move list
@@ -304,7 +346,6 @@ extern "C" PyObject* pyffish_isOptionalGameEnd(PyObject* self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "ssO!|pi", &variant, &fen, &PyList_Type, &moveList, &chess960, &countStarted)) {
         return NULL;
     }
-    countStarted = std::min<unsigned int>(countStarted, INT_MAX); // pseudo-unsigned
 
     StateListPtr states(new std::deque<StateInfo>(1));
     buildPosition(pos, states, variant, fen, moveList, chess960);
@@ -342,6 +383,22 @@ extern "C" PyObject* pyffish_validateFen(PyObject* self, PyObject *args) {
     return Py_BuildValue("i", FEN::validate_fen(std::string(fen), variants.find(std::string(variant))->second, chess960));
 }
 
+// INPUT variant, fen
+extern "C" PyObject* pyffish_getFogFEN(PyObject* self, PyObject *args) {
+    PyObject* moveList = PyList_New(0);
+    Position pos;
+    const char *fen, *variant;
+
+    int chess960 = false, sfen = false, showPromoted = false, countStarted = 0;
+    if (!PyArg_ParseTuple(args, "ss|p", &fen, &variant, &chess960)) {
+        return NULL;
+    }
+    StateListPtr states(new std::deque<StateInfo>(1));
+    buildPosition(pos, states, variant, fen, moveList, chess960);
+
+    Py_XDECREF(moveList);
+    return Py_BuildValue("s", pos.fen(sfen, showPromoted, countStarted, "-", pos.fog_area()).c_str());
+}
 
 static PyMethodDef PyFFishMethods[] = {
     {"version", (PyCFunction)pyffish_version, METH_NOARGS, "Get package version."},
@@ -351,28 +408,32 @@ static PyMethodDef PyFFishMethods[] = {
     {"load_variant_config", (PyCFunction)pyffish_loadVariantConfig, METH_VARARGS, "Load variant configuration."},
     {"start_fen", (PyCFunction)pyffish_startFen, METH_VARARGS, "Get starting position FEN."},
     {"two_boards", (PyCFunction)pyffish_twoBoards, METH_VARARGS, "Checks whether the variant is played on two boards."},
+    {"captures_to_hand", (PyCFunction)pyffish_capturesToHand, METH_VARARGS, "Checks whether the variant rules contains capturesToHand."},
     {"get_san", (PyCFunction)pyffish_getSAN, METH_VARARGS, "Get SAN move from given FEN and UCI move."},
     {"get_san_moves", (PyCFunction)pyffish_getSANmoves, METH_VARARGS, "Get SAN movelist from given FEN and UCI movelist."},
     {"legal_moves", (PyCFunction)pyffish_legalMoves, METH_VARARGS, "Get legal moves from given FEN and movelist."},
     {"get_fen", (PyCFunction)pyffish_getFEN, METH_VARARGS, "Get resulting FEN from given FEN and movelist."},
     {"gives_check", (PyCFunction)pyffish_givesCheck, METH_VARARGS, "Get check status from given FEN and movelist."},
+    {"is_capture", (PyCFunction)pyffish_isCapture, METH_VARARGS, "Get whether given move is a capture from given FEN and movelist."},
+    {"piece_to_partner", (PyCFunction)pyffish_pieceToPartner, METH_VARARGS, "Get unpromoted captured piece from given FEN and movelist."},
     {"game_result", (PyCFunction)pyffish_gameResult, METH_VARARGS, "Get result from given FEN, considering variant end, checkmate, and stalemate."},
     {"is_immediate_game_end", (PyCFunction)pyffish_isImmediateGameEnd, METH_VARARGS, "Get result from given FEN if variant rules ends the game."},
     {"is_optional_game_end", (PyCFunction)pyffish_isOptionalGameEnd, METH_VARARGS, "Get result from given FEN it rules enable game end by player."},
     {"has_insufficient_material", (PyCFunction)pyffish_hasInsufficientMaterial, METH_VARARGS, "Checks for insufficient material."},
     {"validate_fen", (PyCFunction)pyffish_validateFen, METH_VARARGS, "Validate an input FEN."},
+    {"get_fog_fen", (PyCFunction)pyffish_getFogFEN, METH_VARARGS, "Get Fog of War FEN from given FEN."},
     {NULL, NULL, 0, NULL},  // sentinel
 };
 
 static PyModuleDef pyffishmodule = {
     PyModuleDef_HEAD_INIT,
-    "pyffish",
+    "_pyffish",
     "Fairy-Stockfish extension module.",
     -1,
     PyFFishMethods,
 };
 
-PyMODINIT_FUNC PyInit_pyffish() {
+PyMODINIT_FUNC PyInit__pyffish() {
     PyObject* module;
 
     module = PyModule_Create(&pyffishmodule);
@@ -396,9 +457,12 @@ PyMODINIT_FUNC PyInit_pyffish() {
     PyModule_AddObject(module, "NOTATION_SHOGI_HODGES_NUMBER", PyLong_FromLong(NOTATION_SHOGI_HODGES_NUMBER));
     PyModule_AddObject(module, "NOTATION_JANGGI", PyLong_FromLong(NOTATION_JANGGI));
     PyModule_AddObject(module, "NOTATION_XIANGQI_WXF", PyLong_FromLong(NOTATION_XIANGQI_WXF));
+    PyModule_AddObject(module, "NOTATION_THAI_SAN", PyLong_FromLong(NOTATION_THAI_SAN));
+    PyModule_AddObject(module, "NOTATION_THAI_LAN", PyLong_FromLong(NOTATION_THAI_LAN));
 
     // validation
     PyModule_AddObject(module, "FEN_OK", PyLong_FromLong(FEN::FEN_OK));
+    PyModule_AddObject(module, "FEN_INVALID_PROMOTED_PIECE", PyLong_FromLong(FEN::FEN_INVALID_PROMOTED_PIECE));
 
     // initialize stockfish
     pieceMap.init();

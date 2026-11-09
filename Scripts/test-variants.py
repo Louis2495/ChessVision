@@ -9,7 +9,7 @@ subprocess.run(['c++','-std=c++17','-O2','-pthread','-I'+str(root/'Engine'),str(
 process=subprocess.Popen([str(root/'.build/variant-checks')],stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True)
 checked=0;drops=0;endings=0
 try:
- for variant,klass in [('chess',chess.Board),('3check',chess.variant.ThreeCheckBoard),('kingofthehill',chess.variant.KingOfTheHillBoard),('horde',chess.variant.HordeBoard),('crazyhouse',chess.variant.CrazyhouseBoard)]:
+ for variant,klass in [('chess',chess.Board),('3check',chess.variant.ThreeCheckBoard),('kingofthehill',chess.variant.KingOfTheHillBoard),('horde',chess.variant.HordeBoard),('crazyhouse',chess.variant.CrazyhouseBoard),('atomic',chess.variant.AtomicBoard),('antichess',chess.variant.AntichessBoard)]:
   for seed in range(3):
    rng=random.Random(2495+seed);board=klass();history=[]
    for ply in range(100):
@@ -30,7 +30,11 @@ try:
     if variant=='crazyhouse':assert str(native.pockets[0])==str(board.pockets[0]) and str(native.pockets[1])==str(board.pockets[1])
     if variant=='3check':assert native.remaining_checks==board.remaining_checks
     for row in records:
-     if row[0]=='move':assert board.san(chess.Move.from_uci(row[1]))==row[2],(variant,history,row)
+     if row[0]=='move':
+      expected_san=board.san(chess.Move.from_uci(row[1])); actual_san=row[2]
+      # Engines differ in atomic check suffixes; compare move spelling independently of those suffixes.
+      if variant in ['atomic','antichess']:expected_san=expected_san.rstrip('+#');actual_san=actual_san.rstrip('+#')
+      assert expected_san==actual_san,(variant,history,row)
     checked+=1
     if fields['status']!='ongoing':
      assert board.is_game_over(claim_draw=True),(variant,history,fields['status'])
@@ -43,6 +47,25 @@ try:
     central=[m for m in legal if board.piece_type_at(m.from_square)==chess.KING and chess.square_distance(m.to_square,chess.D4)<chess.square_distance(m.from_square,chess.D4)]
     choices=(checks if variant=='3check' and checks else central if variant=='kingofthehill' and central else dropping if dropping and rng.random()<.6 else captures if captures and rng.random()<.5 else legal)
     move=rng.choice(choices);drops+=bool(move.drop);board.push(move);history.append(move.uci())
+ def query(variant, history):
+  process.stdin.write(variant+'\t'+' '.join(history)+'\n');process.stdin.flush();rows=[]
+  while True:
+   line=process.stdout.readline()
+   if not line:raise RuntimeError('Native rules terminated')
+   if line.strip()=='END':break
+   if line.strip():rows.append(line.rstrip('\n').split('\t'))
+  fields={row[0]:row[1] for row in rows if len(row)==2}
+  assert 'error' not in fields,(variant,history,fields)
+  return fields,[row[1] for row in rows if row[0]=='move']
+ fields,moves=query('duck',[])
+ assert len(moves)==640 and all(',' in move for move in moves),len(moves)
+ fields,moves=query('duck',['e2e4,e4d5'])
+ assert '*' in fields['fen'] and fields['fen'].split()[1]=='b'
+ assert all(move[-2:]!='d5' for move in moves)
+ fields,moves=query('cvpawnrace','a2a4 h7h5 a4a5 h5h4 a5a6 h4h3 a6b7 g7g6 b7b8'.split())
+ assert fields['status']=='white',fields
+ fields,moves=query('cvfog','f2f3 e7e5 g2g4 d8h4 a2a3 h4e1'.split())
+ assert fields['status']=='black',fields
  # A promoted queen captured in crazyhouse must return to the capturer's pocket as a pawn.
  history='a2a4 h7h5 a4a5 h5h4 a5a6 h4h3 a6b7 h3g2 b7a8q g2h1q a8b8 h1g1 b8c8 g1f1 e1f1'.split()
  board=chess.variant.CrazyhouseBoard()
@@ -59,6 +82,6 @@ try:
  assert native.promoted==board.promoted and str(native.pockets[0])==str(board.pockets[0]) and str(native.pockets[1])==str(board.pockets[1])
  assert {r[1] for r in records if r[0]=='move'}=={m.uci() for m in board.legal_moves}
  checked+=1
- print(f'PASS: {checked} native positions across five variants; SAN/legality/state/counters/pockets; {drops} drops and {endings} game endings; promoted-capture-to-pawn regression.')
+ print(f'PASS: {checked} native positions across seven variants; SAN/legality/state/counters/pockets; {drops} drops and {endings} game endings; promoted-capture-to-pawn regression.')
 finally:
  process.stdin.close();process.wait(timeout=10)

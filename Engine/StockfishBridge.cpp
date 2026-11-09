@@ -65,7 +65,34 @@ extern "C" void cv_engine_start(CVEngineCallback callback) {
         std::cin.rdbuf(&input); std::cout.rdbuf(&output);
         std::thread([] {
             char name[] = "ChessVision"; char *args[] = {name};
-            pieceMap.init(); variants.init(); CommandLine::init(1, args);
+            pieceMap.init(); variants.init();
+            // App variants use the same rules/search engine as the built-in games.
+            std::istringstream custom(R"ini(
+[cvfog:chess]
+king = -
+commoner = k
+castlingKingPiece = k
+extinctionValue = loss
+extinctionPieceTypes = k
+stalemateValue = draw
+[cvpawns:chess]
+startFen = 4k3/pppppppp/8/8/8/8/PPPPPPPP/4K3 w - - 0 1
+castling = false
+[cvpawnrace:chess]
+king = -
+startFen = 8/pppppppp/8/8/8/8/PPPPPPPP/8 w - - 0 1
+castling = false
+promotionPieceTypes = -
+mandatoryPawnPromotion = false
+flagPiece = p
+flagRegionWhite = *8
+flagRegionBlack = *1
+extinctionValue = loss
+extinctionPieceTypes = *
+stalemateValue = loss
+)ini");
+            variants.parse_istream<false>(custom);
+            CommandLine::init(1, args);
             UCI::init(Options); Tune::init(); Options["Use NNUE"] = std::string("false");
             PSQT::init(variants.find("chess")->second); Bitboards::init(); Position::init();
             Bitbases::init(); Endgames::init(); Threads.set(1); Search::clear(); Eval::NNUE::init();
@@ -81,7 +108,7 @@ extern "C" char* cv_rules_query(const char *variantName, const char *history) {
     // Call only after the UCI ready barrier for this variant. During a game, its tables stay read-only.
     std::string result;
     const std::string name = variantName ? variantName : "";
-    if (!initialized || (name != "chess" && name != "3check" && name != "kingofthehill" && name != "horde" && name != "crazyhouse")) result = "error\tUnsupported or uninitialized variant";
+    if (!initialized || (name != "chess" && name != "3check" && name != "kingofthehill" && name != "horde" && name != "crazyhouse" && name != "duck" && name != "atomic" && name != "antichess" && name != "cvfog" && name != "cvpawns" && name != "cvpawnrace")) result = "error\tUnsupported or uninitialized variant";
     else if (std::string(Options["UCI_Variant"]) != name) result = "error\tThe engine has not prepared this variant";
     else {
         const Variant* variant = variants.find(name)->second;
@@ -92,7 +119,7 @@ extern "C" char* cv_rules_query(const char *variantName, const char *history) {
         std::string token;
         bool valid = true;
         while (moves >> token) {
-            if (token.size() > 8) { valid = false; break; }
+            if (token.size() > 16) { valid = false; break; }
             Move move = UCI::to_move(position, token);
             if (move == MOVE_NONE) { valid = false; break; }
             states.emplace_back(); position.do_move(move, states.back());
@@ -108,11 +135,18 @@ extern "C" char* cv_rules_query(const char *variantName, const char *history) {
             const auto legal = MoveList<LEGAL>(position);
             std::string status = "ongoing";
             if (specialEnd || legal.size() == 0) {
-                if (!specialEnd) value = position.checkers() ? -VALUE_MATE : VALUE_DRAW;
+                if (!specialEnd) value = position.checkers() ? position.checkmate_value() : position.stalemate_value();
                 if (value == VALUE_DRAW) status = "draw";
                 else { const Color winner = value > 0 ? position.side_to_move() : ~position.side_to_move(); status = winner == WHITE ? "white" : "black"; }
             }
             data << "status\t" << status << "\n";
+            if (name == "cvfog") {
+                data << "hidden\t";
+                Bitboard fog = position.fog_area();
+                bool first = true;
+                while (fog) { const Square square = pop_lsb(fog); if (!first) data << ','; first = false; data << UCI::square(position, square); }
+                data << "\n";
+            }
             if (status == "ongoing") for (const auto &entry : legal) {
                 const Move move = entry;
                 const std::string uci = UCI::move(position, move);

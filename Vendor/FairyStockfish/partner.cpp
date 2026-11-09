@@ -1,6 +1,6 @@
 /*
   Fairy-Stockfish, a UCI chess variant playing engine derived from Stockfish
-  Copyright (C) 2018-2021 Fabian Fichter
+  Copyright (C) 2018-2022 Fabian Fichter
 
   Fairy-Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -74,7 +74,7 @@ void PartnerHandler::parse_ptell(std::istringstream& is, const Position& pos) {
             ptell<HUMAN>("If you specify a valid move, e.g., 'move e2e4', I will play it.");
         }
         else if (token == "fast")
-            ptell<HUMAN>("After receiving 'go', I will play fast.");
+            ptell<HUMAN>("After receiving 'fast', I will play fast.");
         else if (token == "slow")
             ptell<HUMAN>("After receiving 'slow', I will play at normal speed.");
         else if (token == "dead")

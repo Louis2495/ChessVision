@@ -49,7 +49,7 @@ private func receiveEngineLine(_ pointer: UnsafePointer<CChar>?) {
         submit(Request(id: UUID(), kind: .analysis, variant: "chess", setup: "position fen \(position.fen)", side: position.turn, position: position))
     }
     func prepareVariant(_ variant: String) async throws {
-        guard ["chess", "3check", "kingofthehill", "horde", "crazyhouse"].contains(variant) else { throw ChessError.invalid("Unsupported game style.") }
+        guard ["chess", "3check", "kingofthehill", "horde", "crazyhouse", "duck", "atomic", "antichess", "cvfog", "cvpawns", "cvpawnrace"].contains(variant) else { throw ChessError.invalid("Unsupported game style.") }
         let request = Request(id: UUID(), kind: .prepare, variant: variant, setup: "", side: .white)
         _ = try await awaitRequest(request)
     }

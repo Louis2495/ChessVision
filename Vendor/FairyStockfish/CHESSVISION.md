@@ -1,10 +1,11 @@
 # Embedded engine provenance
 
 Upstream: https://github.com/fairy-stockfish/Fairy-Stockfish
-Tag: fairy_sf_14
-Commit: f3e6969d11d1bec17eba26e7ae0e629ad4af71dd
-License: GPL-3.0-or-later; original COPYING/AUTHORS accompany the sources.
+Commit: 4e3d0147d5b8da1b780a29f0b3e1d24311d028fa (pinned master snapshot)
+License: GPL-3.0-or-later; original Copying.txt and AUTHORS accompany the sources.
 
-Upstream engine sources are unmodified. ChessVision substitutes its C bridge for the CLI main entry point and excludes Python/JS bindings. The app compiles C++17 with IS_64BIT, NO_PREFETCH and NNUE_EMBEDDING_OFF, and explicitly turns Use NNUE off. No NNUE file or engine download is needed. Classical evaluation supports chess, three-check, king of the hill, horde and crazyhouse locally. This is a pinned older Fairy-Stockfish release, not the current Stockfish engine.
+Upstream src files are unmodified. ChessVision supplies Engine/StockfishBridge.cpp instead of CLI main.cpp and excludes Python/JS bindings. C++17, IS_64BIT, NO_PREFETCH, NNUE_EMBEDDING_OFF and ALLVARS are enabled. Use NNUE is explicitly disabled; no weights are downloaded. ALLVARS includes the actual compound-turn Duck rules.
 
-The bridge adds legal-move/SAN/FEN queries from a validated start-position move history. It normalizes pawn drops to @square SAN and marks immediate variant wins with #. Swift waits for the engine's variant-ready barrier before querying rules; active rule tables are not changed during a search. The original Stockfish 11 sources remain in Vendor/Stockfish for provenance but are no longer linked.
+The bridge registers three app-specific variants using the upstream INI parser: cvfog (nonroyal capturable kings, king capture wins); cvpawns (pawns and kings, ordinary promotions/checkmate); cvpawnrace (no kings, first pawn to last rank or capture all enemy pawns wins). Standard Atomic and Antichess use upstream rules. Board visibility for Fog of War is computed for the human side even during computer turns. The computer searches the full position.
+
+Every saved move is validated against legal moves from the variant start. UCI ready/bestmove barriers protect variant table changes. Stalemate and checkmate results use each variant's rules. Native rule results drive UI legal targets, pockets, counters and endings.

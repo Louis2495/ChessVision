@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -106,13 +106,15 @@ extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
-extern Bitboard PseudoMoves[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+extern Bitboard PseudoMoves[2][COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard LeaperAttacks[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
-extern Bitboard LeaperMoves[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+extern Bitboard LeaperMoves[2][COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard BoardSizeBB[FILE_NB][RANK_NB];
 extern RiderType AttackRiderTypes[PIECE_TYPE_NB];
-extern RiderType MoveRiderTypes[PIECE_TYPE_NB];
+extern PieceSet PinUnsafeTypes;
+extern PieceSet SniperTypes;
+extern RiderType MoveRiderTypes[2][PIECE_TYPE_NB];
 
 #ifdef LARGEBOARDS
 int popcount(Bitboard b); // required for 128 bit pext
@@ -149,6 +151,7 @@ extern Magic RookMagicsV[SQUARE_NB];
 extern Magic BishopMagics[SQUARE_NB];
 extern Magic CannonMagicsH[SQUARE_NB];
 extern Magic CannonMagicsV[SQUARE_NB];
+extern Magic LameDabbabaMagics[SQUARE_NB];
 extern Magic HorseMagics[SQUARE_NB];
 extern Magic ElephantMagics[SQUARE_NB];
 extern Magic JanggiElephantMagics[SQUARE_NB];
@@ -193,6 +196,11 @@ inline Bitboard  operator|(Square s1, Square s2) { return square_bb(s1) | s2; }
 
 constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
+}
+
+
+inline Bitboard undo_move_board(Bitboard b, Move m) {
+  return (from_sq(m) != SQ_NONE && (b & to_sq(m))) ? (b ^ to_sq(m)) | from_sq(m) : b;
 }
 
 /// board_size_bb() returns a bitboard representing all the squares
@@ -402,6 +410,7 @@ inline Bitboard rider_attacks_bb(Square s, Bitboard occupied) {
                   : R == RIDER_ROOK_V ? RookMagicsV[s]
                   : R == RIDER_CANNON_H ? CannonMagicsH[s]
                   : R == RIDER_CANNON_V ? CannonMagicsV[s]
+                  : R == RIDER_LAME_DABBABA ? LameDabbabaMagics[s]
                   : R == RIDER_HORSE ? HorseMagics[s]
                   : R == RIDER_ELEPHANT ? ElephantMagics[s]
                   : R == RIDER_JANGGI_ELEPHANT ? JanggiElephantMagics[s]
@@ -466,18 +475,29 @@ inline RiderType pop_rider(RiderType* r) {
 inline Bitboard attacks_bb(Color c, PieceType pt, Square s, Bitboard occupied) {
   Bitboard b = LeaperAttacks[c][pt][s];
   RiderType r = AttackRiderTypes[pt];
-  while (r)
+  // Leaper attacks are a subset of the pseudo attacks
+  assert(!(b & ~PseudoAttacks[c][pt][s]));
+  if (!r)
+      return b;
+  do
       b |= rider_attacks_bb(pop_rider(&r), s, occupied);
+  while (r);
   return b & PseudoAttacks[c][pt][s];
 }
 
 
+template <bool Initial=false>
 inline Bitboard moves_bb(Color c, PieceType pt, Square s, Bitboard occupied) {
-  Bitboard b = LeaperMoves[c][pt][s];
-  RiderType r = MoveRiderTypes[pt];
-  while (r)
+  Bitboard b = LeaperMoves[Initial][c][pt][s];
+  RiderType r = MoveRiderTypes[Initial][pt];
+  // Leaper moves are a subset of the pseudo moves
+  assert(!(b & ~PseudoMoves[Initial][c][pt][s]));
+  if (!r)
+      return b;
+  do
       b |= rider_attacks_bb(pop_rider(&r), s, occupied);
-  return b & PseudoMoves[c][pt][s];
+  while (r);
+  return b & PseudoMoves[Initial][c][pt][s];
 }
 
 
@@ -668,6 +688,110 @@ inline Square pop_lsb(Bitboard& b) {
 inline Square frontmost_sq(Color c, Bitboard b) {
   assert(b);
   return c == WHITE ? msb(b) : lsb(b);
+}
+
+
+/// popcount() counts the number of non-zero bits in a piece set
+
+inline int popcount(PieceSet ps) {
+
+#ifndef USE_POPCNT
+
+  union { uint64_t bb; uint16_t u[4]; } v = { (uint64_t)ps };
+  return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
+
+#elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
+
+  return (int)_mm_popcnt_u64(ps);
+
+#else // Assumed gcc or compatible compiler
+
+  return __builtin_popcountll(ps);
+
+#endif
+}
+
+/// lsb() and msb() return the least/most significant bit in a non-zero piece set
+
+#if defined(__GNUC__)  // GCC, Clang, ICC
+
+inline PieceType lsb(PieceSet ps) {
+  assert(ps);
+  return PieceType(__builtin_ctzll(ps));
+}
+
+inline PieceType msb(PieceSet ps) {
+  assert(ps);
+  return PieceType((PIECE_TYPE_NB - 1) ^ __builtin_clzll(ps));
+}
+
+#elif defined(_MSC_VER)  // MSVC
+
+#ifdef _WIN64  // MSVC, WIN64
+
+inline PieceType lsb(PieceSet ps) {
+  assert(ps);
+  unsigned long idx;
+  _BitScanForward64(&idx, ps);
+  return (PieceType) idx;
+}
+
+inline PieceType msb(PieceSet ps) {
+  assert(ps);
+  unsigned long idx;
+  _BitScanReverse64(&idx, ps);
+  return (PieceType) idx;
+}
+
+#else  // MSVC, WIN32
+
+inline PieceType lsb(PieceSet ps) {
+  assert(ps);
+  unsigned long idx;
+
+  if (ps & 0xffffffff) {
+      _BitScanForward(&idx, uint32_t(ps));
+      return PieceType(idx);
+  } else {
+      _BitScanForward(&idx, uint32_t(ps >> 32));
+      return PieceType(idx + 32);
+  }
+}
+
+inline PieceType msb(PieceSet ps) {
+  assert(ps);
+  unsigned long idx;
+  if (ps >> 32) {
+      _BitScanReverse(&idx, uint32_t(ps >> 32));
+      return PieceType(idx + 32);
+  } else {
+      _BitScanReverse(&idx, uint32_t(ps));
+      return PieceType(idx);
+  }
+}
+
+#endif
+
+#else  // Compiler is neither GCC nor MSVC compatible
+
+#error "Compiler not supported."
+
+#endif
+
+/// pop_lsb() and pop_msb() find and clear the least/most significant bit in a non-zero piece set
+
+inline PieceType pop_lsb(PieceSet& ps) {
+  assert(ps);
+  const PieceType pt = lsb(ps);
+  ps &= PieceSet(ps - 1);
+  return pt;
+}
+
+inline PieceType pop_msb(PieceSet& ps) {
+  assert(ps);
+  const PieceType pt = msb(ps);
+  ps &= ~piece_set(pt);
+  return pt;
 }
 
 } // namespace Stockfish

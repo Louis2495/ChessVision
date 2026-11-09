@@ -22,29 +22,16 @@ import AVFoundation
                         EditorView(position:board, uncertain:uncertain, photo:photo, onRetake:takePhoto, onRecognizeAgain:{ if let lastPhoto {process(lastPhoto)} }).id(recognitionID)
                     } else {
                         VStack(alignment:.leading,spacing:12) {
-                            Image(systemName:"camera.macro").font(.system(size:44)).foregroundStyle(.tint)
-                            Text("Your board.\nA clearer next move.").font(.largeTitle.bold())
-                            Text("Photograph a physical chessboard from above, review the position, then analyze privately on your iPhone.").foregroundStyle(.secondary)
+                            Text("Scan a chessboard to explore moves and find your next idea.").foregroundStyle(.secondary)
                         }.padding(.top,24)
                         BoardView(position:.initial).accessibilityLabel("Example starting position")
                         Button(action:takePhoto) { Label("Take Pic of Board",systemImage:"camera.fill").frame(maxWidth:.infinity).padding(10) }.buttonStyle(.borderedProminent).controlSize(.large).disabled(processing)
-                        Text("Include every corner • Keep the phone level • Avoid glare").font(.footnote).foregroundStyle(.secondary)
-                        Text("Recognition is experimental. Correct pieces if needed. Photographs stay on your iPhone.").font(.footnote).foregroundStyle(.secondary)
-                        NavigationLink("Privacy & open-source licenses") {
-                            ScrollView {
-                                VStack(alignment:.leading,spacing:16) {
-                                    Text("Private by design").font(.title.bold())
-                                    Text("ChessVision does not upload photos, collect analytics, or require an account. Your photographs remain in memory on this device. Sharing a board image or FEN is an explicit action using the system share sheet. Opening explorer contacts the chosen chess site with the public username you enter. Puzzle progress, repertoire and computer games are stored only on this device.")
-                                    Text(licenseText).font(.caption.monospaced()).textSelection(.enabled)
-                                }.padding()
-                            }.navigationTitle("Privacy & licenses")
-                        }
                         NavigationLink("Explore the board editor with an example",value:"example")
                     }
                 }.padding().disabled(processing)
             }.navigationTitle("ChessVision")
             .navigationDestination(for:String.self) { _ in ScrollView { EditorView(position:.initial,uncertain:[],photo:nil,onRetake:takePhoto).padding() } }
-            .toolbar { if position != nil { Button("Start over") { recognitionTask?.cancel(); recognitionTask=nil; processingID=UUID(); processing=false; position = nil; photo = nil; uncertain = []; lastPhoto = nil } } }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { NavigationLink { AppInfoView() } label: { Image(systemName: "info.circle") }.accessibilityLabel("Privacy and licenses") }; if position != nil { Button("Start over") { recognitionTask?.cancel(); recognitionTask=nil; processingID=UUID(); processing=false; position = nil; photo = nil; uncertain = []; lastPhoto = nil } } }
             .fullScreenCover(isPresented:$camera) { CameraView(onPhoto:{ image in camera=false; lastPhoto=image; process(image) },onCancel:{camera=false}).ignoresSafeArea() }
             .alert("ChessVision",isPresented:Binding(get:{message != nil},set:{if !$0 { message=nil }})) { Button("OK",role:.cancel) {} ; if lastPhoto != nil { Button("Retry recognition") { if let lastPhoto { process(lastPhoto) } } } } message:{Text(message ?? "")}
             .overlay {
@@ -64,10 +51,6 @@ import AVFoundation
                 }
             }
         }
-    }
-    private var licenseText: String {
-        guard let url=Bundle.main.url(forResource:"ThirdPartyNotices",withExtension:"txt"),let text=try? String(contentsOf:url,encoding:.utf8) else {return "License files accompany the project."}
-        return text
     }
     private func takePhoto() {
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else { message="A camera is not available here. Use a physical iPhone to photograph a board. The example editor works in Simulator."; return }

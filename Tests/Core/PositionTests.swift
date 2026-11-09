@@ -12,7 +12,7 @@ final class PositionTests: XCTestCase {
         XCTAssertEqual(position.squares.compactMap{$0}.count,32)
     }
     func testCoordinates() {for i in 0..<64 {XCTAssertEqual(Position.index(Position.name(i)),i)}; XCTAssertNil(Position.index("i9")); XCTAssertNil(Position.index("a0"))}
-    func testMalformedFEN() {for fen in ["", "8/8/8/8/8/8/8/9 w - - 0 1","8/8/8/8/8/8/8/8 x - - 0 1","8/8/8/8/8/8/8/8 w KK - 0 1","8/8/8/8/8/8/8/8 w - i3 0 1"] {XCTAssertThrowsError(try Position(fen:fen))}}
+    func testMalformedFEN() {for fen in ["", "/8/8/8/8/8/8/8/8 w - - 0 1", "8/8/8/8/8/8/8/8/ w - - 0 1", "8/8/8/8/8/8/8/9 w - - 0 1","8/8/8/8/8/8/8/8 x - - 0 1","8/8/8/8/8/8/8/8 w KK - 0 1","8/8/8/8/8/8/8/8 w - i3 0 1"] {XCTAssertThrowsError(try Position(fen:fen))}}
     func testMissingKings() {XCTAssertEqual(Position().problems.count,2)}
     func testAdjacentKingsInvalid() throws {XCTAssertFalse(try Position(fen:"8/8/8/8/8/8/4k3/4K3 w - - 0 1").problems.isEmpty)}
     func testWrongSideInCheck() throws {XCTAssertFalse(try Position(fen:"4k3/8/8/8/8/8/4R3/4K3 w - - 0 1").problems.isEmpty)}

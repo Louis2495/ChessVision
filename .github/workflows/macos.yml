@@ -1,0 +1,26 @@
+name: macOS build and tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: xcodebuild -version
+      - name: Native engine smoke tests
+        run: bash Scripts/test-engine.sh
+      - name: Swift and iOS build / tests
+        run: bash Scripts/test-mac.sh
+      - name: Preserve Xcode results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-results
+          path: .build/*.xcresult
+          if-no-files-found: ignore

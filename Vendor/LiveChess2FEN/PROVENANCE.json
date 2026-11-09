@@ -1,0 +1,29 @@
+{
+  "project": "LiveChess2FEN",
+  "url": "https://github.com/davidmallasen/LiveChess2FEN",
+  "code_commit": "f44f26f0202c008a8be4c9d909dd19b948b99cec",
+  "model_release": "v0.1.0",
+  "model_asset": "MobileNetV2_all_last.onnx",
+  "model_url": "https://github.com/davidmallasen/LiveChess2FEN/releases/download/v0.1.0/MobileNetV2_all_last.onnx",
+  "model_sha256": "9533b995761186a05bd70fb7f33627e70ff87a44e06d2fb56ab15d443068f0c9",
+  "license": "AGPL-3.0-or-later, per upstream repository LICENSE",
+  "labels": [
+    "B",
+    "K",
+    "N",
+    "P",
+    "Q",
+    "R",
+    "empty",
+    "b",
+    "k",
+    "n",
+    "p",
+    "q",
+    "r"
+  ],
+  "input": "RGB 224x224, values divided by 127.5 and minus 1",
+  "app_inference": "Mean probabilities from four quarter-turn views, bundled as a Core ML MLProgram",
+  "upstream_empty_label": "_ (renamed empty in Core ML classifier)",
+  "benchmark_archive_sha256": "351b79ffe01d41578670854f8092f2228531871842c7d6341134ebc390495700"
+}

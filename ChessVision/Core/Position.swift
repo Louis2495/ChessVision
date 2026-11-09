@@ -49,7 +49,7 @@ public struct Position: Equatable, Sendable {
         self.init()
         let fields = fen.split(separator: " ").map(String.init)
         guard fields.count == 6, let side = Side(rawValue: fields[1]), let h = Int(fields[4]), h >= 0, let f = Int(fields[5]), f >= 1 else { throw ChessError.invalid("FEN requires six valid fields.") }
-        let ranks = fields[0].split(separator: "/")
+        let ranks = fields[0].split(separator: "/", omittingEmptySubsequences:false)
         guard ranks.count == 8 else { throw ChessError.invalid("FEN needs eight ranks.") }
         var result: [Piece?] = []
         for rank in ranks {

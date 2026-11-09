@@ -27,7 +27,10 @@ int main() {
     cv_engine_send("position startpos"); cv_engine_send("go infinite");
     if(!waitFor("info depth 4")) return 6;
     cv_engine_send("stop"); if(!waitFor("bestmove ")) return 7;
-    std::puts("PASS: UCI handshake, MultiPV search, terminal position, cancellation.");
+    { std::lock_guard<std::mutex> l(m); lines.clear(); }
+    cv_engine_send("position startpos"); cv_engine_send("go perft 3");
+    if(!waitFor("Nodes searched: 8902")) return 8;
+    std::puts("PASS: UCI handshake, MultiPV search, terminal position, cancellation, perft(3)=8902.");
     // The embedded engine intentionally lives for the process lifetime.
     std::fflush(stdout); std::_Exit(0);
 }

@@ -1,0 +1,143 @@
+{
+  "scope": "ONNX classifier on five upstream physical-board photographs, using manual playing-area corners. Not iPhone/Core ML/end-to-end accuracy. These are upstream example photos, not an independent held-out dataset.",
+  "inference": "Mean probabilities of four 90-degree rotations per square; MobileNetV2 full width",
+  "model_sha256": "9533b995761186a05bd70fb7f33627e70ff87a44e06d2fb56ab15d443068f0c9",
+  "correct_squares": 287,
+  "total_squares": 320,
+  "square_accuracy": 0.896875,
+  "exact_positions": 0,
+  "total_positions": 5,
+  "uncertain_squares": 76,
+  "photos": [
+    {
+      "photo": "test1.jpg",
+      "correct_squares": 63,
+      "total_squares": 64,
+      "exact_position": false,
+      "uncertain_squares": 11,
+      "confident_errors": 0,
+      "manually_annotated_corners": [
+        [
+          0.104,
+          0.067
+        ],
+        [
+          0.779,
+          0.033
+        ],
+        [
+          0.79,
+          0.936
+        ],
+        [
+          0.125,
+          0.936
+        ]
+      ]
+    },
+    {
+      "photo": "test2.jpg",
+      "correct_squares": 56,
+      "total_squares": 64,
+      "exact_position": false,
+      "uncertain_squares": 17,
+      "confident_errors": 0,
+      "manually_annotated_corners": [
+        [
+          0.11,
+          0.071
+        ],
+        [
+          0.708,
+          0.065
+        ],
+        [
+          0.708,
+          0.912
+        ],
+        [
+          0.088,
+          0.873
+        ]
+      ]
+    },
+    {
+      "photo": "test3.jpg",
+      "correct_squares": 58,
+      "total_squares": 64,
+      "exact_position": false,
+      "uncertain_squares": 13,
+      "confident_errors": 0,
+      "manually_annotated_corners": [
+        [
+          0.108,
+          0.044
+        ],
+        [
+          0.8,
+          0.022
+        ],
+        [
+          0.806,
+          0.975
+        ],
+        [
+          0.106,
+          0.961
+        ]
+      ]
+    },
+    {
+      "photo": "test4.jpg",
+      "correct_squares": 51,
+      "total_squares": 64,
+      "exact_position": false,
+      "uncertain_squares": 24,
+      "confident_errors": 0,
+      "manually_annotated_corners": [
+        [
+          0.063,
+          0.143
+        ],
+        [
+          0.891,
+          0.153
+        ],
+        [
+          0.934,
+          0.777
+        ],
+        [
+          0.028,
+          0.779
+        ]
+      ]
+    },
+    {
+      "photo": "test5.jpg",
+      "correct_squares": 59,
+      "total_squares": 64,
+      "exact_position": false,
+      "uncertain_squares": 11,
+      "confident_errors": 0,
+      "manually_annotated_corners": [
+        [
+          0.161,
+          0.156
+        ],
+        [
+          0.82,
+          0.119
+        ],
+        [
+          0.87,
+          0.797
+        ],
+        [
+          0.18,
+          0.84
+        ]
+      ]
+    }
+  ]
+}

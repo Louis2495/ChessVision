@@ -4,3 +4,6 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 *.mlmodelc/
+
+__pycache__/
+*.pyc

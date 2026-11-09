@@ -1,57 +1,59 @@
 # Recognition implementation and evidence
 
-## Chosen implementation
+## Updated pipeline
 
-Camera → orientation-normalized RGB image (maximum 2048px on its longest side) → Apple Vision rectangular candidates → perspective correction → periodic 8×8 grid refinement → 64 square images → bundled Core ML classifier → position plus uncertainty flags.
+Camera → normalized RGB image → all complete Apple Vision rectangle candidates → perspective correction and repeating-grid validation → best grid candidate → 64 square crops → MobileNetV2 primary classifier → DenseNet201 verification when needed → position with optional orange hints.
 
-`BoardGrid` seeks seven regularly spaced internal edges in both axes. It rejects blank rectangles and tries to remove the outer decorative border. The user must still verify the crop. Rectangle/grid detection is a heuristic, has not been run through Apple's frameworks here, and may reject a valid board or select the wrong rectangle. Detection currently tries the largest complete rectangular candidate; it does not search every candidate after a grid rejection.
+The detector now checks **every** complete rectangle, rather than assuming that the largest rectangle is the playing area. Grid quality and board area choose among candidates; a table edge with no valid grid no longer prevents trying a smaller board. This detector is still heuristic and has not been exercised through Apple Vision on this Linux machine.
 
-The actual piece model is LiveChess2FEN **MobileNetV2 full width**, not a generic Vision image classifier. It distinguishes 12 pieces plus empty. See `Vendor/LiveChess2FEN/PROVENANCE.json` for the pinned release, source code revision, labels and SHA-256. The original ONNX graph/weights and upstream training scripts accompany the converted artifact. All 64 squares are classified independently; the app does not force counts, assume a starting position, or secretly rewrite pieces to make FEN legal.
+Both classifiers are actual pretrained physical-piece models from LiveChess2FEN v0.1.0. They recognize all twelve pieces plus empty. Each averages four quarter-turn views. The primary uses RGB/127.5−1; the verifier uses ImageNet RGB/255 mean/std normalization. Preprocessing is embedded in the Core ML models. Sources, hashes, labels and training scripts are in `Vendor/LiveChess2FEN`.
 
-Inference averages four 90-degree rotations of each square. The Core ML model includes the ensemble and RGB `pixel/127.5 - 1` normalization, so the Swift side passes unnormalized images with `scaleFill`. Predictions below 0.85 confidence or below 0.25 top-two margin are marked uncertain. These thresholds are heuristics, not calibrated probabilities. Users must review all pieces, including confident predictions, before analysis.
+A secondary check runs for:
 
-Photo orientation is not inferred from piece placement. Capture guidance asks for White at the bottom; the editor supports quarter-turn rotation. Side to move, castling rights, en passant and counters are separate explicit state; castling is off for recognized photos by default.
+- Low-confidence predictions (less than 0.85 confidence or less than 0.25 top-two margin).
+- Every apparently empty square, so potentially missed pieces receive another opinion.
+- Every king/bishop prediction, including confident ones, addressing the reported king-versus-bishop confusion.
 
-## Model research and comparison
+When verified, class probabilities are averaged. Model disagreement, low fused confidence and king/bishop ambiguity remain highlighted. The algorithm does **not** force a king onto an empty square, assume a starting position, or silently change pieces to make a position legal. Model scores are uncalibrated; orange hints can miss errors on unseen boards.
 
-Apple Vision provides rectangles and a Core ML inference interface, but no built-in chess-piece recognizer. LiveChess2FEN provides physical-board models with an explicit AGPL license. Its published model assets were obtainable without credentials or a paid API. Its Python board detector is not shipped in the iPhone app; Apple's frameworks and the portable grid fitter replace that component.
+Orange squares do not block analysis. The user can analyze any structurally valid position immediately after choosing the side to move. Invalid or missing kings and other FEN inconsistencies still block Stockfish safely. The crop-confirmation, turn-confirmation and full-review toggles, rotate control and fixed analysis-time menu were removed as requested. Recognition shows per-square progress and can be canceled.
 
-On the same five upstream physical-board photos, manually cropped to the playing area:
+## Measured comparison
 
-| Candidate | Correct squares | Exact positions | Confident errors at current thresholds |
+Same five public upstream physical-board photographs, with manual playing-area corners and raw-photo orientation:
+
+| Pipeline | Correct squares | Exact positions | Uncertain squares |
 | --- | ---: | ---: | ---: |
-| MobileNetV2 width 0.35, single view | 254/320 | 0/5 | Not used as a calibrated baseline |
-| MobileNetV2 full width, single view | 281/320 | 0/5 | 22 |
-| DenseNet201, single view | 288/320 | 0/5 | 20 |
-| **MobileNetV2 full width, four views (bundled)** | **287/320 (89.6875%)** | **0/5** | **0 on these examples** |
+| Previous MobileNetV2 four-view model | 287/320 (89.6875%) | 0/5 | 76 |
+| Updated selective MobileNetV2 + DenseNet201 verification | **296/320 (92.5%)** | **0/5** | **64** |
 
-The chosen ensemble catches more mistakes as uncertainty on these samples and uses a substantially smaller weight file than DenseNet201. It flagged 76/320 squares for review, including all 33 mistakes. This is not a guarantee that future errors will be flagged. Performance and battery usage on an actual iPhone are unmeasured.
+All 24 remaining mistakes were highlighted in this small benchmark; no confident errors remained. This is not a guarantee for new photos. Seven of ten kings were correct, so **king confusion is still unresolved**. No occupied square was predicted empty on these examples, both before and after; this set cannot demonstrate improvement for the user's missed-piece examples. We do not have those original photos or their ground truth.
 
-These are **upstream example photographs, not independent held-out data**. Corners and raw-photo orientations were manually annotated for the classifier experiment. The upstream FEN orientation annotations describe its own detector's crop, which can be rotated relative to the raw JPEG; this benchmark records the raw orientations separately. The benchmark bypasses Apple Vision and Core ML and cannot establish end-to-end iPhone accuracy. It contains no verified standard-starting-position or sparse-endgame test set, and limited variation in boards/pieces/lighting. Reliable automatic recognition remains an unmet acceptance criterion.
+The updated classifier checked 265/320 squares with the secondary model. This adds computation, memory and approximately 39 MiB of compiled model weights; full-board latency, memory, thermal behavior and battery use need measurement on an iPhone. No speed claim is made.
 
-## Reproduce conversion (optional; not needed for an Xcode build)
+These are upstream example images, not an independent held-out set. The benchmark bypasses Apple Vision and Core ML, manually annotates corners/orientation, and contains limited physical styles and lighting. It does not cover a confirmed starting-position or sparse-endgame set. **Reliable, completely automatic position reconstruction remains an unmet acceptance criterion.** Details are in `recognition-benchmark.json`, including per-photo king and missed-piece counts.
 
-Use Python 3.12 in a virtual environment. On Linux, installing CPU-only PyTorch first avoids downloading CUDA components:
+## Reproducibility
+
+Xcode builds use the checked-in model packages and require no Python, network access or model conversion. For optional model work, use Python 3.12:
 
 ```sh
 python3 -m venv .build/model-tools
 source .build/model-tools/bin/activate
+# Linux CPU wheels; on a Mac use the standard PyPI PyTorch wheels instead.
 pip install --index-url https://download.pytorch.org/whl/cpu torch==2.5.1 torchvision==0.20.1
 pip install -r Scripts/model-requirements.txt
 python Scripts/convert-model.py
+python Scripts/convert-detail-model.py
 ```
 
-On a Mac use the normal PyPI PyTorch wheels instead of the Linux CPU index. The script checks ONNX-versus-Torch numerical equivalence, checks the traced four-view graph, then writes `ChessPieces.mlpackage`. Fixed-size trace warnings are expected because the input is intentionally fixed at 224×224. Conversion on Linux emits a Core ML model but cannot run Apple's Core ML runtime. The hosted Xcode tests check real-photo fixture parity against ONNX, with a 0.025 probability tolerance for converted FP16 arithmetic; these tests still need to run on a Mac.
+Both scripts compare original ONNX results with the traced Torch graphs before Core ML conversion. Fixed-input trace warnings and Linux warnings about the unavailable Apple runtime are expected. Neither conversion success nor ONNX parity establishes Core ML runtime correctness. Hosted Mac tests exercise both actual converted artifacts against six per-model photo-square references.
 
-## Reproduce the photo benchmark
-
-Download the public asset from `https://github.com/davidmallasen/LiveChess2FEN/releases/download/v0.1.0/TestImages.zip`. Its SHA-256 is `351b79ffe01d41578670854f8092f2228531871842c7d6341134ebc390495700`. Verify the checksum before extraction. Do not disable TLS or checksum verification.
-
-With the model-tool environment active:
+Download upstream `https://github.com/davidmallasen/LiveChess2FEN/releases/download/v0.1.0/TestImages.zip` and verify SHA-256 `351b79ffe01d41578670854f8092f2228531871842c7d6341134ebc390495700` before extraction. Keep TLS and checksum verification enabled.
 
 ```sh
 pip install opencv-python-headless==4.11.0.86
 python Scripts/benchmark-recognition.py /path/to/TestImages/FullDetection
 ```
 
-The current report is `Documentation/recognition-benchmark.json`. This rewrites the report and the three test-only photo-square parity fixtures, so rerun only when intentionally updating the model or benchmark. Original complete photos are downloaded for evaluation and are not packaged in the app. Three small public-photo crops are included in the test bundle with upstream notices.
+The benchmark rewrites the report, six native model references (three public photo crops × two models), and 320 portable fusion regression cases. Do this only when deliberately updating recognition. Complete source photos are not packaged in the app; small public-photo crops live only in the test bundle.

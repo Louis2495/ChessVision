@@ -1,21 +1,29 @@
 {
-  "scope": "ONNX classifier on five upstream physical-board photographs, using manual playing-area corners. Not iPhone/Core ML/end-to-end accuracy. These are upstream example photos, not an independent held-out dataset.",
-  "inference": "Mean probabilities of four 90-degree rotations per square; MobileNetV2 full width",
-  "model_sha256": "9533b995761186a05bd70fb7f33627e70ff87a44e06d2fb56ab15d443068f0c9",
-  "correct_squares": 287,
+  "scope": "Five upstream physical-board photographs with manually annotated corners and orientation. Not an independent held-out set or end-to-end iPhone/Core ML accuracy.",
+  "inference": "Four-view MobileNetV2; four-view DenseNet201 second opinion for uncertainty, kings, bishops and apparent empties. Mean probabilities when verified; disagreements remain flagged.",
+  "primary_sha256": "9533b995761186a05bd70fb7f33627e70ff87a44e06d2fb56ab15d443068f0c9",
+  "verifier_sha256": "53fec7ea8fe1dfb7e18af0f3252c8835efab29dbb51c070365083fe1fe34c7f6",
+  "correct_squares": 296,
   "total_squares": 320,
-  "square_accuracy": 0.896875,
+  "square_accuracy": 0.925,
   "exact_positions": 0,
   "total_positions": 5,
-  "uncertain_squares": 76,
+  "uncertain_squares": 64,
+  "missed_pieces": 0,
+  "correct_kings": 7,
+  "total_kings": 10,
   "photos": [
     {
       "photo": "test1.jpg",
-      "correct_squares": 63,
+      "correct_squares": 62,
       "total_squares": 64,
       "exact_position": false,
-      "uncertain_squares": 11,
+      "uncertain_squares": 7,
       "confident_errors": 0,
+      "missed_pieces": 0,
+      "correct_kings": 2,
+      "total_kings": 2,
+      "secondary_checks": 52,
       "manually_annotated_corners": [
         [
           0.104,
@@ -37,11 +45,15 @@
     },
     {
       "photo": "test2.jpg",
-      "correct_squares": 56,
+      "correct_squares": 58,
       "total_squares": 64,
       "exact_position": false,
-      "uncertain_squares": 17,
+      "uncertain_squares": 16,
       "confident_errors": 0,
+      "missed_pieces": 0,
+      "correct_kings": 2,
+      "total_kings": 2,
+      "secondary_checks": 51,
       "manually_annotated_corners": [
         [
           0.11,
@@ -63,11 +75,15 @@
     },
     {
       "photo": "test3.jpg",
-      "correct_squares": 58,
+      "correct_squares": 62,
       "total_squares": 64,
       "exact_position": false,
-      "uncertain_squares": 13,
+      "uncertain_squares": 10,
       "confident_errors": 0,
+      "missed_pieces": 0,
+      "correct_kings": 1,
+      "total_kings": 2,
+      "secondary_checks": 53,
       "manually_annotated_corners": [
         [
           0.108,
@@ -89,11 +105,15 @@
     },
     {
       "photo": "test4.jpg",
-      "correct_squares": 51,
+      "correct_squares": 57,
       "total_squares": 64,
       "exact_position": false,
-      "uncertain_squares": 24,
+      "uncertain_squares": 20,
       "confident_errors": 0,
+      "missed_pieces": 0,
+      "correct_kings": 1,
+      "total_kings": 2,
+      "secondary_checks": 58,
       "manually_annotated_corners": [
         [
           0.063,
@@ -115,11 +135,15 @@
     },
     {
       "photo": "test5.jpg",
-      "correct_squares": 59,
+      "correct_squares": 57,
       "total_squares": 64,
       "exact_position": false,
       "uncertain_squares": 11,
       "confident_errors": 0,
+      "missed_pieces": 0,
+      "correct_kings": 1,
+      "total_kings": 2,
+      "secondary_checks": 51,
       "manually_annotated_corners": [
         [
           0.161,

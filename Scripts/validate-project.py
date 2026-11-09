@@ -17,9 +17,17 @@ for m in re.finditer(r'isa = PBXFileReference;([^}]+)',pbx):
 scheme=ET.parse(ROOT/'ChessVision.xcodeproj/xcshareddata/xcschemes/ChessVision.xcscheme')
 for ref in scheme.iter('BuildableReference'):assert ref.attrib['BlueprintIdentifier'] in objects
 for f in ['ChessVision/Info.plist','ChessVision/Resources/PrivacyInfo.xcprivacy']:plistlib.loads((ROOT/f).read_bytes())
-model=ROOT/'ChessVision/Resources/ChessPieces.mlpackage'
-manifest=json.loads((model/'Manifest.json').read_text())
-for item in manifest['itemInfoEntries'].values():assert (model/'Data'/item['path']).exists(),item
+models=list((ROOT/'ChessVision/Resources').glob('*.mlpackage'))
+assert len(models)==2
+for model in models:
+ manifest=json.loads((model/'Manifest.json').read_text())
+ for item in manifest['itemInfoEntries'].values():assert (model/'Data'/item['path']).exists(),item
+for side in ['w','b']:
+ for piece in ['K','Q','R','B','N','P']:
+  asset=ROOT/f'ChessVision/Resources/Assets.xcassets/{side}{piece}.imageset'
+  assert (asset/f'{side}{piece}.pdf').exists()
+  json.loads((asset/'Contents.json').read_text())
+assert 'Tests/Headless' not in pbx, 'CLI harness must not be compiled into the hosted iOS tests'
 for source in (ROOT/'ChessVision').rglob('*.swift'):assert str(source.relative_to(ROOT)) in pbx,source
-print(f'PASS: {count} project paths, target/scheme references, plist files, model package and Swift source membership.')
+print(f'PASS: {count} project paths, target/scheme references, plist files, both model packages, 12 piece assets and Swift source membership.')
 print('These are structural checks. iOS SDK compilation and runtime tests require macOS/Xcode.')

@@ -4,6 +4,7 @@ public struct BoardGridBounds: Equatable {
     public var top: Int
     public var right: Int
     public var bottom: Int
+    public var quality: Double
 }
 public enum BoardGrid {
     // Refine a perspective-corrected rectangular candidate to the PLAYING area.
@@ -24,9 +25,9 @@ public enum BoardGrid {
             }
             return result
         }
-        func fit(_ values: [Double]) -> (Int,Int)? {
+        func fit(_ values: [Double]) -> (Int,Int,Double)? {
             let n = values.count
-            var best = -Double.infinity, bounds: (Int,Int)?
+            var best = -Double.infinity, bounds: (Int,Int,Double)?
             let baseline = values.sorted()[n/2]
             for start in 0...(n*15/100) {
                 for end in (n*85/100)..<n where end-start >= n*7/10 {
@@ -37,12 +38,12 @@ public enum BoardGrid {
                         edges.append(values[max(0,i-1)...min(n-1,i+1)].max() ?? 0)
                     }
                     let score = edges.reduce(0) { $0+log(1+$1) }
-                    if score > best && edges.filter({$0 > max(12,baseline*1.5)}).count >= 6 {best=score; bounds=(start,end)}
+                    if score > best && edges.filter({$0 > max(12,baseline*1.5)}).count >= 6 {best=score; bounds=(start,end,score)}
                 }
             }
             return bounds
         }
         guard let x=fit(profile(vertical:true)),let y=fit(profile(vertical:false)) else {return nil}
-        return BoardGridBounds(left:x.0,top:y.0,right:x.1,bottom:y.1)
+        return BoardGridBounds(left:x.0,top:y.0,right:x.1,bottom:y.1,quality:exp((x.2+y.2)/14)-1)
     }
 }

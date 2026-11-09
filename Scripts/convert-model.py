@@ -2,6 +2,9 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 import onnx,torch,numpy as np,onnxruntime as ort,coremltools as ct
 from onnx2torch import convert
+import hashlib, json
+provenance=json.loads((ROOT/'Vendor/LiveChess2FEN/PROVENANCE.json').read_text())
+assert hashlib.sha256((ROOT/'Vendor/LiveChess2FEN/MobileNetV2_all_last.onnx').read_bytes()).hexdigest()==provenance['model_sha256'], 'Unexpected primary source weights'
 m=onnx.load(str(ROOT/'Vendor/LiveChess2FEN/MobileNetV2_all_last.onnx'))
 print([(x.name,[d.dim_value for d in x.type.tensor_type.shape.dim]) for x in m.graph.input])
 print([(x.name,[d.dim_value for d in x.type.tensor_type.shape.dim]) for x in m.graph.output])

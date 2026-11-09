@@ -23,7 +23,16 @@
     "r"
   ],
   "input": "RGB 224x224, values divided by 127.5 and minus 1",
-  "app_inference": "Mean probabilities from four quarter-turn views, bundled as a Core ML MLProgram",
+  "app_inference": "Four-view MobileNetV2 with selective four-view DenseNet201 verification and probability fusion; model disagreement is highlighted.",
   "upstream_empty_label": "_ (renamed empty in Core ML classifier)",
-  "benchmark_archive_sha256": "351b79ffe01d41578670854f8092f2228531871842c7d6341134ebc390495700"
+  "benchmark_archive_sha256": "351b79ffe01d41578670854f8092f2228531871842c7d6341134ebc390495700",
+  "verifier": {
+    "model_release": "v0.1.0",
+    "asset": "DenseNet201_last.onnx",
+    "url": "https://github.com/davidmallasen/LiveChess2FEN/releases/download/v0.1.0/DenseNet201_last.onnx",
+    "sha256": "53fec7ea8fe1dfb7e18af0f3252c8835efab29dbb51c070365083fe1fe34c7f6",
+    "preprocessing": "RGB/255, mean [.485,.456,.406], std [.229,.224,.225]",
+    "inference": "Mean of four quarter-turn views; mean probability fusion with primary on verified squares",
+    "policy": "Verify uncertain predictions, kings/bishops and apparent empties; flag disagreement. Never force kings onto squares."
+  }
 }

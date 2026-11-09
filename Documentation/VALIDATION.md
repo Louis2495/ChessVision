@@ -1,28 +1,31 @@
-# Validation status — continuous analysis update
+# Validation status — five-tab expansion
 
-Prepared in Debian 13 x86-64. Target: Xcode 16+, Swift 5 language mode, iOS 17+. No Xcode, iOS SDK, iOS Simulator or physical iPhone is available here.
+Target: Xcode 16+, Swift 5 language mode, iOS 17+. Work executed in Debian Linux, with official Swift 6.0.3 and GCC 14. No Xcode/iOS SDK, Simulator or physical iPhone is attached.
 
-## Executed successfully
+## Passed here
 
-- **35 portable Swift XCTest tests passed, zero failures**, compiled with Swift 6.0.3. Includes FEN/state/playback, evaluation-bar direction and symmetry, grid refinement, recognition verification/conflict behavior, and 320 cross-language photo-prediction fusion cases.
-- SAN and legal moves matched **585 reference notations across 159 positions** generated independently with python-chess 1.11.2 (fixed seed). Covers captures, ambiguity, pinned pieces, castling, en passant, promotions, checks, mate, black-first variations and fullmove numbers.
-- Portable legal-move perft counts matched standard references: initial depth 3 = **8,902**, Kiwipete depth 2 = **2,039**, and the rook/pawn en passant position depth 3 = **2,812**.
-- The **actual Swift EngineController plus the real embedded Stockfish bridge** passed headless integration checks for continuously increasing depth, board changes, immediate clearing of old results, latest-request-wins behavior after rapid changes, cancellation, mate/stalemate and restart. Linux uses a minimal Combine property-wrapper/observation shim; UCI transport, scheduling, controller source and C++ engine execute unchanged. This does not validate Apple's Combine or SwiftUI runtime. Run `Scripts/test-controller.sh` to reproduce; a Mac uses real Combine.
-- Vendored Stockfish/C++ bridge smoke checks also passed UCI readiness, MultiPV, terminal positions, cancellation and perft(3)=8,902.
-- Updated physical-photo classifier benchmark: **296/320 correct squares (92.5%), 0/5 exact positions**, all 24 errors flagged, 64 uncertain squares, 7/10 kings correct, no missed occupied squares on these examples. This uses manual corners, original ONNX models and upstream sample photos; it does not validate the user's unseen photos or Apple detection/runtime. See Recognition documentation.
-- Both four-view Core ML conversions completed after ONNX/Torch numerical parity checks. The DenseNet source checksum is checked by its conversion script. Core ML execution remains unavailable here.
-- All iOS Swift sources passed parser checks. Xcode OpenStep structure, shared scheme, source membership, both model manifests, 12 filled-piece vector assets and plist files passed structural validation. Syntax/structure checks are not an iOS SDK build.
+- **48 portable Swift XCTest tests**, zero failures. Includes all 1,000 unique puzzles, every solution ply, all 3,865 opening lines/position keys, adaptive-rating behavior, PGN/SAN parsing, result aggregation, transpositions, invalid-import atomicity, repertoire branch matching, persistence codecs, variant FEN/pocket/counter parsing, prior FEN/grid/recognition tests and 585 SAN references across 159 positions.
+- **987 native variant positions** compared with python-chess for standard, 3-Check, King of the Hill, Horde and Crazyhouse. Legal moves, SAN, positions, castling, check counters and pockets matched. Includes 103 drops, six completed variant games and an explicit promoted-queen capture reverting to a pawn in Crazyhouse.
+- Actual Swift app models with real embedded Fairy-Stockfish passed: seven game styles, computer replies, White/Black play, takebacks, rating targets including below/above the limited-strength range, requested opening replies, persistent save/reload and transfer back to continuous Analysis. Linux shims only Combine observation; controller/model/rules/client source executes unchanged. No SwiftUI UI is emulated.
+- The real public-game client passed isolated Chess.com archive/PGN, Lichess NDJSON, non-standard-game filtering and missing-profile HTTP fixtures. No credentials or live connections were used for these checks.
+- Actual controller/engine tests passed readiness, increasing analysis depth, last-request-wins replacement, stale-result clearing, cancellation, checkmate/stalemate, restart and cancellation ownership across Analysis/computer play.
+- Native engine smoke checks passed UCI/MultiPV, no-legal-move handling, infinite-search cancellation and standard perft(3)=8,902. Portable perft references also cover Kiwipete and an en passant position.
+- Both recognition artifacts/source checksums remain bundled. Prior classifier-only benchmark remains **296/320 correct squares (92.5%), 0/5 exact positions, 7/10 kings correct**; this expansion makes no new recognition-accuracy claim.
+- New app-icon export is opaque RGB 1024×1024; original generated artwork is preserved. Swift syntax, all project paths/source membership, model/data assets, engine flags, shared scheme and plist structure were checked.
 
-## Prepared for macOS, not executed here
+## Not verified here
 
-`bash Scripts/test-mac.sh` runs portable tests and real Xcode simulator tests. Hosted tests cover both model contracts/prediction references, continuous engine replacement/cancellation, twelve artwork assets and a rendered board-image export. The UI test covers immediate analysis without confirmation toggles, White/Black columns, live playback and sharing options. Mac CI is configured, but has not been run or uploaded.
+**The updated iOS UI has not been compiled, launched or visually exercised in Xcode.** Swift parsing, Foundation model compilation and C++ checks cannot establish SDK type correctness or on-device layouts. Hosted/native/UI tests and macOS CI are prepared but unrun here.
 
-**The updated iOS target has not been compiled, launched or visually verified in Xcode here.** No iPhone camera or device-recognition result is claimed. SDK type errors or runtime/layout issues could still be exposed by the Mac checks.
+Live Chess.com/Lichess API and database access was blocked by the current cloud domain allowlist. The network draft was saved but the running policy still had no custom domains at last check. Source data was obtained from allowed public GitHub mirrors. Live public exports, service rate limits and real-profile coverage remain unverified; fixture tests are separate evidence.
 
-## Required follow-up validation
+The estimated puzzle and computer strengths are not calibrated Chess.com ratings. The 1,000-puzzle source difficulty proxy is documented. No playing-strength experiment against users or variant-specific Elo calibration was performed.
 
-1. Run `Scripts/test-mac.sh` and inspect the new `.xcresult`. Run the app on simulator and check filled pieces, file/rank labels, SAN columns (including a black-to-move start), right-hand bar, turn badge and image/FEN sharing.
-2. On iPhone, check camera permissions, all rectangle candidates/grid cropping, capture orientation (White at bottom), secondary-model memory/latency, cancellation and repeated captures.
-3. Use the actual misrecognized king/bishop and missed-piece photographs, with consent and exact positions, as held-out regressions. Current example performance does not establish that these cases are fixed. Add physical styles, lighting, crowded positions, starting positions and sparse endings.
-4. Verify automatic search refresh for legal board moves, variation cells, Previous and Return to original; change boards rapidly, then background/foreground the app. The bar is a bounded evaluation display, not a calibrated winning probability.
-5. Review the existing GPL/AGPL distribution and corresponding-source obligations before publishing. No binary or source has been published or pushed.
+## Mac / iPhone checks to run
+
+1. `bash Scripts/test-mac.sh`: portable tests followed by real hosted model/data/persistence/engine and UI tests on an installed iPhone simulator. Inspect the fresh `.xcresult`; resolve SDK/compiler/runtime failures before claiming a verified app build.
+2. Launch all five tabs; verify both blindfold visibility modes, Crazyhouse pockets/promotions, 3-Check counters and KOTH/Horde endings, side selection, requested openings and save/resume. Inspect centered Analysis title, swipe bar and tapped turn changes; verify a tab switch never steals another tab's engine.
+3. Try public profiles from both services and both color filters, cancellation, 404/rate-limit behavior, empty/large archives and the explicit sample cap. Compare a few branches with source games.
+4. Solve/skip/hint multi-ply puzzles and verify one rating update per attempt, progress restoration and estimated difficulty selection. Enter overlapping White/Black repertoire lines, train branches/transpositions and restart the app.
+5. On iPhone verify camera recognition/cancellation, memory/thermal behavior, icon appearance, board-image sharing and current recognition limitations. Obtain held-out labeled photos for remaining king/bishop and missed-piece failures.
+6. Review GPL/AGPL corresponding-source, public-service terms and App Store/privacy requirements before any production distribution. GitHub source publication does not mean the application has been released or approved for a store.

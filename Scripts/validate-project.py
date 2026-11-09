@@ -29,5 +29,18 @@ for side in ['w','b']:
   json.loads((asset/'Contents.json').read_text())
 assert 'Tests/Headless' not in pbx, 'CLI harness must not be compiled into the hosted iOS tests'
 for source in (ROOT/'ChessVision').rglob('*.swift'):assert str(source.relative_to(ROOT)) in pbx,source
-print(f'PASS: {count} project paths, target/scheme references, plist files, both model packages, 12 piece assets and Swift source membership.')
+
+assert 'Vendor/FairyStockfish/main.cpp' not in pbx
+assert 'Vendor/FairyStockfish/pyffish.cpp' not in pbx
+assert 'Vendor/FairyStockfish/ffishjs.cpp' not in pbx
+assert 'Vendor/Stockfish/' not in pbx
+assert 'NNUE_EMBEDDING_OFF' in pbx and 'c++17' in pbx
+puzzles=json.loads((ROOT/'ChessVision/Core/Resources/Puzzles.json').read_text())
+assert len(puzzles)==1000 and len({p['id'] for p in puzzles})==1000
+assert len(json.loads((ROOT/'ChessVision/Core/Resources/Openings.json').read_text()))==3865
+import struct
+icon=(ROOT/'ChessVision/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png').read_bytes()
+assert icon[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',icon[16:24])==(1024,1024) and icon[25]==2
+
+print(f'PASS: {count} project paths, target/scheme references, plist files, both model packages, 12 piece assets, 1,000 puzzles, 3,865 openings, opaque icon and Swift source membership.')
 print('These are structural checks. iOS SDK compilation and runtime tests require macOS/Xcode.')

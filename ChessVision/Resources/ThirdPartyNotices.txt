@@ -1506,3 +1506,9 @@ FILLED CHESS PIECE ARTWORK
 Colin M. L. Burnett — CBurnett chess pieces, GPL-2.0-or-later (used under GPL-3.0-or-later).
 Source: https://github.com/lichess-org/lila/tree/a1590345c9c3a31b6f9c6705eefeeb7dab32a78e/public/piece/cburnett
 Original SVG sources and notices accompany Vendor/CBurnett. Artwork was rendered to vector PDF with shapes and colors unchanged. The full GPL-3.0 text is included above.
+
+
+FAIRY-STOCKFISH AND CHESS TRAINING DATA
+Fairy-Stockfish fairy_sf_14 — Copyright 2018–2021 Fabian Fichter and the Stockfish developers. GPL-3.0-or-later. Source and notices: Vendor/FairyStockfish; https://github.com/fairy-stockfish/Fairy-Stockfish. The complete GPL text appears above.
+Lichess puzzle facts and lichess-org/chess-openings: CC0 1.0 public domain dedication; https://database.lichess.org/#puzzles and https://github.com/lichess-org/chess-openings. Full CC0 text and exact provenance accompany Vendor/ChessData.
+The current binocular-knight icon is original generated artwork. The earlier DejaVu icon is not used in this build.

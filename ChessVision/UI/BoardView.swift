@@ -16,6 +16,7 @@ struct BoardView: View {
     var selected: Int? = nil
     var legalTargets: Set<Int> = []
     var flipped = false
+    var hidePieces = false
     var onTap: ((Int) -> Void)? = nil
     var body: some View {
         GeometryReader { geometry in
@@ -29,7 +30,7 @@ struct BoardView: View {
                             Button { onTap?(index) } label: {
                                 ZStack {
                                     Rectangle().fill(light ? Color(red: 0.91, green: 0.89, blue: 0.82) : Color(red: 0.36, green: 0.47, blue: 0.40))
-                                    if let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
+                                    if !hidePieces, let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
                                     if legalTargets.contains(index) {
                                         if position.squares[index] == nil { Circle().fill(.black.opacity(0.20)).frame(width: cell * 0.24, height: cell * 0.24) }
                                         else { Circle().strokeBorder(.cyan.opacity(0.8), lineWidth: 3).padding(2) }
@@ -46,7 +47,7 @@ struct BoardView: View {
                                 .frame(width: cell, height: cell)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("\(Position.name(index)), \(position.squares[index]?.name ?? "empty")\(uncertain.contains(index) ? ", uncertain recognition" : "")")
+                            .accessibilityLabel("\(Position.name(index)), \(hidePieces ? "hidden" : (position.squares[index]?.name ?? "empty"))\(uncertain.contains(index) ? ", uncertain recognition" : "")")
                             .accessibilityIdentifier("square-\(Position.name(index))")
                         }
                     }

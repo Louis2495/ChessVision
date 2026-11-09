@@ -46,10 +46,14 @@ struct AnalysisView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 EvaluatedBoard(position: position, whiteFraction: whiteFraction, selected: selected, legalTargets: legalTargets, onTap: tapSquare)
+                HistorySwipeBar(current: cursor, total: history.count - 1, canAdvance: cursor + 1 < history.count || !moves.isEmpty,
+                                back: { if cursor > 0 { cursor -= 1 } }, forward: advance)
                 HStack(alignment: .firstTextBaseline) {
                     Text(evaluation).font(.largeTitle.bold().monospacedDigit()).accessibilityIdentifier("analysis-evaluation")
                     Spacer()
-                    TurnBadge(side: position.turn)
+                    Button(action: flipTurn) { TurnBadge(side: position.turn) }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Double tap to change whose turn it is")
                 }
                 if let terminal = engine.terminal, engine.analyzedFEN == position.fen {
                     Text(terminal).font(.headline)
@@ -81,14 +85,15 @@ struct AnalysisView: View {
                         .accessibilityIdentifier("analysis-next")
                 }
                 Button("Return to original position") { history = [original]; cursor = 0; selected = nil }
-                    .disabled(cursor == 0)
+                    .disabled(cursor == 0 && position == original)
                 Text("Tap a piece, then a highlighted square to play a move. Analysis follows the board automatically.")
                     .font(.caption).foregroundStyle(.secondary)
                 SharePositionButton(position: position)
                 if let message { Text(message).font(.footnote).foregroundStyle(.red) }
             }.padding()
         }
-        .navigationTitle("Stockfish analysis")
+        .navigationTitle("Analysis")
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             visible = true
             if scenePhase == .active { engine.analyze(position) }
@@ -113,9 +118,9 @@ struct AnalysisView: View {
             notation = formatted; notationFEN = root.fen
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active && visible { engine.analyze(position) } else if visible { engine.stop() }
+            if phase == .active && visible { engine.analyze(position) } else if visible { engine.stopAnalysis() }
         }
-        .onDisappear { visible = false; engine.stop() }
+        .onDisappear { visible = false; engine.stopAnalysis() }
         .confirmationDialog("Promote pawn", isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } }), titleVisibility: .visible) {
             ForEach(promotions, id: \.self) { move in
                 Button(Piece(position.turn == .white ? Character(String(move.promotion!).uppercased()) : move.promotion!).name) {
@@ -123,6 +128,16 @@ struct AnalysisView: View {
                 }
             }
         }
+    }
+    private func advance() {
+        if cursor + 1 < history.count { cursor += 1 }
+        else if let first = moves.first { playThrough(first, line: moves, fen: position.fen) }
+    }
+    private func flipTurn() {
+        var changed = position
+        changed.turn = changed.turn.opposite
+        changed.enPassant = "-"
+        history = Array(history.prefix(cursor)) + [changed]
     }
     private func tapSquare(_ index: Int) {
         if let source = selected {
@@ -182,5 +197,37 @@ private struct VariationTable: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Move \(move.number), \(move.side.title), \(move.san)")
         } else { Text("—").foregroundStyle(.tertiary).frame(maxWidth: .infinity, minHeight: 30, alignment: .leading) }
+    }
+}
+
+
+private struct HistorySwipeBar: View {
+    var current: Int
+    var total: Int
+    var canAdvance: Bool
+    var back: () -> Void
+    var forward: () -> Void
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: back) { Image(systemName: "chevron.left") }.disabled(current == 0).accessibilityLabel("Previous position")
+            VStack(spacing: 4) {
+                Text("Swipe through the game · \(current)/\(total)").font(.caption2).foregroundStyle(.secondary)
+                GeometryReader { geometry in
+                    Capsule().fill(Color.gray.opacity(0.18))
+                        .overlay(alignment: .leading) { Capsule().fill(Color.accentColor).frame(width: geometry.size.width * CGFloat(current) / CGFloat(max(1, total))) }
+                }.frame(height: 5)
+            }
+            Button(action: forward) { Image(systemName: "chevron.right") }.disabled(!canAdvance).accessibilityLabel("Next position")
+        }
+        .padding(.horizontal, 12).padding(.vertical, 9)
+        .background(Color.gray.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+        .contentShape(Rectangle())
+        .gesture(DragGesture(minimumDistance: 18).onEnded { value in
+            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+            if value.translation.width < 0 && canAdvance { forward() }
+            else if value.translation.width > 0 && current > 0 { back() }
+        })
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("analysis-history-bar")
     }
 }

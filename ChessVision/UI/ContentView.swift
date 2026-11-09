@@ -34,7 +34,7 @@ import AVFoundation
                             ScrollView {
                                 VStack(alignment:.leading,spacing:16) {
                                     Text("Private by design").font(.title.bold())
-                                    Text("ChessVision does not upload photos, collect analytics, or require an account. Your photographs remain in memory on this device. Sharing a board image or FEN is an explicit action using the system share sheet.")
+                                    Text("ChessVision does not upload photos, collect analytics, or require an account. Your photographs remain in memory on this device. Sharing a board image or FEN is an explicit action using the system share sheet. Opening explorer contacts the chosen chess site with the public username you enter. Puzzle progress, repertoire and computer games are stored only on this device.")
                                     Text(licenseText).font(.caption.monospaced()).textSelection(.enabled)
                                 }.padding()
                             }.navigationTitle("Privacy & licenses")

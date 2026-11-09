@@ -8,10 +8,20 @@
 
 The combined app is offered under AGPL-3.0-or-later, with Stockfish's original GPL notices retained. GPLv3 section 13 permits the combination with AGPLv3; this does not remove the respective source and notice obligations. If conveying a binary, preserve notices and provide complete corresponding source and build/conversion instructions as required. This repository contains the application and engine source, original model and conversion/training code; training datasets are not bundled. Review the release asset/data licensing and your proposed source-delivery mechanism before distribution.
 
-The app displays notices under Privacy & open-source licenses. A source URL has not been invented because this branch has not been published. A distributor must provide an actual compliant corresponding-source delivery/offer; a link to an unrelated upstream project alone is insufficient.
+The app displays notices under Privacy & open-source licenses. The project source is stored in the user's ChessVision GitHub repository. Repository visibility/access may be private; that alone is not a public corresponding-source offer. A binary distributor must provide recipients with compliant corresponding-source delivery/access; a link to an unrelated upstream project alone is insufficient.
 
 No App Store submission or license compatibility determination has been made. App Store signing, DRM and additional terms can conflict with GPL/AGPL redistribution requirements. Review the exact distribution plan before publishing; this project currently targets private development/device testing.
 
 ## Filled board/palette artwork
 
 The board and correction palette use Colin M. L. Burnett's **CBurnett** set from lichess-org/lila, pinned to commit `a1590345c9c3a31b6f9c6705eefeeb7dab32a78e`. Upstream explicitly licenses these pieces GPL-2.0-or-later. This project uses the GPL-3.0-or-later option, compatible with its existing combined-license plan. Original SVGs, individual SHA-256 hashes, upstream attribution and GPL text accompany `Vendor/CBurnett`. SVGs were rendered to vector PDF without changing their shapes/colors; PDFs are checked into the asset catalog and need no runtime SVG library. CairoSVG 2.7.1 is an optional development conversion tool, not part of the app binary.
+
+## Five-tab expansion
+
+The active engine is now Fairy-Stockfish `fairy_sf_14`, commit `f3e6969d11d1bec17eba26e7ae0e629ad4af71dd`, GPL-3.0-or-later. Its original complete source/AUTHORS/COPYING accompany `Vendor/FairyStockfish`. The previous Stockfish 11 source is retained for historical provenance but not linked. NNUE embedding/evaluation are disabled; no engine weights are downloaded. See `Vendor/FairyStockfish/CHESSVISION.md` for build details.
+
+Lichess puzzle facts and the lichess-org/chess-openings catalog are CC0. Pinned mirror/upstream commits, source hash and estimation/sampling recipes are in `Vendor/ChessData/PROVENANCE.json`, with full CC0 text. No puzzle mirror Flask/server code is copied. python-chess 1.11.2 (GPL-3.0-or-later) is an optional generation/test tool, not an iPhone dependency.
+
+The current binocular-knight app icon is original generated artwork, preserved in `Artwork/`. The earlier DejaVu-derived icon is no longer used; its old notice/source remain only as historical provenance. Filled playing pieces still use the attributed CBurnett set.
+
+Public Chess.com/Lichess API calls use their supported anonymous game-export interfaces when requested by the user. Their service terms/rate limits remain applicable. No OAuth credentials, paid service, analytics SDK or remote engine is added.

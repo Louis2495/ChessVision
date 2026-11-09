@@ -44,6 +44,11 @@ import Darwin
             engine.analyze(.initial)
             try await wait { engine.running && !engine.lines.isEmpty }
             engine.stop(); try await wait { !engine.running }
+            let response = Task { @MainActor in try await engine.computerMove(variant: "chess", history: [], rating: 1000, side: .white) }
+            try await Task.sleep(for: .milliseconds(100))
+            engine.stopAnalysis() // A departing analysis tab must not cancel another tab's game.
+            let reply = try await response.value
+            try require(Position.initial.legalMoves().contains { $0.uci == reply }, "Analysis cleanup canceled the game tab")
             print("PASS: actual Swift controller + Stockfish: continuous depth, board changes, latest request wins, cancellation, mate/stalemate, restart.")
             fflush(stdout)
             // Match the app's process-lifetime engine; bypass global iostream teardown in this CLI harness.

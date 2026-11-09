@@ -12,7 +12,17 @@
 #include "thread.h"
 #include "uci.h"
 #include "endgame.h"
-namespace PSQT { void init(); }
+#include "psqt.h"
+#include "piece.h"
+#include "variant.h"
+#include "evaluate.h"
+#include "tune.h"
+#include "apiutil.h"
+#include <atomic>
+#include <sstream>
+#include <cstdlib>
+#include <cstring>
+using namespace Stockfish;
 namespace {
 class InputBuffer : public std::streambuf {
     std::mutex mutex;
@@ -47,17 +57,82 @@ public:
 InputBuffer input;
 OutputBuffer output;
 std::once_flag once;
+std::atomic<bool> initialized{false};
 }
 extern "C" void cv_engine_start(CVEngineCallback callback) {
     std::call_once(once, [callback] {
         output.callback = callback;
         std::cin.rdbuf(&input); std::cout.rdbuf(&output);
         std::thread([] {
-            UCI::init(Options); PSQT::init(); Bitboards::init(); Position::init();
-            Bitbases::init(); Endgames::init(); Threads.set(1); Search::clear();
-            char name[] = "ChessVision"; char *args[] = {name}; UCI::loop(1, args);
+            char name[] = "ChessVision"; char *args[] = {name};
+            pieceMap.init(); variants.init(); CommandLine::init(1, args);
+            UCI::init(Options); Tune::init(); Options["Use NNUE"] = std::string("false");
+            PSQT::init(variants.find("chess")->second); Bitboards::init(); Position::init();
+            Bitbases::init(); Endgames::init(); Threads.set(1); Search::clear(); Eval::NNUE::init();
+            initialized = true;
+            UCI::loop(1, args);
             Threads.set(0);
         }).detach();
     });
 }
 extern "C" void cv_engine_send(const char *command) { if (command) input.send(command); }
+
+extern "C" char* cv_rules_query(const char *variantName, const char *history) {
+    // Call only after the UCI ready barrier for this variant. During a game, its tables stay read-only.
+    std::string result;
+    const std::string name = variantName ? variantName : "";
+    if (!initialized || (name != "chess" && name != "3check" && name != "kingofthehill" && name != "horde" && name != "crazyhouse")) result = "error\tUnsupported or uninitialized variant";
+    else if (std::string(Options["UCI_Variant"]) != name) result = "error\tThe engine has not prepared this variant";
+    else {
+        const Variant* variant = variants.find(name)->second;
+        std::deque<StateInfo> states(1);
+        Position position;
+        position.set(variant, variant->startFen, false, &states.back(), Threads.main());
+        std::istringstream moves(history ? history : "");
+        std::string token;
+        bool valid = true;
+        while (moves >> token) {
+            if (token.size() > 8) { valid = false; break; }
+            Move move = UCI::to_move(position, token);
+            if (move == MOVE_NONE) { valid = false; break; }
+            states.emplace_back(); position.do_move(move, states.back());
+        }
+        if (!valid) result = "error\tAn illegal move was found in the saved game";
+        else {
+            std::ostringstream data;
+            data << "fen\t" << position.fen(false, true) << "\n";
+            data << "turn\t" << (position.side_to_move() == WHITE ? "w" : "b") << "\n";
+            data << "check\t" << (position.checkers() ? "1" : "0") << "\n";
+            Value value = VALUE_ZERO;
+            const bool specialEnd = position.is_game_end(value);
+            const auto legal = MoveList<LEGAL>(position);
+            std::string status = "ongoing";
+            if (specialEnd || legal.size() == 0) {
+                if (!specialEnd) value = position.checkers() ? -VALUE_MATE : VALUE_DRAW;
+                if (value == VALUE_DRAW) status = "draw";
+                else { const Color winner = value > 0 ? position.side_to_move() : ~position.side_to_move(); status = winner == WHITE ? "white" : "black"; }
+            }
+            data << "status\t" << status << "\n";
+            if (status == "ongoing") for (const auto &entry : legal) {
+                const Move move = entry;
+                const std::string uci = UCI::move(position, move);
+                std::string san = SAN::move_to_san(position, move, NOTATION_SAN);
+                if (san.rfind("P@", 0) == 0) san.erase(0, 1);
+                StateInfo after;
+                position.do_move(move, after);
+                Value outcome = VALUE_ZERO;
+                if (position.is_immediate_game_end(outcome) && outcome < VALUE_ZERO) {
+                    while (!san.empty() && (san.back() == '+' || san.back() == '#')) san.pop_back();
+                    san += '#';
+                }
+                position.undo_move(move);
+                data << "move\t" << uci << "\t" << san << "\n";
+            }
+            result = data.str();
+        }
+    }
+    char *copy = static_cast<char*>(std::malloc(result.size() + 1));
+    if (copy) std::memcpy(copy, result.c_str(), result.size() + 1);
+    return copy;
+}
+extern "C" void cv_rules_free(char *text) { std::free(text); }

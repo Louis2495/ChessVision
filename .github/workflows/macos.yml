@@ -15,6 +15,15 @@ jobs:
         run: xcodebuild -version
       - name: Native engine smoke tests
         run: bash Scripts/test-engine.sh
+      - name: Continuous controller and app feature workflows
+        run: |
+          bash Scripts/test-controller.sh
+          bash Scripts/test-features.sh
+      - name: Independent variant rules
+        run: |
+          python3 -m venv .build/variant-tools
+          .build/variant-tools/bin/pip install chess==1.11.2
+          .build/variant-tools/bin/python Scripts/test-variants.py
       - name: Swift and iOS build / tests
         run: bash Scripts/test-mac.sh
       - name: Preserve Xcode results

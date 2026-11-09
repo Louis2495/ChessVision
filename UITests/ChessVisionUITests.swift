@@ -13,20 +13,21 @@ final class ChessVisionUITests: XCTestCase {
         XCTAssertTrue(analyze.isEnabled, "A valid position needs no review confirmation")
         analyze.tap()
         XCTAssertTrue(app.navigationBars["Analysis"].waitForExistence(timeout: 5))
+        app.buttons["Candidate lines"].tap()
         let best = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Best move:")).firstMatch
         XCTAssertTrue(best.waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["White"].exists)
         XCTAssertTrue(app.staticTexts["Black"].exists)
         XCTAssertFalse(app.buttons["Analyze again"].exists)
         XCTAssertFalse(app.staticTexts["Evaluation is from White's perspective."].exists)
-        let next = app.buttons["analysis-next"]
+        let next = app.buttons["Next position"]
         for _ in 0..<5 { if next.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(next.isEnabled); next.tap()
-        XCTAssertTrue(app.staticTexts["1 ply"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Swipe through the game · 1/1"].waitForExistence(timeout: 5))
         // The analysis is still live after moving; there is no restart button.
         XCTAssertTrue(best.waitForExistence(timeout: 15))
         app.buttons["Return to original position"].tap()
-        XCTAssertTrue(app.staticTexts["0 ply"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Swipe through the game · 0/0"].waitForExistence(timeout: 5))
         app.buttons["Share position"].tap()
         XCTAssertTrue(app.buttons["Share board image"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Share image & FEN"].exists)
@@ -36,7 +37,7 @@ final class ChessVisionUITests: XCTestCase {
 extension ChessVisionUITests {
     func testBottomTabsAndNewTrainingFlows() {
         let app = XCUIApplication(); app.launch()
-        for title in ["Board", "Openings", "Puzzles", "Repertoire", "Play"] { XCTAssertTrue(app.tabBars.buttons[title].waitForExistence(timeout: 5)) }
+        for title in ["Analysis", "Openings", "Puzzles", "Repertoire", "Play"] { XCTAssertTrue(app.tabBars.buttons[title].waitForExistence(timeout: 5)) }
         app.tabBars.buttons["Openings"].tap()
         XCTAssertTrue(app.textFields["Public username"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Puzzles"].tap()
@@ -66,13 +67,32 @@ extension ChessVisionUITests {
         let analyze = app.buttons["Analyze with Stockfish"]
         for _ in 0..<6 { if analyze.isHittable { break }; app.swipeUp() }
         analyze.tap()
+        app.buttons["Candidate lines"].tap()
         let best = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Best move:")).firstMatch
         XCTAssertTrue(best.waitForExistence(timeout: 15))
         let bar = app.otherElements["analysis-history-bar"]
         XCTAssertTrue(bar.waitForExistence(timeout: 5))
-        bar.swipeLeft(); XCTAssertTrue(app.staticTexts["1 ply"].waitForExistence(timeout: 5))
-        bar.swipeRight(); XCTAssertTrue(app.staticTexts["0 ply"].waitForExistence(timeout: 5))
+        bar.swipeLeft(); XCTAssertTrue(app.staticTexts["Swipe through the game · 1/1"].waitForExistence(timeout: 5))
+        bar.swipeRight(); XCTAssertTrue(app.staticTexts["Swipe through the game · 0/1"].waitForExistence(timeout: 5))
         app.buttons["Turn: White"].tap()
         XCTAssertTrue(app.buttons["Turn: Black"].waitForExistence(timeout: 5))
+    }
+}
+
+extension ChessVisionUITests {
+    func testStartAnalysisWithoutPhotoAndOpenSettings() {
+        let app = XCUIApplication(); app.launch()
+        app.buttons["Start analysis"].tap()
+        XCTAssertTrue(app.buttons["square-e2"].waitForExistence(timeout: 5))
+        app.buttons["square-e2"].tap(); app.buttons["square-e4"].tap()
+        XCTAssertTrue(app.staticTexts["Swipe through the game · 1/1"].waitForExistence(timeout: 5))
+        let insights = app.switches["Position insights"]
+        if !insights.isHittable { app.swipeUp() }
+        XCTAssertTrue(insights.exists)
+        if insights.value as? String == "0" { insights.tap() }
+        XCTAssertTrue(app.staticTexts["On the board"].exists)
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Appearance"].exists)
     }
 }

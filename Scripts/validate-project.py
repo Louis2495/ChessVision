@@ -44,3 +44,11 @@ assert icon[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',icon[16:24])==(102
 
 print(f'PASS: {count} project paths, target/scheme references, plist files, both model packages, 12 piece assets, 1,000 puzzles, 3,865 openings, opaque icon and Swift source membership.')
 print('These are structural checks. iOS SDK compilation and runtime tests require macOS/Xcode.')
+
+# Settings media and privacy reason must survive project regeneration.
+import wave
+with wave.open(str(ROOT/'ChessVision/Resources/ClassicalPrelude.wav'),'rb') as audio:
+ assert audio.getnchannels()==1 and audio.getnframes()>audio.getframerate()*30
+assert 'ClassicalPrelude.wav' in pbx
+privacy=plistlib.loads((ROOT/'ChessVision/Resources/PrivacyInfo.xcprivacy').read_bytes())
+assert any(item['NSPrivacyAccessedAPIType']=='NSPrivacyAccessedAPICategoryUserDefaults' and 'CA92.1' in item['NSPrivacyAccessedAPITypeReasons'] for item in privacy['NSPrivacyAccessedAPITypes'])

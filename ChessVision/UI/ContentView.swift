@@ -21,17 +21,19 @@ import AVFoundation
                     if let board = position {
                         EditorView(position:board, uncertain:uncertain, photo:photo, onRetake:takePhoto, onRecognizeAgain:{ if let lastPhoto {process(lastPhoto)} }).id(recognitionID)
                     } else {
-                        VStack(alignment:.leading,spacing:12) {
-                            Text("Scan a chessboard to explore moves and find your next idea.").foregroundStyle(.secondary)
-                        }.padding(.top,24)
+                        Text("Find your next move").font(.title2.bold())
+                        Text("Play from the starting position, or scan a board.").foregroundStyle(.secondary)
+                        NavigationLink { AnalysisView(original: .initial) } label: {
+                            Label("Start analysis", systemImage: "play.fill").frame(maxWidth: .infinity).padding(10)
+                        }.buttonStyle(.borderedProminent).controlSize(.large)
                         BoardView(position:.initial).accessibilityLabel("Example starting position")
-                        Button(action:takePhoto) { Label("Take Pic of Board",systemImage:"camera.fill").frame(maxWidth:.infinity).padding(10) }.buttonStyle(.borderedProminent).controlSize(.large).disabled(processing)
+                        Button(action:takePhoto) { Label("Take Pic of Board",systemImage:"camera.fill").frame(maxWidth:.infinity).padding(10) }.buttonStyle(.bordered).controlSize(.large).disabled(processing)
                         NavigationLink("Explore the board editor with an example",value:"example")
                     }
                 }.padding().disabled(processing)
-            }.navigationTitle("ChessVision")
+            }.modifier(AppSurface()).navigationTitle("Analysis")
             .navigationDestination(for:String.self) { _ in ScrollView { EditorView(position:.initial,uncertain:[],photo:nil,onRetake:takePhoto).padding() } }
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { NavigationLink { AppInfoView() } label: { Image(systemName: "info.circle") }.accessibilityLabel("Privacy and licenses") }; if position != nil { Button("Start over") { recognitionTask?.cancel(); recognitionTask=nil; processingID=UUID(); processing=false; position = nil; photo = nil; uncertain = []; lastPhoto = nil } } }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { SettingsButton() }; if position != nil { Button("Start over") { recognitionTask?.cancel(); recognitionTask=nil; processingID=UUID(); processing=false; position = nil; photo = nil; uncertain = []; lastPhoto = nil } } }
             .fullScreenCover(isPresented:$camera) { CameraView(onPhoto:{ image in camera=false; lastPhoto=image; process(image) },onCancel:{camera=false}).ignoresSafeArea() }
             .alert("ChessVision",isPresented:Binding(get:{message != nil},set:{if !$0 { message=nil }})) { Button("OK",role:.cancel) {} ; if lastPhoto != nil { Button("Retry recognition") { if let lastPhoto { process(lastPhoto) } } } } message:{Text(message ?? "")}
             .overlay {

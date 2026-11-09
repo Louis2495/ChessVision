@@ -100,10 +100,11 @@ public enum RepertoireTraining {
 }
 
 public enum GameMode: String, CaseIterable, Codable, Identifiable, Sendable {
-    case normal, blindBoard, blindText, threeCheck, kingOfTheHill, horde, crazyhouse, duck, atomic, fogOfWar, pawnWars, antichess
+    case normal, crazyhouse, fogOfWar, chess960, threeCheck, kingOfTheHill, atomic, duck, horde, pawnWars, antichess, blindBoard, blindText
     public var id: String { rawValue }
     public var title: String {
         switch self {
+        case .chess960: return "Chess960"
         case .normal: return "Normal"
         case .blindBoard: return "Blindfold · empty board"
         case .blindText: return "Blindfold · text only"
@@ -119,10 +120,11 @@ public enum GameMode: String, CaseIterable, Codable, Identifiable, Sendable {
         }
     }
     public var variant: String {
-        switch self { case .threeCheck: return "3check"; case .kingOfTheHill: return "kingofthehill"; case .horde: return "horde"; case .crazyhouse: return "crazyhouse"; case .duck: return "duck"; case .atomic: return "atomic"; case .fogOfWar: return "cvfog"; case .pawnWars: return "cvpawns"; case .antichess: return "antichess"; default: return "chess" }
+        switch self { case .chess960: return "cv9600"; case .threeCheck: return "3check"; case .kingOfTheHill: return "kingofthehill"; case .horde: return "horde"; case .crazyhouse: return "crazyhouse"; case .duck: return "duck"; case .atomic: return "atomic"; case .fogOfWar: return "cvfog"; case .pawnWars: return "cvpawns"; case .antichess: return "antichess"; default: return "chess" }
     }
     public var explanation: String {
         switch self {
+        case .chess960: return "A randomized back rank, with bishops on opposite colors and the king between the rooks. To castle, move your king onto its rook."
         case .duck: return "Move a piece, then place the duck on an empty square. The duck blocks movement. Capture the king to win."
         case .atomic: return "Captures explode the capturing piece and adjacent non-pawns. Explode the enemy king to win."
         case .fogOfWar: return "Only your pieces and squares they can move to are visible. Capture the enemy king to win."
@@ -146,8 +148,9 @@ public struct SavedComputerGame: Codable, Sendable {
     public var openingID: String?
     public var notation: [String] = []
     public var resigned: Side?
+    public var chess960Index: Int?
     public var pawnWarsKings: Bool?
-    public var variant: String { mode == .pawnWars && pawnWarsKings == false ? "cvpawnrace" : mode.variant }
+    public var variant: String { if mode == .chess960 { return "cv960\(chess960Index ?? 0)" }; return mode == .pawnWars && pawnWarsKings == false ? "cvpawnrace" : mode.variant }
     public init(mode: GameMode, human: Side, targetRating: Int, moves: [String] = [], openingID: String? = nil) {
         self.mode = mode; self.human = human; self.targetRating = targetRating; self.moves = moves; self.openingID = openingID
     }

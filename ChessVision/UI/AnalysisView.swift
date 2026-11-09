@@ -12,6 +12,7 @@ struct AnalysisView: View {
     @State private var history: [Position]
     @State private var cursor = 0
     @State private var rank = 1
+    @AppStorage("positionInsights") private var insights = false
     @State private var visible = false
     @State private var selected: Int?
     @State private var promotions: [ChessMove] = []
@@ -65,6 +66,16 @@ struct AnalysisView: View {
                     }
                 }
                 if let error = engine.error { Text(error).foregroundStyle(.red) }
+                Toggle("Position insights", isOn: $insights)
+                if insights {
+                    let observations = PositionInsights.observations(in: position)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("On the board").font(.headline)
+                        if observations.isEmpty { Text("No clear undefended pieces or pawn-blocked bishops found.").foregroundStyle(.secondary) }
+                        ForEach(observations, id: \.self) { Text($0).font(.subheadline) }
+                    }.padding().background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+                }
+                DisclosureGroup("Candidate lines") {
                 if let move = moves.first {
                     Text("\(rank == 1 ? "Best move" : "Candidate move"): \(move.san)").font(.headline)
                 }
@@ -74,25 +85,15 @@ struct AnalysisView: View {
                     }
                 }.pickerStyle(.segmented)
                 VariationTable(moves: moves, rootFEN: position.fen, onSelect: playThrough)
-                HStack {
-                    Button("Previous", systemImage: "backward.end") { cursor -= 1 }
-                        .disabled(cursor == 0)
-                    Spacer()
-                    Text("\(cursor) ply").monospacedDigit()
-                    Spacer()
-                    Button("Next", systemImage: "forward.end") { if let first = moves.first { playThrough(first, line: moves, fen: position.fen) } }
-                        .disabled(moves.isEmpty)
-                        .accessibilityIdentifier("analysis-next")
                 }
                 Button("Return to original position") { history = [original]; cursor = 0; selected = nil }
                     .disabled(cursor == 0 && position == original)
-                Text("Tap a piece, then a highlighted square to play a move. Analysis follows the board automatically.")
-                    .font(.caption).foregroundStyle(.secondary)
                 SharePositionButton(position: position)
                 if let message { Text(message).font(.footnote).foregroundStyle(.red) }
             }.padding()
         }
-        .navigationTitle("Analysis")
+        .modifier(AppSurface()).navigationTitle("Analysis")
+        .toolbar { SettingsButton() }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             visible = true

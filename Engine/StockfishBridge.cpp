@@ -19,6 +19,8 @@
 #include "tune.h"
 #include "apiutil.h"
 #include <atomic>
+#include <cctype>
+#include <vector>
 #include <sstream>
 #include <cstdlib>
 #include <cstring>
@@ -92,6 +94,21 @@ extinctionPieceTypes = *
 stalemateValue = loss
 )ini");
             variants.parse_istream<false>(custom);
+            // Scharnagl numbering enumerates all 960 legal back ranks.
+            std::ostringstream starts;
+            for (int index = 0; index < 960; ++index) {
+                int n = index; std::string rank(8, ' ');
+                rank[(n % 4) * 2 + 1] = 'B'; n /= 4;
+                rank[(n % 4) * 2] = 'B'; n /= 4;
+                auto emptyFiles = [&] { std::vector<int> files; for (int f = 0; f < 8; ++f) if (rank[f] == ' ') files.push_back(f); return files; };
+                auto files = emptyFiles(); rank[files[n % 6]] = 'Q'; n /= 6;
+                files = emptyFiles(); int pair = 0;
+                for (int a = 0; a < 4; ++a) for (int b = a + 1; b < 5; ++b) if (pair++ == n) { rank[files[a]] = 'N'; rank[files[b]] = 'N'; }
+                files = emptyFiles(); rank[files[0]] = 'R'; rank[files[1]] = 'K'; rank[files[2]] = 'R';
+                std::string black = rank; for (char &ch : black) ch = char(std::tolower(ch));
+                starts << "[cv960" << index << ":chess]\nstartFen = " << black << "/pppppppp/8/8/8/8/PPPPPPPP/" << rank << " w KQkq - 0 1\n";
+            }
+            std::istringstream randomized(starts.str()); variants.parse_istream<false>(randomized);
             CommandLine::init(1, args);
             UCI::init(Options); Tune::init(); Options["Use NNUE"] = std::string("false");
             PSQT::init(variants.find("chess")->second); Bitboards::init(); Position::init();
@@ -108,13 +125,13 @@ extern "C" char* cv_rules_query(const char *variantName, const char *history) {
     // Call only after the UCI ready barrier for this variant. During a game, its tables stay read-only.
     std::string result;
     const std::string name = variantName ? variantName : "";
-    if (!initialized || (name != "chess" && name != "3check" && name != "kingofthehill" && name != "horde" && name != "crazyhouse" && name != "duck" && name != "atomic" && name != "antichess" && name != "cvfog" && name != "cvpawns" && name != "cvpawnrace")) result = "error\tUnsupported or uninitialized variant";
+    if (!initialized || (name != "chess" && name != "3check" && name != "kingofthehill" && name != "horde" && name != "crazyhouse" && name != "duck" && name != "atomic" && name != "antichess" && name != "cvfog" && name != "cvpawns" && name != "cvpawnrace" && !(name.rfind("cv960", 0) == 0 && variants.find(name) != variants.end()))) result = "error\tUnsupported or uninitialized variant";
     else if (std::string(Options["UCI_Variant"]) != name) result = "error\tThe engine has not prepared this variant";
     else {
         const Variant* variant = variants.find(name)->second;
         std::deque<StateInfo> states(1);
         Position position;
-        position.set(variant, variant->startFen, false, &states.back(), Threads.main());
+        position.set(variant, variant->startFen, name.rfind("cv960", 0) == 0, &states.back(), Threads.main());
         std::istringstream moves(history ? history : "");
         std::string token;
         bool valid = true;

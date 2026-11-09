@@ -51,7 +51,7 @@ public struct VariantSnapshot: Sendable {
         }
         placement = placement.replacingOccurrences(of: "*", with: "1")
         // The board view shares standard piece art, but variant legality always comes from Fairy-Stockfish.
-        var board = try Position(fen: "\(placement) \(turn.rawValue) \(parts[2]) \(parts[3]) \(parts[parts.count-2]) \(parts[parts.count-1])")
+        var board = try Position(fen: "\(placement) \(turn.rawValue) \(parts[2].allSatisfy { "KQkq-".contains($0) } ? parts[2] : "-") \(parts[3]) \(parts[parts.count-2]) \(parts[parts.count-1])")
         board.turn = turn
         let checks = parts.first { $0.range(of: #"^\d+\+\d+$"#, options: .regularExpression) != nil }
         return VariantSnapshot(fen: fen, board: board, moves: moves, status: status, inCheck: fields["check"] == "1", pockets: pockets, checksRemaining: checks, duckSquare: duckSquare, hidden: Set((fields["hidden"] ?? "").split(separator: ",").compactMap { Position.index(String($0)) }))

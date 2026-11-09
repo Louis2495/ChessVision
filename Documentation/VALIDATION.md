@@ -4,7 +4,7 @@ Target: Xcode 16+, Swift 5 language mode, iOS 17+. Work executed in Debian Linux
 
 ## Passed here
 
-- **54 portable Swift XCTest tests**, zero failures. Includes all 1,000 unique puzzles, every solution ply, all 3,865 opening lines/position keys, adaptive-rating behavior, PGN/SAN parsing, result aggregation, transpositions, invalid-import atomicity, repertoire branch matching, persistence codecs, variant FEN/pocket/counter parsing, prior FEN/grid/recognition tests and 585 SAN references across 159 positions.
+- **58 portable Swift XCTest tests**, zero failures. Includes all 1,000 unique puzzles, every solution ply, all 3,865 opening lines/position keys, adaptive-rating behavior, PGN/SAN parsing, result aggregation, transpositions, invalid-import atomicity, repertoire branch matching, persistence codecs, variant FEN/pocket/counter parsing, prior FEN/grid/recognition tests and 585 SAN references across 159 positions.
 - **1,366 native variant positions** compared with python-chess for standard, 3-Check, King of the Hill, Horde, Crazyhouse, Atomic and Antichess. Legal moves, move spelling, positions, castling, check counters and pockets matched. Includes 103 drops, 11 completed variant games and an explicit promoted-queen capture reverting to a pawn in Crazyhouse.
 - Actual Swift app models with real embedded Fairy-Stockfish passed: twelve game styles plus the no-kings Pawn Wars option, computer replies, White/Black play, takebacks, rating targets including below/above the limited-strength range, requested opening replies, persistent save/reload and transfer back to continuous Analysis. Linux shims only Combine observation; controller/model/rules/client source executes unchanged. No SwiftUI UI is emulated.
 - Duck compound turns (640 start moves, neutral blocker), no-kings pawn-race finish and Fog-of-War king capture passed native regressions. Atomic/Antichess SAN suffix conventions differ from python-chess; their move spelling and legal sets were compared independently of those suffixes.
@@ -30,3 +30,7 @@ The estimated puzzle and computer strengths are not calibrated Chess.com ratings
 4. Solve/skip/hint multi-ply puzzles and verify one rating update per attempt, progress restoration and estimated difficulty selection. Enter overlapping White/Black repertoire lines, train branches/transpositions and restart the app.
 5. On iPhone verify camera recognition/cancellation, memory/thermal behavior, icon appearance, board-image sharing and current recognition limitations. Obtain held-out labeled photos for remaining king/bishop and missed-piece failures.
 6. Review GPL/AGPL corresponding-source, public-service terms and App Store/privacy requirements before any production distribution. GitHub source publication does not mean the application has been released or approved for a store.
+
+## Version 0.5 checks
+
+All 960 Chess960 layouts matched python-chess piece placement and legal start moves. Five sampled histories matched legal moves and exercised five castling moves. Real app-model workflows passed all 13 styles, including a random Chess960 game, replies, takebacks, persistence and return to standard Analysis. Settings and generated audio have structural/resource/privacy checks; playback, SwiftUI appearance, screen readers, and iPhone layouts still require Xcode/device verification.

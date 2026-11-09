@@ -46,7 +46,7 @@ import Darwin
                 try require(model.start(), "New game did not start")
                 try await wait { !model.busy && model.snapshot != nil }
                 try require(model.error == nil && model.snapshot?.board.turn == .white, "Variant setup failed: \(mode)")
-                let move = (mode == .horde || mode == .duck) ? model.snapshot!.moves[0] : try model.snapshot!.move(named: "e4")
+                let move = (mode == .horde || mode == .duck || mode == .chess960) ? model.snapshot!.moves[0] : try model.snapshot!.move(named: "e4")
                 model.play(move)
                 try await wait { !model.busy }
                 try require(model.error == nil, "Computer reply failed: \(model.error ?? "")")
@@ -85,7 +85,7 @@ import Darwin
             try require(EngineController.shared.selectedVariant == "chess", "Analysis did not restore standard chess")
             EngineController.shared.stop(); try await wait { !EngineController.shared.running }
             try FileManager.default.removeItem(at: directory)
-            print("PASS: real feature models: persistent library, twelve game styles with computer replies, takebacks, opening requests, analysis handover.")
+            print("PASS: real feature models: persistent library, thirteen game styles with computer replies, takebacks, opening requests, analysis handover.")
             fflush(stdout); _exit(0)
         } catch {
             try? FileManager.default.removeItem(at: directory)

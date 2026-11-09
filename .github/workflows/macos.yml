@@ -24,6 +24,7 @@ jobs:
           python3 -m venv .build/variant-tools
           .build/variant-tools/bin/pip install chess==1.11.2
           .build/variant-tools/bin/python Scripts/test-variants.py
+          .build/variant-tools/bin/python Scripts/test-chess960.py
       - name: Swift and iOS build / tests
         run: bash Scripts/test-mac.sh
       - name: Preserve Xcode results

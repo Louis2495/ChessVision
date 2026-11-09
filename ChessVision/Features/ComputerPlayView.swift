@@ -29,6 +29,7 @@ import SwiftUI
         guard let target = Int(ratingText), (1...10000).contains(target) else { error = "Enter a target rating from 1 to 10000. Ratings above the supported range use full strength."; return false }
         game = SavedComputerGame(mode: mode, human: human, targetRating: target, openingID: mode == .normal ? requestedOpening?.id : nil)
         game?.pawnWarsKings = pawnWarsKings
+        if mode == .chess960 { game?.chess960Index = Int.random(in: 0..<960) }
         snapshot = nil; error = nil; library?.state.computer = game
         run(); return true
     }
@@ -133,7 +134,7 @@ struct ComputerPlayView: View {
                     } else if model.busy { ProgressView("Preparing the game…").frame(maxWidth: .infinity).padding(.vertical, 40) }
                     else { GameSetupForm(model: model, onStart: { _ = model.start() }) }
                 }.padding()
-            }.scrollDismissesKeyboard(.interactively).navigationTitle("Play computer")
+            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").toolbar { SettingsButton() }
             .toolbar { if model.game != nil { Button("New game") { settingUp = true } } }
             .sheet(isPresented: $settingUp) {
                 NavigationStack { ScrollView { GameSetupForm(model: model) { if model.start() { settingUp = false } }.padding() }.scrollDismissesKeyboard(.interactively).navigationTitle("New game").toolbar { Button("Cancel") { settingUp = false } } }

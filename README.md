@@ -1,6 +1,6 @@
 # ChessVision for iPhone
 
-A native SwiftUI chess app with five bottom tabs: **Board**, **Openings**, **Puzzles**, **My Repertoire**, and **Play**. Camera recognition, training, saved repertoire and computer games run locally. Opening explorer downloads public games only when you enter a username and request an import. No account, subscription or paid API is required.
+A native SwiftUI chess app with five bottom tabs: **Analysis**, **Openings**, **Puzzles**, **My Repertoire**, and **Play**. Camera recognition, training, saved repertoire and computer games run locally. Opening explorer downloads public games only when you enter a username and request an import. No account, subscription or paid API is required.
 
 **Build status:** prepared for Xcode 16+ and iOS 17+. This Linux environment cannot compile or launch an iOS UI. Portable Swift, actual C++/Swift engine workflows, all bundled puzzle/opening data and variant rules have been tested here. See [Validation](Documentation/VALIDATION.md) for executed versus unrun checks. Photo recognition remains experimental.
 
@@ -13,7 +13,7 @@ A native SwiftUI chess app with five bottom tabs: **Board**, **Openings**, **Puz
 
 ## The five tabs
 
-### Board and Analysis
+### Analysis
 
 Photograph a physical chessboard directly overhead with White's home rank at the bottom. Review/correct pieces as needed; orange uncertainty highlights are optional and do not block an otherwise valid position. Choose whose turn it is and explicitly set any castling/en passant state. Tap **Analyze with Stockfish**.
 
@@ -83,3 +83,11 @@ No App Store submission or distribution approval is implied. SDK/device validati
 ## Version 0.4
 
 Cleaner screens, an info button for privacy/licenses, illustrated promotion choices, faster provisional puzzle placement, a repertoire-training evaluation bar, and a new knight-and-lens icon. Play has a linked rating slider/number field and adds Duck, Atomic, Fog of War, Pawn Wars (kings optional, on by default), and Antichess. Opening imports tolerate incomplete records and can fall back to monthly PGN exports. See [training details](Documentation/TRAINING.md) for variant rules and limitations.
+
+## Version 0.5
+
+Analysis opens without a photograph: tap **Start analysis** to play from the normal starting position. Scanning remains available. Candidate lines are expandable; optional **Position insights** explains attacked/undefended pieces and bishops boxed in by friendly pawns. These are conservative board observations, not engine-proven tactical explanations.
+
+The gear button opens saved settings for system/light/dark display, Forest/Ocean/Plum accents, warm/cool/default backgrounds, Classic/Walnut/Slate boards and illustrated/traditional pieces. Optional music plays a bundled original classical-style piano prelude, loops quietly, mixes with other audio, and pauses outside the foreground. Regeneration source: `Scripts/generate-music.py`; no streaming or external recording is used.
+
+Play ordering: Normal, Crazyhouse, Fog of War, Chess960, 3-Check, King of the Hill, Atomic, Duck, Horde, Pawn Wars, Antichess, then both blindfold modes. Chess960 selects one of all 960 layouts for each new game and preserves it when saved. To castle in Chess960, move the king onto its rook.

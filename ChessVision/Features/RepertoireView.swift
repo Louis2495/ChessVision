@@ -7,7 +7,6 @@ struct RepertoireView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Save your opening lines, then train your moves on the board. Everything stays on this device.").font(.subheadline).foregroundStyle(.secondary)
                     NavigationLink { RepertoireTrainerView() } label: { Label("Train repertoire", systemImage: "brain.head.profile") }.disabled(library.state.repertoire.isEmpty)
                     Button { adding = true } label: { Label("Add a line", systemImage: "plus.circle") }
                 }
@@ -22,7 +21,7 @@ struct RepertoireView: View {
                         }
                     }.onDelete { offsets in library.state.repertoire.remove(atOffsets: offsets) }
                 }
-            }.scrollDismissesKeyboard(.interactively).navigationTitle("My Repertoire")
+            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("My Repertoire").toolbar { SettingsButton() }
             .toolbar { ToolbarItem(placement: .topBarTrailing) { EditButton() } }
             .sheet(isPresented: $adding) { RepertoireLineEditor() }
         }

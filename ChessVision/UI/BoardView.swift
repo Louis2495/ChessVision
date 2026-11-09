@@ -1,16 +1,22 @@
 import SwiftUI
 
 struct PieceView: View {
+    @AppStorage("pieceStyle") private var style = "Illustrated"
     var piece: Piece
     var body: some View {
+        Group {
+        if style == "Traditional" { Text(piece.glyph).font(.system(size: 42)).minimumScaleFactor(0.5).foregroundStyle(piece.side == .white ? Color.white : Color.black).shadow(color: .gray, radius: 0.5) } else {
         Image((piece.side == .white ? "w" : "b") + String(piece.kind).uppercased())
             .resizable().renderingMode(.original).scaledToFit()
             .shadow(color: .black.opacity(0.16), radius: 0.8, y: 1)
             .accessibilityLabel(piece.name)
+        }
+        }.accessibilityLabel(piece.name)
     }
 }
 
 struct BoardView: View {
+    @AppStorage("boardStyle") private var style = "Classic"
     var position: Position
     var uncertain: Set<Int> = []
     var selected: Int? = nil
@@ -31,7 +37,7 @@ struct BoardView: View {
                             let light = (index / 8 + index % 8).isMultiple(of: 2)
                             Button { onTap?(index) } label: {
                                 ZStack {
-                                    Rectangle().fill(light ? Color(red: 0.91, green: 0.89, blue: 0.82) : Color(red: 0.36, green: 0.47, blue: 0.40))
+                                    Rectangle().fill(light ? Color(red: 0.91, green: 0.89, blue: 0.82) : style == "Walnut" ? Color(red: 0.43, green: 0.28, blue: 0.18) : style == "Slate" ? Color(red: 0.32, green: 0.40, blue: 0.50) : Color(red: 0.36, green: 0.47, blue: 0.40))
                                     if !hidePieces && !obscured.contains(index), let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
                                     if duckSquare == index { Text("🦆").font(.system(size: cell * 0.65)).accessibilityLabel("Duck") }
                                     if obscured.contains(index) { Rectangle().fill(Color(white: 0.18).opacity(0.94)) }

@@ -74,8 +74,7 @@ struct OpeningExplorerView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("Explore anyone's openings").font(.title2.bold())
-                    Text("Import public games from Chess.com or Lichess. No login or password required.").font(.subheadline).foregroundStyle(.secondary)
+                    Text("Explore a player's public games.").font(.subheadline).foregroundStyle(.secondary)
                     Picker("Site", selection: $model.site) { ForEach(PublicChessSite.allCases) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
                     TextField("Public username", text: $model.username).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
                     Button { history = [.initial]; notation = []; model.load() } label: { Label("Load opening tree", systemImage: "arrow.down.circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(model.busy || !PublicGames.validUsername(model.username))
@@ -100,7 +99,7 @@ struct OpeningExplorerView: View {
                         Divider()
                     }
                 }.padding()
-            }.scrollDismissesKeyboard(.interactively).navigationTitle("Opening explorer")
+            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Opening explorer").toolbar { SettingsButton() }
             .onChange(of: model.filter) { _, _ in history = [.initial]; notation = []; model.refilter() }
         }
     }

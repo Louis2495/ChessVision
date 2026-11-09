@@ -35,7 +35,7 @@ struct PuzzleTrainingView: View {
                         if !puzzle.themes.isEmpty { Text(puzzle.themes.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) }
                     } else { ContentUnavailableView("Puzzle library unavailable", systemImage: "puzzlepiece", description: Text("Install the complete build to use the bundled puzzle library.")) }
                 }.padding()
-            }.navigationTitle("Puzzles")
+            }.modifier(AppSurface()).navigationTitle("Puzzles").toolbar { SettingsButton() }
             .onAppear { if puzzle == nil { nextPuzzle() } else { replyIfNeeded() } }
             .onDisappear { replyTask?.cancel() }
         }

@@ -183,3 +183,7 @@ Analysis has a **Candidate lines** toggle next to Position insights and Show not
 **New game** pushes a full options screen in Play, with normal back navigation and the complete rating/color/variant/opening controls. The finished-game result rectangle now dismisses when tapped, leaving the final board visible. It never opens setup, and tapping it also suppresses a pending automatic review presentation. Review game and the separate New game action remain available.
 
 Settings now includes two more conventional piece sets, **Chessnut** and **Celtic**, with 24 additional vector pieces. Existing styles and selections remain available. All asset source hashes and licenses are included; no conversion or download is required on a Mac.
+
+## Version 0.15.1 SwiftUI build correction
+
+The shared card and game-review suggestion backgrounds now use SwiftUI's view-builder background overload, with rounded clipping. This fixes the compiler error requiring ThemeCardBackground to conform to ShapeStyle. The remaining custom-background usages were audited; list row backgrounds accept views, and the remaining background-in-shape calls use colors or materials. GitHub's macOS workflow now compiles the iOS app before its longer native checks.

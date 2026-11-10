@@ -117,7 +117,7 @@ struct GameReviewView: View {
                         NavigationLink("Train \(line.name)") { RepertoireTrainerView(preferred: line.id) }
                     }
                 }.padding().frame(maxWidth: .infinity, alignment: .leading)
-                    .background(ThemeCardBackground(), in: RoundedRectangle(cornerRadius: 14))
+                    .background { ThemeCardBackground().clipShape(RoundedRectangle(cornerRadius: 14)) }
             }
         }
     }

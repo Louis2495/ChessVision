@@ -7,7 +7,7 @@ struct AppCard<Content: View>: View {
         VStack(alignment: .leading, spacing: 14) { content }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(ThemeCardBackground(), in: RoundedRectangle(cornerRadius: 18))
+            .background { ThemeCardBackground().clipShape(RoundedRectangle(cornerRadius: 18)) }
             .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
     }
 }

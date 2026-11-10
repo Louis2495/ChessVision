@@ -92,3 +92,11 @@ Linux checks cannot compile the iOS SDK, measure iPhone thermal/memory behavior,
 Source/project checks verify the complete Chessnut/Celtic vector assets and their original SVG SHA-256 values, bringing the additional sets to 60 verified pieces. A board-scale contact sheet of both new sets was visually checked for complete rendering, recognizable silhouettes and both colors.
 
 The iOS regression suite now covers a Candidate lines switch, no engine continuation through forward arrows/swipes, back/forward through played moves, dismissing a finished-game banner, and pushing a full New game screen without a sheet. These screen tests cannot run in this Linux environment and remain for Xcode/Simulator. Portable core tests and Swift source parsing remain available here.
+
+## Version 0.15.1 background overload audit
+
+Corrected both invalid `.background(ThemeCardBackground(), in: ...)` calls in AppCard and GameReviewView. Both now use a view-builder background and clip that view to the existing rounded shape. Audited all remaining background, fill, stroke and foreground-style calls, including all ThemeCardBackground references, for the same View/ShapeStyle mismatch.
+
+Project/asset validation, Swift source parsing and whitespace checks passed. The full macOS test script was attempted here and stopped because Xcode is not installed in this Linux environment. It cannot establish iOS SDK type checking locally. The GitHub macOS workflow now performs a simulator SDK build first, before the model/native tests, so SwiftUI type errors surface earlier.
+
+The 94 portable core tests passed with zero failures. Assertion-enabled native app workflows also passed: all thirteen single-board modes, linked Bughouse, premoves, import fixtures, history, personalized reviews, persistence and analysis handover. These native checks do not replace SwiftUI SDK compilation.

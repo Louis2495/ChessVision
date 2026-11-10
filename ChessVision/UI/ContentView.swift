@@ -15,45 +15,74 @@ import AVFoundation
     @State private var lastPhoto: UIImage?
     @State private var recognitionID = UUID()
     var body: some View {
-        NavigationStack(path:$path) {
-            ScrollView {
-                VStack(alignment:.leading,spacing:24) {
-                    if let board = position {
-                        EditorView(position:board, uncertain:uncertain, photo:photo, onRetake:takePhoto, onRecognizeAgain:{ if let lastPhoto {process(lastPhoto)} }).id(recognitionID)
-                    } else {
-                        Text("Find your next move").font(.title2.bold())
-                        Text("Play from the starting position, or scan a board.").foregroundStyle(.secondary)
-                        NavigationLink { AnalysisView(original: .initial) } label: {
-                            Label("Start analysis", systemImage: "play.fill").frame(maxWidth: .infinity).padding(10)
-                        }.buttonStyle(.borderedProminent).controlSize(.large)
-                        BoardView(position:.initial).accessibilityLabel("Example starting position")
-                        Button(action:takePhoto) { Label("Take Pic of Board",systemImage:"camera.fill").frame(maxWidth:.infinity).padding(10) }.buttonStyle(.bordered).controlSize(.large).disabled(processing)
-                        NavigationLink("Explore the board editor with an example",value:"example")
-                    }
-                }.padding().disabled(processing)
-            }.modifier(AppSurface()).navigationTitle("Analysis")
-            .navigationDestination(for:String.self) { _ in ScrollView { EditorView(position:.initial,uncertain:[],photo:nil,onRetake:takePhoto).padding() } }
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { SettingsButton() }; if position != nil { Button("Start over") { recognitionTask?.cancel(); recognitionTask=nil; processingID=UUID(); processing=false; position = nil; photo = nil; uncertain = []; lastPhoto = nil } } }
-            .fullScreenCover(isPresented:$camera) { CameraView(onPhoto:{ image in camera=false; lastPhoto=image; process(image) },onCancel:{camera=false}).ignoresSafeArea() }
-            .alert("ChessVision",isPresented:Binding(get:{message != nil},set:{if !$0 { message=nil }})) { Button("OK",role:.cancel) {} ; if lastPhoto != nil { Button("Retry recognition") { if let lastPhoto { process(lastPhoto) } } } } message:{Text(message ?? "")}
-            .overlay {
-                if processing {
-                    ZStack {
-                        Color.black.opacity(0.16).ignoresSafeArea()
-                        VStack(spacing: 14) {
-                            ProgressView(value: recognitionProgress)
-                            Text(recognitionProgress == 0 ? "Finding the board…" : "Recognizing squares: \(Int(recognitionProgress * 64))/64")
-                                .font(.subheadline)
-                            Button("Cancel") {
-                                recognitionTask?.cancel(); recognitionTask = nil
-                                processingID = UUID(); processing = false
-                            }
-                        }.padding(24).frame(maxWidth: 310).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+        NavigationStack(path: $path) {
+            screen
+                .navigationDestination(for: String.self) { _ in
+                    ScrollView {
+                        EditorView(position: .initial, uncertain: [], photo: nil, onRetake: takePhoto).padding()
                     }
                 }
-            }
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) { SettingsButton() }
+                    ToolbarItem(placement: .topBarLeading) {
+                        if position != nil { Button("Start over", action: startOver) }
+                    }
+                }
+                .fullScreenCover(isPresented: $camera) {
+                    CameraView(onPhoto: capturedPhoto, onCancel: { camera = false }).ignoresSafeArea()
+                }
+                .alert("ChessVision", isPresented: showingMessage) {
+                    Button("OK", role: .cancel) { }
+                    if lastPhoto != nil { Button("Retry recognition", action: retryRecognition) }
+                } message: { Text(message ?? "") }
+                .overlay {
+                    if processing {
+                        RecognitionProgressOverlay(progress: recognitionProgress, cancel: cancelRecognition)
+                    }
+                }
         }
     }
+    private var screen: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                if let board = position {
+                    EditorView(position: board, uncertain: uncertain, photo: photo,
+                               onRetake: takePhoto, onRecognizeAgain: retryRecognition).id(recognitionID)
+                } else {
+                    startingOptions
+                }
+            }.padding().disabled(processing)
+        }.modifier(AppSurface()).navigationTitle("Analysis")
+    }
+    private var startingOptions: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            Text("Find your next move").font(.title2.bold())
+            Text("Play from the starting position, or scan a board.").foregroundStyle(.secondary)
+            NavigationLink { AnalysisView(original: .initial) } label: {
+                Label("Start analysis", systemImage: "play.fill").frame(maxWidth: .infinity).padding(10)
+            }.buttonStyle(.borderedProminent).controlSize(.large)
+            BoardView(position: .initial).accessibilityLabel("Example starting position")
+            Button(action: takePhoto) {
+                Label("Take Pic of Board", systemImage: "camera.fill").frame(maxWidth: .infinity).padding(10)
+            }.buttonStyle(.bordered).controlSize(.large)
+            NavigationLink("Explore the board editor with an example", value: "example")
+        }
+    }
+    private var showingMessage: Binding<Bool> {
+        Binding(get: { message != nil }, set: { if !$0 { message = nil } })
+    }
+    private func cancelRecognition() {
+        recognitionTask?.cancel(); recognitionTask = nil
+        processingID = UUID(); processing = false
+    }
+    private func startOver() {
+        cancelRecognition()
+        position = nil; photo = nil; uncertain = []; lastPhoto = nil
+    }
+    private func capturedPhoto(_ image: UIImage) {
+        camera = false; lastPhoto = image; process(image)
+    }
+    private func retryRecognition() { if let lastPhoto { process(lastPhoto) } }
     private func takePhoto() {
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else { message="A camera is not available here. Use a physical iPhone to photograph a board. The example editor works in Simulator."; return }
         Task {
@@ -85,6 +114,29 @@ import AVFoundation
     }
 }
 
+private struct RecognitionProgressOverlay: View {
+    let progress: Double
+    let cancel: () -> Void
+    private var status: String {
+        if progress <= 0 { return "Finding the board…" }
+        let squares = Int(min(1, max(0, progress)) * 64)
+        return "Recognizing squares: \(squares)/64"
+    }
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.16).ignoresSafeArea()
+            VStack(spacing: 14) {
+                ProgressView(value: progress)
+                Text(verbatim: status).font(.subheadline)
+                Button("Cancel", action: cancel)
+            }
+            .padding(24)
+            .frame(maxWidth: 310)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+        }
+    }
+}
+
 struct EditorView: View {
     @State var position: Position
     @State var uncertain: Set<Int>
@@ -110,15 +162,7 @@ struct EditorView: View {
             }
             if !uncertain.isEmpty { Text("\(uncertain.count) uncertain squares are highlighted. You can analyze now, or tap a square to correct it.").foregroundStyle(.orange) }
             Picker("Whose turn?",selection:$position.turn) { ForEach(Side.allCases,id:\.self) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
-            DisclosureGroup("Game details: castling and en passant") {
-                Text("A photograph cannot establish these rights. All castling rights start off after recognition.").font(.caption).foregroundStyle(.secondary)
-                ForEach(["K","Q","k","q"],id:\.self) { right in
-                    Toggle(["K":"White kingside", "Q":"White queenside", "k":"Black kingside", "q":"Black queenside"][right]!,isOn:Binding(get:{position.castling.contains(right)},set:{ enabled in position.castling.removeAll{String($0)==right}; if enabled {position.castling += right} }))
-                }
-                TextField("En passant target, or -",text:$position.enPassant).textInputAutocapitalization(.never).autocorrectionDisabled()
-                Stepper("Halfmove clock: \(position.halfmove)",value:$position.halfmove,in:0...150)
-                Stepper("Fullmove: \(position.fullmove)",value:$position.fullmove,in:1...999)
-            }
+            gameDetails
             if !issues.isEmpty { VStack(alignment:.leading,spacing:6) { ForEach(issues,id:\.self) { Text($0).font(.footnote).foregroundStyle(.red) } } }
             Button { showAnalysis=true } label:{Label("Analyze with Stockfish",systemImage:"sparkle.magnifyingglass").frame(maxWidth:.infinity).padding(8)}.buttonStyle(.borderedProminent).controlSize(.large)
                 .disabled(!issues.isEmpty)
@@ -127,21 +171,37 @@ struct EditorView: View {
             if let onRecognizeAgain {Button("Recognize photo again",action:onRecognizeAgain)}
             Button("Retake photograph",action:onRetake)
         }
-        .sheet(isPresented:Binding(get:{editingSquare != nil},set:{if !$0 {editingSquare=nil}})) {
-            if let index = editingSquare {
-                VStack(spacing:20) {
-                    Text("Correct \(Position.name(index))").font(.title2.bold())
-                    LazyVGrid(columns:Array(repeating:GridItem(.flexible()),count:6)) {
-                        ForEach(Array("KQRBNPkqrbnp"),id:\.self) { symbol in
-                            Button { position.squares[index]=Piece(symbol); uncertain.remove(index); editingSquare=nil; selected=nil } label: { PieceView(piece:Piece(symbol)).frame(width:42,height:48) }.accessibilityLabel(Piece(symbol).name)
-                        }
-                    }
-                    Button("Empty square") {position.squares[index]=nil; uncertain.remove(index); editingSquare=nil; selected=nil}
-                    if position.squares[index] != nil { Button("Move this piece…") {movingFrom=index; editingSquare=nil} }
-                    Button("Cancel",role:.cancel) {editingSquare=nil; selected=nil}
-                }.padding().presentationDetents([.medium])
-            }
-        }
+        .sheet(isPresented: editingPresented) { correctionSheet }
         .navigationDestination(isPresented:$showAnalysis) { AnalysisView(original:position) }
     }
+    private var editingPresented: Binding<Bool> {
+        Binding(get: { editingSquare != nil }, set: { if !$0 { editingSquare = nil } })
+    }
+    @ViewBuilder private var correctionSheet: some View {
+        if let index = editingSquare {
+            VStack(spacing:20) {
+                Text("Correct \(Position.name(index))").font(.title2.bold())
+                LazyVGrid(columns:Array(repeating:GridItem(.flexible()),count:6)) {
+                    ForEach(Array("KQRBNPkqrbnp"),id:\.self) { symbol in
+                        Button { position.squares[index]=Piece(symbol); uncertain.remove(index); editingSquare=nil; selected=nil } label: { PieceView(piece:Piece(symbol)).frame(width:42,height:48) }.accessibilityLabel(Piece(symbol).name)
+                    }
+                }
+                Button("Empty square") {position.squares[index]=nil; uncertain.remove(index); editingSquare=nil; selected=nil}
+                if position.squares[index] != nil { Button("Move this piece…") {movingFrom=index; editingSquare=nil} }
+                Button("Cancel",role:.cancel) {editingSquare=nil; selected=nil}
+            }.padding().presentationDetents([.medium])
+        }
+    }
+    private var gameDetails: some View {
+        DisclosureGroup("Game details: castling and en passant") {
+            Text("A photograph cannot establish these rights. All castling rights start off after recognition.").font(.caption).foregroundStyle(.secondary)
+            ForEach(["K","Q","k","q"],id:\.self) { right in
+                Toggle(["K":"White kingside", "Q":"White queenside", "k":"Black kingside", "q":"Black queenside"][right]!,isOn:Binding(get:{position.castling.contains(right)},set:{ enabled in position.castling.removeAll{String($0)==right}; if enabled {position.castling += right} }))
+            }
+            TextField("En passant target, or -",text:$position.enPassant).textInputAutocapitalization(.never).autocorrectionDisabled()
+            Stepper("Halfmove clock: \(position.halfmove)",value:$position.halfmove,in:0...150)
+            Stepper("Fullmove: \(position.fullmove)",value:$position.fullmove,in:1...999)
+        }
+    }
+
 }

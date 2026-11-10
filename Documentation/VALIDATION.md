@@ -34,3 +34,7 @@ The estimated puzzle and computer strengths are not calibrated Chess.com ratings
 ## Version 0.5 checks
 
 All 960 Chess960 layouts matched python-chess piece placement and legal start moves. Five sampled histories matched legal moves and exercised five castling moves. Real app-model workflows passed all 13 styles, including a random Chess960 game, replies, takebacks, persistence and return to standard Analysis. Settings and generated audio have structural/resource/privacy checks; playback, SwiftUI appearance, screen readers, and iPhone layouts still require Xcode/device verification.
+
+## SwiftUI type-checking fix
+
+The recognition screen is split into separate screen, starting options, progress overlay and editor builders. The progress label is an explicit String rendered with Text(verbatim:), outside the large view-builder expression. Toolbar items are explicit; board cells, colors and accessibility labels also have separate type-checking boundaries. Swift syntax parsing and project/resource checks passed. The reported Xcode type-checking timeout cannot be reproduced or confirmed resolved on Linux; a full Xcode build is still required. No new chess-rule behavior was introduced.

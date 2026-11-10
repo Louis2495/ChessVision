@@ -34,31 +34,7 @@ struct BoardView: View {
                     HStack(spacing: 0) {
                         ForEach(0..<8, id: \.self) { col in
                             let index = flipped ? 63 - (row * 8 + col) : row * 8 + col
-                            let light = (index / 8 + index % 8).isMultiple(of: 2)
-                            Button { onTap?(index) } label: {
-                                ZStack {
-                                    Rectangle().fill(light ? Color(red: 0.91, green: 0.89, blue: 0.82) : style == "Walnut" ? Color(red: 0.43, green: 0.28, blue: 0.18) : style == "Slate" ? Color(red: 0.32, green: 0.40, blue: 0.50) : Color(red: 0.36, green: 0.47, blue: 0.40))
-                                    if !hidePieces && !obscured.contains(index), let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
-                                    if duckSquare == index { Text("🦆").font(.system(size: cell * 0.65)).accessibilityLabel("Duck") }
-                                    if obscured.contains(index) { Rectangle().fill(Color(white: 0.18).opacity(0.94)) }
-                                    if legalTargets.contains(index) {
-                                        if position.squares[index] == nil { Circle().fill(.black.opacity(0.20)).frame(width: cell * 0.24, height: cell * 0.24) }
-                                        else { Circle().strokeBorder(.cyan.opacity(0.8), lineWidth: 3).padding(2) }
-                                    }
-                                    if uncertain.contains(index) { Rectangle().strokeBorder(Color.orange, lineWidth: 3) }
-                                    if selected == index { Rectangle().strokeBorder(Color.cyan, lineWidth: 3) }
-                                }
-                                .overlay(alignment: .topLeading) {
-                                    if col == 0 { Text(String(8 - index / 8)).padding(2).coordinateStyle(cell: cell, light: light) }
-                                }
-                                .overlay(alignment: .bottomTrailing) {
-                                    if row == 7 { Text(String(Position.name(index).prefix(1))).padding(2).coordinateStyle(cell: cell, light: light) }
-                                }
-                                .frame(width: cell, height: cell)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("\(Position.name(index)), \(hidePieces || obscured.contains(index) ? "hidden" : (position.squares[index]?.name ?? "empty"))\(uncertain.contains(index) ? ", uncertain recognition" : "")")
-                            .accessibilityIdentifier("square-\(Position.name(index))")
+                            square(index: index, row: row, col: col, cell: cell)
                         }
                     }
                 }
@@ -67,6 +43,49 @@ struct BoardView: View {
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
+    private func squareColor(light: Bool) -> Color {
+        if light { return Color(red: 0.91, green: 0.89, blue: 0.82) }
+        switch style {
+        case "Walnut": return Color(red: 0.43, green: 0.28, blue: 0.18)
+        case "Slate": return Color(red: 0.32, green: 0.40, blue: 0.50)
+        default: return Color(red: 0.36, green: 0.47, blue: 0.40)
+        }
+    }
+    private func squareLabel(_ index: Int) -> String {
+        let contents: String
+        if hidePieces || obscured.contains(index) { contents = "hidden" }
+        else { contents = position.squares[index]?.name ?? "empty" }
+        let warning = uncertain.contains(index) ? ", uncertain recognition" : ""
+        return "\(Position.name(index)), \(contents)\(warning)"
+    }
+    private func square(index: Int, row: Int, col: Int, cell: CGFloat) -> some View {
+        let light = (index / 8 + index % 8).isMultiple(of: 2)
+        return Button { onTap?(index) } label: {
+            ZStack {
+                Rectangle().fill(squareColor(light: light))
+                if !hidePieces && !obscured.contains(index), let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
+                if duckSquare == index { Text("🦆").font(.system(size: cell * 0.65)).accessibilityLabel("Duck") }
+                if obscured.contains(index) { Rectangle().fill(Color(white: 0.18).opacity(0.94)) }
+                if legalTargets.contains(index) {
+                    if position.squares[index] == nil { Circle().fill(.black.opacity(0.20)).frame(width: cell * 0.24, height: cell * 0.24) }
+                    else { Circle().strokeBorder(.cyan.opacity(0.8), lineWidth: 3).padding(2) }
+                }
+                if uncertain.contains(index) { Rectangle().strokeBorder(Color.orange, lineWidth: 3) }
+                if selected == index { Rectangle().strokeBorder(Color.cyan, lineWidth: 3) }
+            }
+            .overlay(alignment: .topLeading) {
+                if col == 0 { Text(String(8 - index / 8)).padding(2).coordinateStyle(cell: cell, light: light) }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if row == 7 { Text(String(Position.name(index).prefix(1))).padding(2).coordinateStyle(cell: cell, light: light) }
+            }
+            .frame(width: cell, height: cell)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(squareLabel(index))
+        .accessibilityIdentifier("square-\(Position.name(index))")
+    }
+
 }
 
 private extension View {

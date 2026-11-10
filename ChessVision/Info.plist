@@ -24,6 +24,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Photograph a physical chessboard to reconstruct its position on your iPhone. Photos stay on this device.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save a shared board image or game animation to Photos when you choose Save Image.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

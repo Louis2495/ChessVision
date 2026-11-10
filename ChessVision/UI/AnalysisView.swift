@@ -1,5 +1,10 @@
 import SwiftUI
 
+private struct InsightRequest: Hashable {
+    var fen: String
+    var engine: EngineLine?
+}
+
 private struct NotationRequest: Hashable {
     var fen: String
     var lines: [EngineLine]
@@ -14,6 +19,11 @@ struct AnalysisView: View {
     @State private var cursor = 0
     @State private var rank = 1
     @AppStorage("positionInsights") private var insights = false
+    @AppStorage("showGameNotation") private var showGameNotation = false
+    @State private var observations: [String] = []
+    @State private var insightFEN: String?
+    @State private var recording = GameRecording()
+    @State private var recordingKey: [String] = []
     @State private var visible = false
     @State private var selected: Int?
     @State private var promotions: [ChessMove] = []
@@ -26,6 +36,7 @@ struct AnalysisView: View {
         self.original = original
         _history = State(initialValue: [original])
     }
+    private var gameHistory: [Position] { Array(history.prefix(cursor + 1)) }
     private var position: Position { history[cursor] }
     private var liveLines: [EngineLine] { engine.analyzedFEN == position.fen ? engine.lines : [] }
     private var principal: EngineLine? { liveLines.first { $0.rank == 1 } }
@@ -70,27 +81,14 @@ struct AnalysisView: View {
                 if let error = engine.error { Text(error).foregroundStyle(.red) }
                 Toggle("Position insights", isOn: $insights)
                 if insights {
-                    let observations = PositionInsights.observations(in: position)
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("On the board").font(.headline)
-                        if observations.isEmpty { Text("No clear undefended pieces or pawn-blocked bishops found.").foregroundStyle(.secondary) }
-                        ForEach(observations, id: \.self) { Text($0).font(.subheadline) }
-                    }.padding().background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+                    insightCard
                 }
-                DisclosureGroup("Candidate lines") {
-                if let move = moves.first {
-                    Text("\(rank == 1 ? "Best move" : "Candidate move"): \(move.san)").font(.headline)
-                }
-                Picker("Variation", selection: $rank) {
-                    ForEach(1...3, id: \.self) { number in
-                        Text("\(number) · \(liveLines.first { $0.rank == number }?.evaluation ?? "—")").tag(number)
-                    }
-                }.pickerStyle(.segmented)
-                VariationTable(moves: moves, rootFEN: position.fen, onSelect: playThrough)
-                }
+                Toggle("Show notation", isOn: $showGameNotation)
+                if showGameNotation { recordedGame }
+                candidateLines
                 Button("Return to original position") { history = [original]; cursor = 0; selected = nil }
                     .disabled(cursor == 0 && position == original)
-                SharePositionButton(position: position)
+                SharePositionButton(position: position, game: gameHistory)
                 if let message { Text(message).font(.footnote).foregroundStyle(.red) }
             }.padding()
         }
@@ -120,6 +118,23 @@ struct AnalysisView: View {
             guard !Task.isCancelled else { return }
             notation = formatted; notationFEN = root.fen
         }
+        .task(id: insights ? InsightRequest(fen: position.fen, engine: principal) : nil) {
+            guard insights else { observations = []; insightFEN = nil; return }
+            let board = position, line = principal
+            let worker = Task.detached(priority: .userInitiated) { PositionInsights.observations(in: board, engine: line) }
+            let result = await withTaskCancellationHandler(operation: { await worker.value }, onCancel: { worker.cancel() })
+            guard !Task.isCancelled else { return }
+            observations = result; insightFEN = board.fen
+        }
+        .task(id: gameHistory.map(\.fen)) {
+            let frames = gameHistory
+            let worker = Task.detached(priority: .userInitiated) { try GameRecording.build(from: frames) }
+            do {
+                let result = try await withTaskCancellationHandler(operation: { try await worker.value }, onCancel: { worker.cancel() })
+                guard !Task.isCancelled else { return }
+                recording = result; recordingKey = frames.map(\.fen)
+            } catch { }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active && visible { engine.analyze(position) } else if visible { engine.stopAnalysis() }
         }
@@ -128,6 +143,44 @@ struct AnalysisView: View {
             PromotionPicker(side: position.turn, kinds: promotions.compactMap(\.promotion)) { kind in
                 if let move = promotions.first(where: { $0.promotion == kind }) { play(move) }
                 promotions = []
+            }
+        }
+    }
+    private var insightCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Position assessment").font(.headline)
+            if insightFEN != position.fen { ProgressView("Assessing the position…") }
+            else if observations.isEmpty { Text("No clear features stand out yet. Let the engine deepen and compare candidate plans.").foregroundStyle(.secondary) }
+            else {
+                ForEach(Array(observations.prefix(6)), id: \.self) { Text($0).font(.subheadline) }
+                if observations.count > 6 {
+                    DisclosureGroup("More observations") {
+                        ForEach(Array(observations.dropFirst(6)), id: \.self) { Text($0).font(.subheadline).padding(.vertical, 4) }
+                    }
+                }
+            }
+        }.padding().background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+    }
+    private var candidateLines: some View {
+        DisclosureGroup("Candidate lines") {
+            if let move = moves.first {
+                Text("\(rank == 1 ? "Best move" : "Candidate move"): \(move.san)").font(.headline)
+            }
+            Picker("Variation", selection: $rank) {
+                ForEach(1...3, id: \.self) { number in
+                    Text("\(number) · \(liveLines.first { $0.rank == number }?.evaluation ?? "—")").tag(number)
+                }
+            }.pickerStyle(.segmented)
+            VariationTable(moves: moves, rootFEN: position.fen, onSelect: playThrough)
+        }
+    }
+    @ViewBuilder private var recordedGame: some View {
+        if recordingKey != gameHistory.map(\.fen) { ProgressView("Preparing notation…") }
+        else if recording.moves.isEmpty { Text("Play a move to start the game notation.").foregroundStyle(.secondary) }
+        else {
+            if recording.startIndex > 0 { Text("Moves since the last manual position change").font(.caption).foregroundStyle(.secondary) }
+            VariationTable(moves: recording.moves, rootFEN: position.fen) { move, _, _ in
+                cursor = recording.startIndex + move.id + 1
             }
         }
     }

@@ -106,14 +106,6 @@ struct ComputerPlayView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    NavigationLink {
-                        PuzzleTrainingView()
-                            .onAppear { model.pause() }
-                            .onDisappear { if visible && scenePhase == .active { model.activate(library) } }
-                    } label: {
-                        Label("Puzzle training", systemImage: "puzzlepiece.extension").font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding()
-                            .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-                    }
                     if let game = model.game, let snapshot = model.snapshot {
                         HStack { Text(game.mode.title).font(.headline); Spacer(); Text("Target ≈ \(game.targetRating)").font(.subheadline).foregroundStyle(.secondary) }
                         HStack { Text("You play \(game.human.title)"); Spacer(); TurnBadge(side: snapshot.board.turn) }

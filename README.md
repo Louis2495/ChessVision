@@ -1,6 +1,6 @@
 # ChessVision for iPhone
 
-A native SwiftUI chess app with four bottom tabs: **Analysis**, **Play**, **Openings**, and **Clock**. Camera recognition, training, saved repertoire and computer games run locally. Opening explorer downloads public games only when you enter a username and request an import. No account, subscription or paid API is required.
+A native SwiftUI chess app with five bottom tabs: **Analysis**, **Play**, **Puzzles**, **Openings**, and **Clock**. Camera recognition, training, saved repertoire and computer games run locally. Opening explorer downloads public games only when you enter a username and request an import. No account, subscription or paid API is required.
 
 **Build status:** prepared for Xcode 16+ and iOS 17+. This Linux environment cannot compile or launch an iOS UI. Portable Swift, actual C++/Swift engine workflows, all bundled puzzle/opening data and variant rules have been tested here. See [Validation](Documentation/VALIDATION.md) for executed versus unrun checks. Photo recognition remains experimental.
 
@@ -117,3 +117,13 @@ Clock includes 1+0, 2+1, 3+0, 3+2, 5+0, 5+3, 10+0, 10+5, 15+10 and 30+0 presets,
 Finished computer games display a large **White wins / Black wins / Draw** button on the board; tapping it opens new-game setup. Blindfold text-only games show the same large result without revealing a board. Computer Duck turns visibly move the piece, wait half a second, then place the duck. Interrupted previews are canceled without partially saving a turn.
 
 The artwork has been refreshed to a cream king on teal and a soft yellow baby duckling.
+
+## Version 0.9 assessment, notation and animated sharing
+
+The bottom bar is **Analysis → Play → Puzzles → Openings → Clock**. Puzzles is a dedicated tab again. Clock setup has a small centered **Start** button without the explanatory paragraph.
+
+Position insights now assess material, checks and mate, attacked/loose pieces, pins, skewers and double attacks, isolated/doubled/passed pawns, promotion races, central pawn space, the bishop pair, limited mobility, rook files and seventh-rank activity, knight outposts, pawn shelter, development/castling and endgame king activity. Current Stockfish evaluation and its main continuation provide additional context. Observations are ranked; the top six appear immediately and the rest are expandable. They are board-based observations and engine context, not a claim that every geometric threat wins material.
+
+**Show notation** displays the actual played line up to the selected position in White/Black columns, separately from engine candidates. It respects the current branch, move numbers and custom starts. A manual position/turn edit starts a fresh notation segment.
+
+After playing a move, **Share position → Share game GIF** exports an animated GIF of the recorded positions through the current point. It loops, pauses at the beginning/end, follows the selected board/piece styles, supports cancellation, and removes temporary files when sharing finishes. Still-image and FEN sharing remain available. GIF export uses Apple's ImageIO and awaits native Xcode tests; it cannot be executed in Linux.

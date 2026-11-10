@@ -96,11 +96,14 @@ private struct ClockSetupView: View {
                     }
                 }.listRowBackground(ThemeCardBackground())
                 Section {
-                    Button("Start a new clock") {
-                        let control = custom ? ClockTimeControl(seconds: minutes * 60 + seconds, increment: increment) : ClockTimeControl.presets[selected]
-                        apply(control); dismiss()
-                    }.disabled(custom && minutes * 60 + seconds == 0)
-                    Text("Starts fresh and resets both timers. The running clock continues if you switch tabs or briefly leave the app.").font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Spacer()
+                        Button("Start") {
+                            let control = custom ? ClockTimeControl(seconds: minutes * 60 + seconds, increment: increment) : ClockTimeControl.presets[selected]
+                            apply(control); dismiss()
+                        }.buttonStyle(.borderedProminent).controlSize(.small).disabled(custom && minutes * 60 + seconds == 0)
+                        Spacer()
+                    }
                 }.listRowBackground(ThemeCardBackground())
             }.modifier(AppSurface()).navigationTitle("Time control").toolbar { Button("Cancel") { dismiss() } }
         }

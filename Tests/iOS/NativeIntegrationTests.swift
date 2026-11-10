@@ -2,6 +2,7 @@ import XCTest
 import CoreML
 import Vision
 import UIKit
+import ImageIO
 @testable import ChessVision
 
 final class NativeIntegrationTests: XCTestCase {
@@ -85,5 +86,25 @@ final class NativeIntegrationTests: XCTestCase {
         let image = try XCTUnwrap(BoardImageExporter.image(for: .initial))
         XCTAssertEqual(image.cgImage?.width, 1120)
         XCTAssertGreaterThan(try XCTUnwrap(image.pngData()).count, 10000)
+    }
+}
+
+extension NativeIntegrationTests {
+    @MainActor func testAnimatedGameGIFHasEveryFrameAndLoops() async throws {
+        let start = Position.initial
+        let after = try start.playing(start.move(forSAN: "e4"))
+        let url = try await BoardImageExporter.gif(for: [start, after])
+        defer { try? FileManager.default.removeItem(at: url) }
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil))
+        XCTAssertEqual(CGImageSourceGetCount(source), 2)
+        let first = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        let second = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 1, nil))
+        XCTAssertNotEqual(UIImage(cgImage: first).pngData(), UIImage(cgImage: second).pngData())
+        let properties = try XCTUnwrap(CGImageSourceCopyProperties(source, nil) as? [String: Any])
+        let gif = try XCTUnwrap(properties[kCGImagePropertyGIFDictionary as String] as? [String: Any])
+        XCTAssertEqual(gif[kCGImagePropertyGIFLoopCount as String] as? Int, 0)
+        let frame = try XCTUnwrap(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any])
+        let timing = try XCTUnwrap(frame[kCGImagePropertyGIFDictionary as String] as? [String: Any])
+        XCTAssertGreaterThan(timing[kCGImagePropertyGIFDelayTime as String] as? Double ?? 0, 0)
     }
 }

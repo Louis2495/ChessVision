@@ -56,3 +56,9 @@ The existing portable core suite passed all 58 tests after adding the appearance
 ## Version 0.8 clock and game-flow checks
 
 63 portable Swift tests passed, including new elapsed-time/increment, inactive taps, pause/resume, flagging without increment resurrection, background elapsed time, and Duck preview castling/en-passant/promotion regressions. The real app-model suite passed with native assertions enabled: all 13 game styles, multi-turn 3-Check, measured half-second computer Duck staging, cancellation during the preview and safe resumption without a half-saved turn. UI tests were updated for four-tab navigation, combined opening destinations and the clock. These iOS UI tests, idle-timer behavior and visual layouts remain unrun on Linux.
+
+## Version 0.9 assessment and game recording
+
+68 portable tests passed. New tests cover pins/open files, independent pawn-structure findings, pawn forks, engine-plan wording, ordinary opening priorities, custom-start move numbers, branching and a recording reset after a manual turn edit. Existing recognition, legal move, puzzle and clock tests also pass. iOS tests now decode a generated GIF, check frame count, distinct frames, looping/timing, and exercise the notation toggle/GIF menu. Those Apple ImageIO/UIKit/UI tests remain unrun in Linux; only source syntax and project/resource checks can run here.
+
+After adding dead-material and 50-move-claim assessment, the focused 10-test insight suite also passed. GIF frame creation and rendering still require the prepared native test on a Mac.

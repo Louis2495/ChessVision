@@ -29,12 +29,11 @@ final class ChessVisionUITests: XCTestCase {
 extension ChessVisionUITests {
     func testBottomTabsAndNewTrainingFlows() {
         let app = XCUIApplication(); app.launch()
-        for title in ["Analysis", "Play", "Openings", "Clock"] { XCTAssertTrue(app.tabBars.buttons[title].waitForExistence(timeout: 5)) }
+        for title in ["Analysis", "Play", "Puzzles", "Openings", "Clock"] { XCTAssertTrue(app.tabBars.buttons[title].waitForExistence(timeout: 5)) }
         app.tabBars.buttons["Openings"].tap()
         app.buttons["Research"].tap()
         XCTAssertTrue(app.textFields["Public username"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Play"].tap()
-        app.buttons["Puzzle training"].tap()
+        app.tabBars.buttons["Puzzles"].tap()
         XCTAssertTrue(app.staticTexts["Your training estimate"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Hint"].exists)
         app.tabBars.buttons["Openings"].tap()
@@ -81,7 +80,7 @@ extension ChessVisionUITests {
         if !insights.isHittable { app.swipeUp() }
         XCTAssertTrue(insights.exists)
         if insights.value as? String == "0" { insights.tap() }
-        XCTAssertTrue(app.staticTexts["On the board"].exists)
+        XCTAssertTrue(app.staticTexts["Position assessment"].exists)
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Appearance"].exists)
@@ -89,9 +88,9 @@ extension ChessVisionUITests {
 }
 
 extension ChessVisionUITests {
-    func testFourTabOrderAndClock() {
+    func testFiveTabOrderAndClock() {
         let app = XCUIApplication(); app.launch()
-        XCTAssertEqual(app.tabBars.buttons.allElementsBoundByIndex.map(\.label), ["Analysis", "Play", "Openings", "Clock"])
+        XCTAssertEqual(app.tabBars.buttons.allElementsBoundByIndex.map(\.label), ["Analysis", "Play", "Puzzles", "Openings", "Clock"])
         app.tabBars.buttons["Clock"].tap()
         XCTAssertTrue(app.buttons["clock-w"].waitForExistence(timeout: 5))
         app.buttons["clock-w"].tap()
@@ -101,5 +100,22 @@ extension ChessVisionUITests {
         XCTAssertTrue(app.buttons["Resume"].exists)
         app.buttons["Time control"].tap()
         XCTAssertTrue(app.switches["Custom time control"].waitForExistence(timeout: 5))
+    }
+}
+
+extension ChessVisionUITests {
+    func testPlayedNotationAndGIFShareOption() {
+        let app = XCUIApplication(); app.launch()
+        app.buttons["square-e2"].tap(); app.buttons["square-e4"].tap()
+        let insights = app.switches["Position insights"]
+        if insights.value as? String == "1" { insights.tap() }
+        let notation = app.switches["Show notation"]
+        for _ in 0..<8 { if notation.isHittable { break }; app.swipeUp() }
+        if notation.value as? String == "0" { notation.tap() }
+        XCTAssertTrue(app.buttons["Move 1, White, e4"].waitForExistence(timeout: 5))
+        let share = app.buttons["Share position"]
+        for _ in 0..<5 { if share.isHittable { break }; app.swipeUp() }
+        share.tap()
+        XCTAssertTrue(app.buttons["Share game GIF"].waitForExistence(timeout: 5))
     }
 }

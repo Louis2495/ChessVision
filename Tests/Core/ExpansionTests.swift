@@ -147,7 +147,7 @@ final class ExpansionTests: XCTestCase {
         state.computer?.notation = ["e4"]
         let decoded = try JSONDecoder().decode(LibraryState.self, from: JSONEncoder().encode(state))
         XCTAssertEqual(decoded.repertoire.first?.name, "Italian"); XCTAssertEqual(decoded.computer?.notation, ["e4"])
-        XCTAssertEqual(GameMode.allCases.count, 13); XCTAssertEqual(GameMode.blindText.variant, "chess")
+        XCTAssertEqual(GameMode.allCases.count, 14); XCTAssertEqual(GameMode.blindText.variant, "chess")
         XCTAssertEqual(GameMode.horde.variant, "horde"); XCTAssertEqual(GameMode.crazyhouse.variant, "crazyhouse")
     }
     func testPublicGameExportDecodingAndUsernameValidation() throws {

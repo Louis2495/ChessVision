@@ -139,3 +139,21 @@ extension ChessVisionUITests {
         XCTAssertTrue(app.navigationBars["Game history"].waitForExistence(timeout: 5))
     }
 }
+
+extension ChessVisionUITests {
+    func testBughouseRequiresLandscapeAndShowsTwoBoards() {
+        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Play"].tap()
+        if app.navigationBars["Game review"].waitForExistence(timeout: 2) { app.navigationBars.buttons["Done"].tap() }
+        if app.buttons["New game"].exists { app.buttons["New game"].tap() }
+        app.buttons["game-style"].tap(); app.buttons["Bughouse"].tap()
+        app.buttons["Set up Bughouse"].tap()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let start = app.buttons["Start Bughouse"]
+        for _ in 0..<8 { if start.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(start.waitForExistence(timeout: 5)); start.tap()
+        XCTAssertTrue(app.otherElements["bughouse-board-A"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.otherElements["bughouse-board-B"].exists)
+        app.buttons["Close"].tap()
+        XCUIDevice.shared.orientation = .portrait
+    }
+}

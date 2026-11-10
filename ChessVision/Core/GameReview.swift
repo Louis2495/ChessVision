@@ -73,11 +73,13 @@ public struct CompletedGame: Codable, Identifiable, Sendable {
     public var finishedAt: Date
     public var positions: [String] = []
     public var review: GameReview?
+    public var bughouse: BughouseMatch?
+    public var partnerPositions: [String]?
     public init(game: SavedComputerGame, result: String, now: Date = Date()) {
         self.id = game.id ?? UUID(); self.game = game; self.result = result; self.finishedAt = now
     }
-    public var humanMoveCount: Int { game.human == .white ? (game.moves.count + 1) / 2 : game.moves.count / 2 }
-    public var resultTitle: String { result == "white" ? "White wins" : result == "black" ? "Black wins" : "Draw" }
+    public var humanMoveCount: Int { if let bughouse { return bughouse.events.filter { $0.board == 0 && $0.side == bughouse.config.human }.count }; return game.human == .white ? (game.moves.count + 1) / 2 : game.moves.count / 2 }
+    public var resultTitle: String { if let bughouse { return bughouse.resultTitle }; return result == "white" ? "White wins" : result == "black" ? "Black wins" : "Draw" }
 }
 public enum GameReviewLogic {
     public static func signature(_ lines: [RepertoireLine]) -> String {

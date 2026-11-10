@@ -100,11 +100,12 @@ public enum RepertoireTraining {
 }
 
 public enum GameMode: String, CaseIterable, Codable, Identifiable, Sendable {
-    case normal, crazyhouse, fogOfWar, chess960, threeCheck, kingOfTheHill, atomic, duck, horde, pawnWars, antichess, blindBoard, blindText
+    case normal, crazyhouse, fogOfWar, chess960, threeCheck, kingOfTheHill, atomic, duck, horde, pawnWars, antichess, bughouse, blindBoard, blindText
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .chess960: return "Chess960"
+        case .bughouse: return "Bughouse"
         case .normal: return "Normal"
         case .blindBoard: return "Blindfold · empty board"
         case .blindText: return "Blindfold · text only"
@@ -120,10 +121,11 @@ public enum GameMode: String, CaseIterable, Codable, Identifiable, Sendable {
         }
     }
     public var variant: String {
-        switch self { case .chess960: return "cv9600"; case .threeCheck: return "3check"; case .kingOfTheHill: return "kingofthehill"; case .horde: return "horde"; case .crazyhouse: return "crazyhouse"; case .duck: return "duck"; case .atomic: return "atomic"; case .fogOfWar: return "cvfog"; case .pawnWars: return "cvpawns"; case .antichess: return "antichess"; default: return "chess" }
+        switch self { case .chess960: return "cv9600"; case .threeCheck: return "3check"; case .kingOfTheHill: return "kingofthehill"; case .horde: return "horde"; case .crazyhouse: return "crazyhouse"; case .bughouse: return "bughouse"; case .duck: return "duck"; case .atomic: return "atomic"; case .fogOfWar: return "cvfog"; case .pawnWars: return "cvpawns"; case .antichess: return "antichess"; default: return "chess" }
     }
     public var explanation: String {
         switch self {
+        case .bughouse: return "Two boards, four players. Captures go to your teammate on the other board. Play in landscape."
         case .chess960: return "A randomized back rank, with bishops on opposite colors and the king between the rooks. To castle, move your king onto its rook."
         case .duck: return "Move a piece, then place the duck on an empty square. The duck blocks movement. Capture the king to win."
         case .atomic: return "Captures explode the capturing piece and adjacent non-pawns. Explode the enemy king to win."
@@ -162,14 +164,16 @@ public struct LibraryState: Codable, Sendable {
     public var repertoire: [RepertoireLine] = []
     public var computer: SavedComputerGame?
     public var history: [CompletedGame] = []
+    public var bughouse: BughouseMatch?
     public init() {}
-    private enum CodingKeys: String, CodingKey { case version, puzzle, repertoire, computer, history }
+    private enum CodingKeys: String, CodingKey { case version, puzzle, repertoire, computer, history, bughouse }
     public init(from decoder: Decoder) throws {
         let fields = try decoder.container(keyedBy: CodingKeys.self)
         version = try fields.decode(Int.self, forKey: .version)
         puzzle = try fields.decode(PuzzleProgress.self, forKey: .puzzle)
         repertoire = try fields.decode([RepertoireLine].self, forKey: .repertoire)
         computer = try fields.decodeIfPresent(SavedComputerGame.self, forKey: .computer)
+        bughouse = try fields.decodeIfPresent(BughouseMatch.self, forKey: .bughouse)
         history = try fields.decodeIfPresent([CompletedGame].self, forKey: .history) ?? []
     }
 }

@@ -21,12 +21,18 @@ public struct ChessClock: Sendable {
     public init(control: ClockTimeControl = ClockTimeControl(seconds: 300)) {
         self.control = control; white = Double(control.seconds); black = Double(control.seconds)
     }
+    public init(control: ClockTimeControl, white: Double, black: Double, active: Side) {
+        self.control = control; self.white = white.isFinite ? max(0, white) : Double(control.seconds)
+        self.black = black.isFinite ? max(0, black) : Double(control.seconds)
+        self.active = active; phase = .paused
+    }
     /// Callers use system uptime, so wall-clock changes cannot add or remove time.
     public func remaining(for side: Side, at now: Double) -> Double {
         let stored = side == .white ? white : black
         let elapsed = phase == .running && side == active ? max(0, now - (anchor ?? now)) : 0
         return max(0, stored - elapsed)
     }
+    public var deadline: Double? { phase == .running ? anchor.map { $0 + (active == .white ? white : black) } : nil }
     public func flagged(at now: Double) -> Side? { remaining(for: active, at: now) <= 0 ? active : nil }
     public mutating func start(at now: Double) {
         guard phase == .ready || phase == .paused, flagged(at: now) == nil else { return }

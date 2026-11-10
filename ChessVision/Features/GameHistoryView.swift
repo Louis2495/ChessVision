@@ -39,6 +39,7 @@ struct GameReviewView: View {
                     Text(entry.resultTitle).font(.largeTitle.bold())
                     Text("\(entry.game.mode.title) · You played \(entry.game.human.title)").foregroundStyle(.secondary)
                     if let resigned = entry.game.resigned { Text("\(resigned.title) resigned").font(.caption).foregroundStyle(.secondary) }
+                    if let reason = entry.bughouse?.reason { Text(reason).font(.caption).foregroundStyle(.secondary) }
                     replay(entry)
                     if model.busy {
                         HStack { ProgressView(); Text(model.progress).font(.caption); Spacer(); Button("Pause") { model.cancel() } }
@@ -51,6 +52,7 @@ struct GameReviewView: View {
                         improvementAreas(review)
                         suggestions(review)
                     }
+                    if entry.bughouse != nil { Text("Bughouse comparisons assess board A. Partner-board consequences are not fully evaluated by the engine.").font(.caption).foregroundStyle(.secondary) }
                     Text("Repertoire suggestions reflect your saved choices. Other suggestions use quick full-strength engine comparisons; classifications can change with deeper analysis. Variants use their own engine rules.").font(.caption).foregroundStyle(.secondary)
                 }.padding()
             }
@@ -64,13 +66,19 @@ struct GameReviewView: View {
     }
     @ViewBuilder private func replay(_ entry: CompletedGame) -> some View {
         if let position = model.position(at: cursor) {
-            BoardView(position: position.board, flipped: entry.game.human == .black, duckSquare: position.duckSquare)
+            HStack {
+                BoardView(position: position.board, flipped: entry.game.human == .black, duckSquare: position.duckSquare)
+                if entry.bughouse != nil, let partner = model.position(at: cursor, partner: true) { BoardView(position: partner.board, flipped: entry.game.human == .white) }
+            }
             HStack {
                 Button("Previous", systemImage: "chevron.left") { cursor = max(0, cursor - 1) }.disabled(cursor == 0)
                 Spacer(); Text("\(cursor)/\(entry.game.moves.count)").font(.caption.monospacedDigit()); Spacer()
                 Button("Next", systemImage: "chevron.right") { cursor = min(entry.game.moves.count, cursor + 1) }.disabled(cursor >= entry.game.moves.count)
             }
-            if cursor > 0, entry.game.notation.indices.contains(cursor - 1) { Text("\((cursor - 1) / 2 + 1)\(cursor % 2 == 1 ? "." : "…") \(entry.game.notation[cursor - 1])").font(.headline.monospaced()) }
+            if let bughouse = entry.bughouse, cursor > 0, bughouse.events.indices.contains(cursor - 1) {
+                let event = bughouse.events[cursor - 1]
+                Text("Board \(event.board == 0 ? "A" : "B") · \(event.number)\(event.side == .white ? "." : "…") \(event.san)").font(.headline.monospaced())
+            } else if cursor > 0, entry.game.notation.indices.contains(cursor - 1) { Text("\((cursor - 1) / 2 + 1)\(cursor % 2 == 1 ? "." : "…") \(entry.game.notation[cursor - 1])").font(.headline.monospaced()) }
             if entry.game.variant == "chess" {
                 if let opening = library.openingName(at: position.board) { Text(opening).font(.subheadline).foregroundStyle(.secondary) }
                 NavigationLink("Analyze this position") { AnalysisView(original: position.board) }

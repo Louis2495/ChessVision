@@ -39,6 +39,7 @@ public struct VariantSnapshot: Sendable {
     public var checksRemaining: String?
     public var duckSquare: Int?
     public var hidden: Set<Int> = []
+    public var transferred: Character?
     public var finished: Bool { status != "ongoing" }
     public var result: String? {
         switch status { case "white": return "White wins"; case "black": return "Black wins"; case "draw": return "Draw"; default: return nil }
@@ -72,7 +73,9 @@ public struct VariantSnapshot: Sendable {
         var board = try Position(fen: "\(placement) \(turn.rawValue) \(parts[2].allSatisfy { "KQkq-".contains($0) } ? parts[2] : "-") \(parts[3]) \(parts[parts.count-2]) \(parts[parts.count-1])")
         board.turn = turn
         let checks = parts.first { $0.range(of: #"^\d+\+\d+$"#, options: .regularExpression) != nil }
-        return VariantSnapshot(fen: fen, board: board, moves: moves, status: status, inCheck: fields["check"] == "1", pockets: pockets, checksRemaining: checks, duckSquare: duckSquare, hidden: Set((fields["hidden"] ?? "").split(separator: ",").compactMap { Position.index(String($0)) }))
+        var snapshot = VariantSnapshot(fen: fen, board: board, moves: moves, status: status, inCheck: fields["check"] == "1", pockets: pockets, checksRemaining: checks, duckSquare: duckSquare, hidden: Set((fields["hidden"] ?? "").split(separator: ",").compactMap { Position.index(String($0)) }))
+        snapshot.transferred = fields["transfer"]?.first
+        return snapshot
     }
     public func move(named text: String) throws -> VariantMove {
         func normalize(_ value: String) -> String {

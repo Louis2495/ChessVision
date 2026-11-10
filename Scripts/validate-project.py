@@ -73,3 +73,10 @@ assert '"Traditional"' not in (ROOT/'ChessVision/UI/SettingsView.swift').read_te
 assert 'piece.glyph' not in (ROOT/'ChessVision/UI/BoardView.swift').read_text()
 assert 'Find your next move' not in (ROOT/'ChessVision/UI/ContentView.swift').read_text()
 print('PASS: all 36 additional vector pieces and source hashes; glyph pieces and old analysis heading removed.')
+
+# Landscape is advertised for Bughouse and restricted elsewhere by the app delegate.
+app_info=plistlib.loads((ROOT/'ChessVision/Info.plist').read_bytes())
+assert set(app_info['UISupportedInterfaceOrientations']) == {'UIInterfaceOrientationPortrait','UIInterfaceOrientationLandscapeLeft','UIInterfaceOrientationLandscapeRight'}
+assert 'UIApplicationDelegateAdaptor(ChessVisionDelegate.self)' in (ROOT/'ChessVision/ChessVisionApp.swift').read_text()
+assert 'BughousePlayView.swift' in pbx and 'OrientationPolicy.swift' in pbx
+print('PASS: Bughouse project membership and landscape declarations.')

@@ -187,3 +187,40 @@ extern "C" char* cv_rules_query(const char *variantName, const char *history) {
     return copy;
 }
 extern "C" void cv_rules_free(char *text) { std::free(text); }
+
+// Full FENs here come only from the engine or validated pocket delivery, never photo input.
+extern "C" char* cv_bughouse_query(const char* fen, const char* uci) {
+    std::ostringstream out;
+    if (!initialized || std::string(Options["UCI_Variant"]) != "bughouse") out << "error\tBughouse is not ready";
+    else {
+        const Variant* variant = variants.find("bughouse")->second;
+        Position position; StateInfo initial, after;
+        position.set(variant, fen && *fen ? std::string(fen) : variant->startFen, false, &initial, Threads.main());
+        bool valid = true;
+        if (uci && *uci) {
+            std::string token(uci); const Move move = UCI::to_move(position, token);
+            if (move == MOVE_NONE) valid = false;
+            else { position.do_move(move, after); out << "transfer\t" << position.piece_to_partner() << "\n"; }
+        }
+        if (!valid) out << "error\tIllegal bughouse move";
+        else {
+            out << "fen\t" << position.fen(false, true) << "\ncheck\t" << (position.checkers() ? "1" : "0") << "\n";
+            Value value = VALUE_ZERO; const bool end = position.is_game_end(value);
+            const auto legal = MoveList<LEGAL>(position); std::string status = "ongoing";
+            if (end || legal.size() == 0) {
+                if (!end) value = position.checkers() ? position.checkmate_value() : position.stalemate_value();
+                status = value == VALUE_DRAW ? "draw" : ((value > 0 ? position.side_to_move() : ~position.side_to_move()) == WHITE ? "white" : "black");
+            }
+            out << "status\t" << status << "\n";
+            if (status == "ongoing") for (const auto& entry : legal) {
+                const Move move = entry;
+                std::string san = SAN::move_to_san(position, move, NOTATION_SAN);
+                if (san.rfind("P@", 0) == 0) san.erase(0, 1);
+                out << "move\t" << UCI::move(position, move) << "\t" << san << "\n";
+            }
+        }
+    }
+    const std::string text = out.str(); char* copy = static_cast<char*>(std::malloc(text.size() + 1));
+    if (copy) std::memcpy(copy, text.c_str(), text.size() + 1);
+    return copy;
+}

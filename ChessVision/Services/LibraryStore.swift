@@ -50,5 +50,12 @@ import Combine
         if !state.history.contains(where: { $0.id == id }) { state.history.insert(CompletedGame(game: game, result: result), at: 0) }
         return id
     }
+    func recordBughouse(_ match: BughouseMatch) {
+        guard let winner = match.winner, !state.history.contains(where: { $0.id == match.id }) else { return }
+        var proxy = SavedComputerGame(mode: .bughouse, human: match.config.human, targetRating: match.config.ratings[BughouseConfig.seat(0, match.config.human.opposite)], moves: match.events.map(\.uci))
+        proxy.id = match.id; proxy.notation = match.events.map { "\($0.board == 0 ? "A" : "B"): \($0.san)" }
+        var entry = CompletedGame(game: proxy, result: winner == 2 ? "draw" : winner == 0 ? "white" : "black")
+        entry.bughouse = match; state.history.insert(entry, at: 0)
+    }
     func openingName(at position: Position) -> String? { openings.first { $0.key == position.openingKey }?.name }
 }

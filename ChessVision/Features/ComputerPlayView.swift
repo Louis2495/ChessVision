@@ -28,6 +28,7 @@ import SwiftUI
     }
     func pause() { computerPiecePreview = nil; visible = false; task?.cancel(); generation = UUID(); busy = false }
     func start() -> Bool {
+        guard mode != .bughouse else { error = "Open Bughouse setup to start a two-board match."; return false }
         guard let target = Int(ratingText), (1...10000).contains(target) else { error = "Enter a target rating from 1 to 10000. Ratings above the supported range use full strength."; return false }
         game = SavedComputerGame(mode: mode, human: human, targetRating: target, openingID: mode == .normal ? requestedOpening?.id : nil)
         game?.pawnWarsKings = pawnWarsKings
@@ -285,14 +286,19 @@ struct ComputerPlayView: View {
 }
 
 private struct GameSetupForm: View {
+    @EnvironmentObject private var library: LibraryStore
+    @State private var bughousePresented = false
     @ObservedObject var model: ComputerGameModel
     var onStart: () -> Void
     @State private var choosingOpening = false
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Choose your challenge").font(.title2.bold())
-            Picker("Game style", selection: $model.mode) { ForEach(GameMode.allCases) { Text($0.title).tag($0) } }
+            Picker("Game style", selection: $model.mode) { ForEach(GameMode.allCases) { Text($0.title).tag($0) } }.accessibilityIdentifier("game-style")
             if model.mode != .blindBoard && model.mode != .blindText { Text(model.mode.explanation).font(.subheadline).foregroundStyle(.secondary) }
+            if model.mode == .bughouse {
+                Button("Set up Bughouse", systemImage: "rectangle.split.2x1") { model.pause(); bughousePresented = true }.buttonStyle(.borderedProminent)
+            } else {
             if model.mode == .pawnWars { Toggle("Include kings", isOn: $model.pawnWarsKings) }
             Picker("Your color", selection: $model.human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
             Text("Computer strength · estimated Elo").font(.caption).foregroundStyle(.secondary)
@@ -305,8 +311,10 @@ private struct GameSetupForm: View {
                 Text("The computer follows the requested line while your moves match it. You are free to deviate.").font(.caption).foregroundStyle(.secondary)
             }
             Button(action: onStart) { Label("Start game", systemImage: "play.fill").frame(maxWidth: .infinity).padding(7) }.buttonStyle(.borderedProminent)
+            }
             if let error = model.error { Text(error).foregroundStyle(.red) }
         }
+        .fullScreenCover(isPresented: $bughousePresented, onDismiss: { model.activate(library) }) { BughousePlayView() }
         .sheet(isPresented: $choosingOpening) { OpeningPicker { model.requestedOpening = $0 } }
     }
 }

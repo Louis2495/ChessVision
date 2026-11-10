@@ -51,7 +51,7 @@ private func receiveEngineLine(_ pointer: UnsafePointer<CChar>?) {
         submit(Request(id: UUID(), kind: .analysis, variant: "chess", setup: "position fen \(position.fen)", side: position.turn, position: position))
     }
     func prepareVariant(_ variant: String) async throws {
-        guard ["chess", "3check", "kingofthehill", "horde", "crazyhouse", "duck", "atomic", "antichess", "cvfog", "cvpawns", "cvpawnrace"].contains(variant) || (variant.hasPrefix("cv960") && (0..<960).contains(Int(variant.dropFirst(5)) ?? -1)) else { throw ChessError.invalid("Unsupported game style.") }
+        guard ["chess", "3check", "kingofthehill", "horde", "crazyhouse", "duck", "atomic", "antichess", "cvfog", "cvpawns", "cvpawnrace", "bughouse"].contains(variant) || (variant.hasPrefix("cv960") && (0..<960).contains(Int(variant.dropFirst(5)) ?? -1)) else { throw ChessError.invalid("Unsupported game style.") }
         let request = Request(id: UUID(), kind: .prepare, variant: variant, setup: "", side: .white)
         _ = try await awaitRequest(request)
     }
@@ -65,6 +65,18 @@ private func receiveEngineLine(_ pointer: UnsafePointer<CChar>?) {
         _ = try await awaitRequest(request)
         try Task.checkCancellation()
         guard let result = reviewResults[request.id] else { throw ChessError.invalid("The engine did not return an evaluation. Resume the review to retry.") }
+        return result
+    }
+    func computerMove(fen: String, rating: Int, side: Side, milliseconds: Int = 650) async throws -> String {
+        let request = Request(id: UUID(), kind: .computer, variant: "bughouse", setup: "position fen " + fen, side: side, rating: max(1, min(10000, rating)), duration: max(100, min(1300, milliseconds)))
+        return try await awaitRequest(request)
+    }
+    func reviewBughouse(fen: String, side: Side) async throws -> EngineLine {
+        let request = Request(id: UUID(), kind: .review, variant: "bughouse", setup: "position fen " + fen, side: side, duration: 250)
+        defer { reviewResults.removeValue(forKey: request.id) }
+        _ = try await awaitRequest(request)
+        try Task.checkCancellation()
+        guard let result = reviewResults[request.id] else { throw ChessError.invalid("The engine did not return an evaluation.") }
         return result
     }
     private func awaitRequest(_ request: Request) async throws -> String {
@@ -116,7 +128,7 @@ private func receiveEngineLine(_ pointer: UnsafePointer<CChar>?) {
         send(request.setup)
         if request.kind == .analysis { send("go infinite") }
         else if request.kind == .review { send("go movetime \(request.duration ?? 250)") }
-        else { send("go movetime \((request.rating ?? 1000) >= 2000 ? 1300 : 650)") }
+        else { send("go movetime \(request.duration ?? ((request.rating ?? 1000) >= 2000 ? 1300 : 650))") }
     }
     private func cancel(_ id: UUID) {
         complete(id, .failure(CancellationError()))

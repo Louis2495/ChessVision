@@ -44,8 +44,44 @@ import Darwin
             let restored = LibraryStore(directory: directory, puzzles: puzzles, openings: openings)
             try require(restored.state.repertoire.first?.name == "Test line" && restored.state.puzzle.attempts == 1, "Local library did not persist")
             try await publicAPIChecks()
+            try await EngineController.shared.prepareVariant("bughouse")
+            var linked = [try BughouseRules.snapshot(), try BughouseRules.snapshot()]
+            for move in ["e2e4", "d7d5", "e4d5"] { try BughouseRules.play(move, on: 0, states: &linked) }
+            try require(linked[0].pockets.isEmpty && linked[1].pockets.filter { $0.symbol == "p" }.count == 1, "Capture did not go exclusively to partner's pocket")
+            try BughouseRules.play("e2e4", on: 1, states: &linked)
+            let drop = try linked[1].moves.first { $0.drop == "P" && $0.to == Position.index("e6") }.unwrap("Delivered pawn cannot be dropped")
+            try require(!linked[1].moves.contains { $0.drop == "P" && ($0.to! / 8 == 0 || $0.to! / 8 == 7) }, "Illegal back-rank pawn drop")
+            try BughouseRules.play(drop.uci, on: 1, states: &linked)
+            try require(linked[1].pockets.isEmpty && linked[1].board.squares[Position.index("e6")!] == Piece("p"), "Drop did not consume partner's pocket")
+            let promotedCapture = try BughouseRules.snapshot(fen: "r3k3/Q~7/8/8/8/8/8/7K[] b - - 0 1", move: "a8a7")
+            try require(promotedCapture.transferred == "P", "Promoted piece did not revert to a pawn for partner")
+            let shield = try BughouseRules.snapshot(fen: "4r1k1/8/8/8/8/8/8/4K3[N] w - - 0 1")
+            try require(shield.moves.contains { $0.drop == "N" && $0.to == Position.index("e2") }, "Pocket drop could not block check")
+            let bugs = BughouseModel(); bugs.attach(store)
+            bugs.newMatch(BughouseConfig(human: .white, ratings: [1200,800,1300,1800], seconds: 30, increment: 1))
+            try await wait { !bugs.loading && bugs.states.count == 2 && bugs.running }
+            bugs.play(try bugs.states[0].move(named: "e4"))
+            try await wait { (bugs.match?.events.filter { $0.board == 0 }.count ?? 0) >= 2 || bugs.error != nil }
+            try require(bugs.error == nil, "Bughouse AI failed: \(bugs.error ?? "")")
+            bugs.pause()
+            let savedCount = bugs.match!.events.count
+            try require(store.state.bughouse?.events.count == savedCount && store.state.bughouse?.remaining.count == 4, "Bughouse session was not saved")
+            bugs.resume(); try await wait { (bugs.match?.events.count ?? 0) > savedCount || bugs.error != nil }
+            try require(bugs.error == nil, "Bughouse failed to resume")
+            bugs.resign()
+            let bugID = bugs.match!.id
+            try require(store.state.history.contains { $0.id == bugID && $0.bughouse != nil }, "Bughouse match not archived")
+            let bugReview = GameReviewModel(); bugReview.start(id: bugID, library: store)
+            try await wait { !bugReview.busy }
+            try require(bugReview.error == nil && bugReview.review?.complete == true && bugReview.partnerPositions.count == bugReview.positions.count, "Bughouse review failed: \(bugReview.error ?? "")")
+            bugs.newMatch(BughouseConfig(seconds: 1, increment: 0))
+            try await wait { !bugs.loading && bugs.running && bugs.match?.winner == nil }
+            try await wait { bugs.match?.winner != nil || bugs.error != nil }
+            try require(bugs.error == nil && bugs.match?.reason?.contains("Flag") == true, "Bughouse clocks did not end the match")
+            bugs.pause()
+            print("PASS: linked Bughouse capture/drop/promotion rules, four clocks, three AI seats, save/resume, flagging and two-board review."); fflush(stdout)
             let model = ComputerGameModel(); model.activate(store)
-            for mode in GameMode.allCases {
+            for mode in GameMode.allCases where mode != .bughouse {
                 model.mode = mode; model.human = .white; model.ratingText = "1000"
                 try require(model.start(), "New game did not start")
                 try await wait { !model.busy && model.snapshot != nil }

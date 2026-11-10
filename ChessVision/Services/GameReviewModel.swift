@@ -7,6 +7,7 @@ import Combine
     @Published private(set) var error: String?
     @Published private(set) var review: GameReview?
     @Published private(set) var positions: [String] = []
+    @Published private(set) var partnerPositions: [String] = []
     private var task: Task<Void, Never>?
     private var generation = UUID()
     private var checkpoint: (@MainActor () -> Void)?
@@ -19,12 +20,13 @@ import Combine
     func start(id: UUID, library: LibraryStore) {
         cancel()
         guard let entry = library.state.history.first(where: { $0.id == id }) else { return }
+        if let match = entry.bughouse, match.events.count != entry.game.moves.count { error = "The saved Bughouse events could not be read."; return }
         let repertoire = library.state.repertoire
         let signature = GameReviewLogic.signature(repertoire)
         var result = entry.review?.repertoireSignature == signature ? entry.review! : GameReview(signature: signature)
         result.nextPly = max(0, min(entry.game.moves.count, result.nextPly))
-        review = result; positions = entry.positions; error = nil
-        if result.complete && entry.positions.count == entry.game.moves.count + 1 { return }
+        review = result; positions = entry.positions; partnerPositions = entry.partnerPositions ?? []; error = nil
+        if result.complete && entry.positions.count == entry.game.moves.count + 1 && (entry.bughouse == nil || partnerPositions.count == entry.positions.count) { return }
         let token = UUID(); generation = token; busy = true
         task = Task {
             guard generation == token, !Task.isCancelled else { return }
@@ -38,7 +40,14 @@ import Combine
                 progress = "Preparing game positions…"
                 try await EngineController.shared.prepareVariant(game.variant)
                 try Task.checkCancellation()
-                if positions.count != game.moves.count + 1 {
+                if let bughouse = entry.bughouse, positions.count != game.moves.count + 1 || partnerPositions.count != game.moves.count + 1 {
+                    let frames = try await BughouseRules.replay(bughouse.events)
+                    try Task.checkCancellation()
+                    positions = frames[0]; partnerPositions = frames[1]
+                    if let index = library.state.history.firstIndex(where: { $0.id == id }) {
+                        library.state.history[index].positions = frames[0]; library.state.history[index].partnerPositions = frames[1]
+                    }
+                } else if entry.bughouse == nil && positions.count != game.moves.count + 1 {
                     var frames: [String] = []
                     for ply in 0...game.moves.count {
                         try Task.checkCancellation()
@@ -58,7 +67,10 @@ import Combine
                 for ply in result.nextPly..<game.moves.count {
                     try Task.checkCancellation()
                     let prefix = Array(game.moves.prefix(ply))
-                    let before = try VariantRules.snapshot(variant: game.variant, history: prefix)
+                    if let bughouse = entry.bughouse, bughouse.events[ply].board != 0 || bughouse.events[ply].side != game.human {
+                        result.nextPly = ply + 1; continue
+                    }
+                    let before = try entry.bughouse == nil ? VariantRules.snapshot(variant: game.variant, history: prefix) : BughouseRules.snapshot(fen: positions[ply])
                     guard let played = before.moves.first(where: { $0.uci == game.moves[ply] }) else { throw ChessError.invalid("A saved move could not be replayed.") }
                     if before.board.turn == game.human {
                         progress = "Reviewing your move \(before.board.fullmove) · \(ply + 1)/\(game.moves.count) plies"
@@ -67,11 +79,16 @@ import Combine
                             result.repertoireMatches += 1
                             if let suggestion = match.suggestion { result.suggestions.append(suggestion) }
                         } else {
-                            let baseline = try await EngineController.shared.reviewPosition(variant: game.variant, history: prefix, side: before.board.turn)
+                            let baseline: EngineLine
+                            if entry.bughouse != nil { baseline = try await EngineController.shared.reviewBughouse(fen: positions[ply], side: before.board.turn) }
+                            else { baseline = try await EngineController.shared.reviewPosition(variant: game.variant, history: prefix, side: before.board.turn) }
                             try Task.checkCancellation()
                             let afterHistory = prefix + [played.uci]
-                            let after = try VariantRules.snapshot(variant: game.variant, history: afterHistory)
-                            let outcome = after.finished ? nil : try await EngineController.shared.reviewPosition(variant: game.variant, history: afterHistory, side: after.board.turn)
+                            let after = try entry.bughouse == nil ? VariantRules.snapshot(variant: game.variant, history: afterHistory) : BughouseRules.snapshot(fen: positions[ply + 1])
+                            let outcome: EngineLine?
+                            if after.finished { outcome = nil }
+                            else if entry.bughouse != nil { outcome = try await EngineController.shared.reviewBughouse(fen: positions[ply + 1], side: after.board.turn) }
+                            else { outcome = try await EngineController.shared.reviewPosition(variant: game.variant, history: afterHistory, side: after.board.turn) }
                             try Task.checkCancellation()
                             if let suggestion = GameReviewLogic.engineSuggestion(ply: ply, side: game.human, number: before.board.fullmove, played: played, before: before, after: after, baseline: baseline, outcome: outcome, standard: ordinaryMate, variant: game.variant) { result.suggestions.append(suggestion) }
                         }
@@ -87,8 +104,9 @@ import Combine
             if generation == token { save(); checkpoint = nil; busy = false }
         }
     }
-    func position(at index: Int) -> VariantSnapshot? {
-        guard positions.indices.contains(index) else { return nil }
-        return try? VariantSnapshot.parse("fen\t\(positions[index])\nstatus\tongoing")
+    func position(at index: Int, partner: Bool = false) -> VariantSnapshot? {
+        let frames = partner ? partnerPositions : positions
+        guard frames.indices.contains(index) else { return nil }
+        return try? VariantSnapshot.parse("fen\t\(frames[index])\nstatus\tongoing")
     }
 }

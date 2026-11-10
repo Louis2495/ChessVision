@@ -137,3 +137,13 @@ For standard chess (including the blindfold modes), each of your positions is co
 The **Areas for improvement** section groups the actual suggestions from that game into themes such as opening recall, king safety, mating patterns, tactics/material, pawn decisions, piece activity, endgame technique, calculation and variant goals. Each area names its example moves; each suggestion can jump to its replay position. Engine labels are provisional at the displayed search depth, with about 250ms spent on each before/after position. No official accuracy or rating claim is made.
 
 Reviews save progress, support pause/resume and reuse completed results. Changing repertoire moves or names refreshes the personalized review; training dates alone do not invalidate it. Existing puzzle progress, repertoire and active games migrate without resetting. History and reviews remain on this device; no external account or analysis service is used.
+
+## Version 0.11 Bughouse
+
+Choose **Bughouse → Set up Bughouse** in Play, then turn the device sideways. You control board A; three computers fill the remaining seats. Set all four displayed player ratings (your own is descriptive; the other three control computer strength), choose your color, and select a preset or custom time control. Strength is approximate.
+
+Captures supply the same-color partner on the other board, including captured promoted pieces reverting to pawns. Select a pocket piece and a highlighted square to drop it. Both boards run simultaneously with four increment clocks. A decisive board result, resignation or first flag ends the team match. Pause, leaving the screen, backgrounding, or rotating upright pauses both boards; saved matches resume paused. Bughouse requires landscape, while other screens retain portrait orientation.
+
+Finished matches automatically open review and appear in Game history, with both boards available for replay. Review assesses your moves on board A using Bughouse engine rules and groups suggestions into areas for improvement. Partner-board consequences are not fully evaluated by the engine. Existing games continue to receive automatic personalized post-game reviews.
+
+Validation: 81 portable Swift core tests and assertion-enabled native feature checks, including pocket transfers, drops, promoted captures, check-blocking drops, three AI seats, four clocks, persistence, flagging and two-board review. iOS compilation, rotation and layout require macOS/Xcode validation.

@@ -8,6 +8,7 @@ import AVFoundation
     @State private var photoChoice = false
     @State private var awaitingPhotoChoice = false
     @State private var pendingSavedImage: UIImage?
+    @State private var pendingCaptureError: String?
     @State private var captureNotice: String?
     @State private var camera = false
     @State private var processing = false
@@ -27,18 +28,21 @@ import AVFoundation
                     ToolbarItem(placement: .topBarTrailing) {
                         HStack(spacing: 20) {
                             Menu {
-                                Button("Take photo · choose afterward") { saveForLater = false; takePhoto() }
-                                Button("Take photos for later") { saveForLater = true; takePhoto() }
-                                Button("Saved photos (\(savedPhotos.photos.count))") { savedPhotos.refresh(); photosPresented = true }
+                                Button("Take photo", systemImage: "camera") { saveForLater = false; takePhoto() }
+                                Button("Take photos for later", systemImage: "clock") { saveForLater = true; takePhoto() }
+                                if position != nil { Button("Start over", systemImage: "arrow.counterclockwise", action: startOver) }
                             } label: { Image(systemName: "camera") }.accessibilityLabel("Scan board")
                             SettingsButton()
                         }
                     }
                     ToolbarItem(placement: .topBarLeading) {
-                        if position != nil { Button("Start over", action: startOver) }
+                        Button { savedPhotos.refresh(); photosPresented = true } label: { Label("Photos", systemImage: "photo.stack") }.accessibilityLabel("Saved photos")
                     }
                 }
-                .fullScreenCover(isPresented: $camera, onDismiss: { if awaitingPhotoChoice { awaitingPhotoChoice = false; photoChoice = true } }) {
+                .fullScreenCover(isPresented: $camera, onDismiss: {
+                    if let error = pendingCaptureError { pendingCaptureError = nil; message = error }
+                    else if awaitingPhotoChoice { awaitingPhotoChoice = false; photoChoice = true }
+                }) {
                     CameraView(onPhoto: capturedPhoto, onCancel: { camera = false }).ignoresSafeArea()
                 }
                 .sheet(isPresented: $photosPresented, onDismiss: {
@@ -98,7 +102,7 @@ import AVFoundation
     @discardableResult private func saveCapturedPhoto() -> Bool {
         guard let lastPhoto else { return false }
         if savedPhotos.save(lastPhoto) { captureNotice = "\(savedPhotos.photos.count) photos saved for later"; return true }
-        message = savedPhotos.error; return false
+        if camera { pendingCaptureError = savedPhotos.error } else { message = savedPhotos.error }; return false
     }
     private func retryRecognition() { if let lastPhoto { process(lastPhoto) } }
     private func takePhoto() {

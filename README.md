@@ -157,3 +157,11 @@ Premoves work in every computer variant, including two-stage Duck turns and pock
 The Analysis camera menu offers **Take photo · choose afterward**, **Take photos for later**, and **Saved photos**. Choose immediate recognition or save the image without recognition. Continue with **Take another** to collect multiple positions during a game. Saved JPEGs remain in the app's protected local storage across relaunches; open them individually for analysis afterward or swipe to delete. No Photos library permission or upload is needed.
 
 The analysis history control is now a thicker bar with arrows and **Swipe** inside. Clock setup no longer shows the tap-to-start sentence, and starting by pressing a clock face now awards the first completed move's increment. Research now says “Explore games on a chess.com or lichess account.”
+
+## Version 0.13 interface polish and reliability
+
+Analysis, Research, Play setup and puzzle stats now use consistent themed cards. Opening navigation has clearer icons and chevrons; game notation and review details expand on demand. Analysis has a direct Photos button, a simpler camera menu and a helpful saved-photo empty state. Board selection and legal targets have better contrast across palettes; VoiceOver now identifies the duck and selected square, and static board previews no longer advertise tappable squares. The duck is an original mallard illustration with natural coloring and proportions.
+
+New-game setup pauses the existing computer game and resumes on dismissal, including after backgrounding; Bughouse setup no longer restarts the other game behind the sheet. Clock setup pauses the timer, restores it on cancel, and starts White when a new control is confirmed. Clock controls adapt to wider text. Opening imports isolate canceled requests, retain previous results on failure, and clear obsolete errors on filtering. Chess960 castling and diagonal pawn premove previews preserve the correct pieces.
+
+Validation includes full portable core tests, assertion-enabled native game/review/import workflows and project/source checks. These do not replace iPhone/Xcode checks for layout, VoiceOver, camera presentation or rotation.

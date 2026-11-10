@@ -45,7 +45,7 @@ struct SettingsView: View {
             Section("Chessboard") {
                 Picker("Board", selection: $board) { ForEach(BoardStyle.allCases, id: \.rawValue) { Text($0.rawValue).tag($0.rawValue) } }
                 Picker("Pieces", selection: $pieces) { ForEach(PieceStyle.allCases, id: \.rawValue) { Text($0.rawValue).tag($0.rawValue) } }
-                BoardView(position: .initial).padding(.vertical, 8)
+                BoardView(position: .initial).frame(maxWidth: 240).frame(maxWidth: .infinity).padding(.vertical, 8)
             }.listRowBackground(ThemeCardBackground())
             Section("Moves") {
                 Toggle("Premoves", isOn: $premoves)

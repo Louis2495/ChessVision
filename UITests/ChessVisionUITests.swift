@@ -164,3 +164,15 @@ extension ChessVisionUITests {
         XCUIDevice.shared.orientation = .portrait
     }
 }
+
+extension ChessVisionUITests {
+    func testSavedPhotosHasDirectEntryPointAndHelpfulEmptyState() {
+        let app = XCUIApplication(); app.launch()
+        let photos = app.buttons["Saved photos"]
+        XCTAssertTrue(photos.waitForExistence(timeout: 5)); photos.tap()
+        XCTAssertTrue(app.navigationBars["Saved photos"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No saved photos"].exists || app.staticTexts["Analyze"].firstMatch.exists)
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["Scan board"].exists)
+    }
+}

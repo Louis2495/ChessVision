@@ -44,7 +44,9 @@ struct SavedPhotosView: View {
     let analyze: (UIImage) -> Void
     var body: some View {
         List {
-            if store.photos.isEmpty { Text("Save board photos during your game, then analyze them here.").foregroundStyle(.secondary) }
+            if store.photos.isEmpty {
+                ContentUnavailableView("No saved photos", systemImage: "photo.stack", description: Text("Choose Take photos for later in the camera menu. Your pictures will be here after the game."))
+            }
             ForEach(store.photos) { photo in
                 Button {
                     if let image = store.image(photo) { analyze(image) }

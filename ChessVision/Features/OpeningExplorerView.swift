@@ -13,30 +13,42 @@ import SwiftUI
     private var games: [OpeningGame] = []
     private var importedUsername = ""
     private var task: Task<Void, Never>?
+    private var generation = UUID()
+    private let service: PublicGameService
+    init(service: PublicGameService = PublicGameService()) { self.service = service }
     func load() {
-        task?.cancel(); busy = true; error = nil
+        task?.cancel(); let token = UUID(); generation = token; busy = true; error = nil
         let site = site, user = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        status = "Connecting…"
         task = Task {
+            guard generation == token, !Task.isCancelled else { return }
             do {
-                let imported = try await PublicGameService().load(site: site, username: user) { text in
-                    Task { @MainActor in self.status = text }
+                let imported = try await service.load(site: site, username: user) { text in
+                    Task { @MainActor in
+                        if self.generation == token && self.busy { self.status = text }
+                    }
                 }
-                try Task.checkCancellation()
+                try Task.checkCancellation(); guard generation == token else { return }
                 let built = try await buildTree(games: imported.games, username: user)
+                try Task.checkCancellation(); guard generation == token else { return }
                 games = imported.games; importedUsername = user; tree = built; profileLabel = "\(user) · \(site.title)"
                 status = "\(tree.gameCount) games"
-            } catch is CancellationError { status = "Import canceled." }
-            catch { self.error = Self.importMessage(error); status = tree.gameCount == 0 ? "Could not load this profile." : "Import did not finish. Previous results are retained." }
-            busy = false
+            } catch is CancellationError { if generation == token { status = "Import canceled." } }
+            catch { if generation == token { self.error = Self.importMessage(error); status = tree.gameCount == 0 ? "Could not load this profile." : "Import did not finish. Previous results are retained." } }
+            if generation == token { busy = false }
         }
     }
     func refilter() {
         guard !games.isEmpty else { return }
-        task?.cancel(); busy = true
+        task?.cancel(); let token = UUID(); generation = token; busy = true; error = nil
         task = Task {
-            do { tree = try await buildTree(); status = "\(tree.gameCount) games" }
-            catch is CancellationError {} catch { self.error = error.localizedDescription }
-            busy = false
+            guard generation == token, !Task.isCancelled else { return }
+            do {
+                let built = try await buildTree()
+                try Task.checkCancellation(); guard generation == token else { return }
+                tree = built; status = "\(tree.gameCount) games"
+            } catch is CancellationError {} catch { if generation == token { self.error = error.localizedDescription } }
+            if generation == token { busy = false }
         }
     }
     private func buildTree(games incoming: [OpeningGame]? = nil, username: String? = nil) async throws -> OpeningTree {
@@ -60,7 +72,7 @@ import SwiftUI
         if error is DecodingError { return "The site returned an unexpected game export. Please retry in a moment." }
         return error.localizedDescription
     }
-    func cancel() { task?.cancel() }
+    func cancel() { task?.cancel(); generation = UUID(); busy = false; status = "Import canceled." }
 }
 
 struct OpeningExplorerView: View {
@@ -72,13 +84,15 @@ struct OpeningExplorerView: View {
     var body: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    AppCard {
                     Text("Explore games on a chess.com or lichess account").font(.subheadline).foregroundStyle(.secondary)
-                    Picker("Site", selection: $model.site) { ForEach(PublicChessSite.allCases) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
-                    TextField("Public username", text: $model.username).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
-                    Button { history = [.initial]; notation = []; model.load() } label: { Label("Load opening tree", systemImage: "arrow.down.circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(model.busy || !PublicGames.validUsername(model.username))
+                    Picker("Site", selection: $model.site) { ForEach(PublicChessSite.allCases) { Text($0.title).tag($0) } }.pickerStyle(.segmented).disabled(model.busy)
+                    TextField("Public username", text: $model.username).textContentType(.username).submitLabel(.search).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).disabled(model.busy).onSubmit { if !model.busy && PublicGames.validUsername(model.username) { model.load() } }
+                    Button { model.load() } label: { Label("Load opening tree", systemImage: "arrow.down.circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(model.busy || !PublicGames.validUsername(model.username))
                     if model.busy { HStack { ProgressView(); Text(model.status).font(.caption); Spacer(); Button("Cancel") { model.cancel() } } }
                     else if !model.status.isEmpty { Text(model.status).font(.caption).foregroundStyle(.secondary) }
                     if let error = model.error { Text(error).foregroundStyle(.red).font(.footnote) }
+                    }
                     Picker("Player color", selection: $model.filter) { ForEach(OpeningExplorerModel.Filter.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).disabled(model.busy)
                     if !model.profileLabel.isEmpty { Text(model.profileLabel).font(.headline) }
                     MoveBoard(position: position, enabled: !model.busy, onMove: play)
@@ -97,7 +111,8 @@ struct OpeningExplorerView: View {
                         Divider()
                     }
                 }.padding()
-            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Research").toolbar { SettingsButton() }
+            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Research").navigationBarTitleDisplayMode(.inline).toolbar { SettingsButton() }
+            .onChange(of: model.profileLabel) { _, _ in history = [.initial]; notation = [] }
             .onChange(of: model.filter) { _, _ in history = [.initial]; notation = []; model.refilter() }
     }
     private func play(_ move: ChessMove) {

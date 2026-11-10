@@ -53,7 +53,9 @@ struct GameReviewView: View {
                         suggestions(review)
                     }
                     if entry.bughouse != nil { Text("Bughouse comparisons assess board A. Partner-board consequences are not fully evaluated by the engine.").font(.caption).foregroundStyle(.secondary) }
-                    Text("Repertoire suggestions reflect your saved choices. Other suggestions use quick full-strength engine comparisons; classifications can change with deeper analysis. Variants use their own engine rules.").font(.caption).foregroundStyle(.secondary)
+                    DisclosureGroup("About this review") {
+                        Text("Repertoire suggestions reflect your saved choices. Other suggestions use quick full-strength engine comparisons; classifications can change with deeper analysis. Variants use their own engine rules.").font(.caption).foregroundStyle(.secondary).padding(.top, 6)
+                    }
                 }.padding()
             }
         }.modifier(AppSurface()).navigationTitle("Game review").navigationBarTitleDisplayMode(.inline)

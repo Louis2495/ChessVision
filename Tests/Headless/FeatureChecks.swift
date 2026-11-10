@@ -30,7 +30,23 @@ import Darwin
         try require(bulkChess.games.count == 1200, "Archive import stopped at 1000 or skipped older months")
         let bulkLichess = try await service.load(site: .lichess, username: "Bulk") { _ in }
         try require(bulkLichess.games.count == 1005, "Lichess export was capped")
-        print("PASS: actual public API client with isolated HTTP fixtures (not live service access).")
+        let explorer = OpeningExplorerModel(service: service)
+        explorer.username = "Bulk"; explorer.load()
+        explorer.cancel()
+        explorer.username = "Alice"; explorer.load()
+        try await wait { !explorer.busy }
+        try require(explorer.error == nil && explorer.profileLabel == "Alice · Chess.com" && explorer.tree.gameCount == 1, "Canceled import overwrote the latest profile")
+        explorer.username = "Missing"; explorer.load()
+        try await wait { !explorer.busy }
+        try require(explorer.error != nil && explorer.tree.gameCount == 1 && explorer.profileLabel == "Alice · Chess.com", "Failed import discarded previous results")
+        explorer.filter = .black; explorer.refilter()
+        try await wait { !explorer.busy }
+        try require(explorer.error == nil && explorer.tree.gameCount == 0, "Refilter retained an obsolete import error")
+        explorer.filter = .white; explorer.refilter()
+        explorer.cancel()
+        try await Task.sleep(for: .milliseconds(100))
+        try require(!explorer.busy && explorer.status == "Import canceled.", "Canceled filter changed state after cancellation")
+        print("PASS: public API fixtures, cancellation/restart, failure preservation and filter error recovery.")
     }
     @MainActor static func main() async {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ChessVision-features-\(UUID().uuidString)")

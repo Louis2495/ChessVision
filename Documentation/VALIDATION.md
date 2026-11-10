@@ -70,3 +70,9 @@ After adding dead-material and 50-move-claim assessment, the focused 10-test ins
 Assertion-enabled Clang/native app-model tests passed all 13 game styles plus natural checkmate and resignation archival, duplicate protection, separate history identity after takeback, repertoire-first review, engine correction of a real Qxf7 mate oversight, review checkpoint/cancel/resume, and persistent replay/review data. Reviews were exercised under Chess960, 3-check, Duck, Crazyhouse and Antichess. Continuous-analysis controller cancellation/replacement/regression checks also passed with the new finite review requests.
 
 A prepared iOS UI test checks automatic review after resignation and the Game history entry point. It remains unrun here. SDK compilation, modal transitions, board replay layouts, app background/foreground behavior and accessibility still require Xcode/device verification. Engine feedback is a quick comparison, not an exhaustive proof of every mistake or concept.
+
+## Version 0.13 polish verification
+
+94 portable Swift core tests passed, including new Chess960 king-to-rook/stationary-king projection and diagonal pawn projection regressions. Assertion-enabled feature checks cover opening import cancel/restart, previous-result preservation on failure, stale error recovery, all thirteen single-board game modes, linked Bughouse, premoves, reviews, clocks and persistence. Project regeneration, asset membership, source parsing and whitespace checks passed. The new mallard PNG was visually inspected with its transparent background and copied unchanged into the asset and artwork source directory.
+
+An iOS UI regression for the new Saved photos entry point is included but has not run here. This Linux environment cannot compile SwiftUI against the iOS SDK or validate actual iPhone layouts, VoiceOver, camera presentation, clock sheets or orientation. Those checks remain for Xcode/device testing.

@@ -55,6 +55,25 @@ final class PremoveTests: XCTestCase {
         composer.tap(Position.index("d4")!, board: shown, side: .white, duck: true, queue: &queue)
         XCTAssertEqual(queue.moves, ["e2e4,e4d4"])
     }
+    func testChess960PreviewPreservesBothPiecesIncludingStationaryKing() throws {
+        let board = try Position(fen: "4k3/8/8/8/8/8/8/6KR w - - 0 1")
+        var queue = PremoveQueue(); queue.append("g1h1")
+        let projected = queue.projected(board, side: .white)
+        XCTAssertEqual(projected.squares[Position.index("g1")!], Piece("K"))
+        XCTAssertEqual(projected.squares[Position.index("f1")!], Piece("R"))
+        XCTAssertNil(projected.squares[Position.index("h1")!])
+    }
+    func testDiagonalPremoveDoesNotEraseAnUnrelatedPiece() throws {
+        let board = try Position(fen: "4k3/8/8/8/8/5B2/4P3/4K3 w - - 0 1")
+        var queue = PremoveQueue(); queue.append("e2f3")
+        // The destination contains a piece; its square alone is replaced in the projection.
+        let projected = queue.projected(board, side: .white)
+        XCTAssertEqual(projected.squares[Position.index("f3")!], Piece("P"))
+        XCTAssertEqual(projected.squares[Position.index("e1")!], Piece("K"))
+        let emptyDestination = try Position(fen: "4k3/8/8/8/8/4PB2/8/4K3 w - - 0 1")
+        var diagonal = PremoveQueue(); diagonal.append("e3f4")
+        XCTAssertEqual(diagonal.projected(emptyDestination, side: .white).squares[Position.index("f3")!], Piece("B"))
+    }
     func testUnusualKingPreviewCannotIndexBeyondBoard() throws {
         let board = try Position(fen: "4k3/8/8/8/8/8/8/5K2 w - - 0 1")
         var queue = PremoveQueue(); queue.append("f1h1")

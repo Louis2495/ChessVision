@@ -160,9 +160,12 @@ struct ComputerPlayView: View {
                 }
             }
             .onChange(of: model.snapshot?.result) { _, _ in scheduleReview() }
-            .onChange(of: settingUp) { _, showing in if !showing { scheduleReview() } }
+            .onChange(of: settingUp) { _, showing in
+                if showing { reviewPresentationTask?.cancel(); model.pause() }
+                else { if visible && scenePhase == .active { model.activate(library) }; scheduleReview() }
+            }
             .sheet(isPresented: $settingUp) {
-                NavigationStack { ScrollView { GameSetupForm(model: model) { if model.start() { settingUp = false } }.padding() }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("New game").toolbar { Button("Cancel") { settingUp = false } } }
+                NavigationStack { ScrollView { GameSetupForm(model: model, resumeOnBughouseDismiss: false) { if model.start() { settingUp = false } }.padding() }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("New game").toolbar { Button("Cancel") { settingUp = false } } }
             }
             .confirmationDialog("Resign this game?", isPresented: $resigning, titleVisibility: .visible) { Button("Resign", role: .destructive) { model.resign() } }
             .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
@@ -178,7 +181,7 @@ struct ComputerPlayView: View {
             .onDisappear { visible = false; reviewPresentationTask?.cancel(); model.pause(); composer = PremoveComposer() }
             .onChange(of: scenePhase) { _, phase in
                 guard visible else { return }
-                if phase == .active && !historyPresented && reviewRoute == nil { model.activate(library); scheduleReview() }
+                if phase == .active && !settingUp && !historyPresented && reviewRoute == nil { model.activate(library); scheduleReview() }
                 else { reviewPresentationTask?.cancel(); model.pause() }
             }
             .onChange(of: premovesEnabled) { _, enabled in if !enabled { model.premoves.clear(); composer = PremoveComposer() } }
@@ -197,7 +200,7 @@ struct ComputerPlayView: View {
                         HStack {
                             Text("Premoves: " + model.premoves.moves.joined(separator: " → ")).font(.caption).foregroundStyle(.tint)
                             Spacer()
-                            Button { model.premoves.cancelLast(); composer = PremoveComposer() } label: { Image(systemName: "xmark.circle") }.accessibilityLabel("Cancel last premove")
+                            Button { model.premoves.cancelLast(); composer = PremoveComposer() } label: { Image(systemName: "xmark.circle").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("Cancel last premove")
                         }
                     }
                     if game.mode == .crazyhouse { pockets(snapshot, human: game.human) }
@@ -222,12 +225,14 @@ struct ComputerPlayView: View {
                     if let error = model.error { Text(error).foregroundStyle(.red).font(.footnote) }
                     if game.mode == .blindBoard || game.mode == .blindText {
                         if snapshot.board.turn == game.human, let last = game.notation.last { Text("Computer: \(last)").font(.headline.monospaced()) }
-                    } else if game.mode != .fogOfWar { GameMoveTable(moves: game.notation) }
-                    HStack { Button("Take back two plies") { model.undo() }.disabled(game.moves.count < 2); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished) }
+                    } else if game.mode != .fogOfWar && !game.notation.isEmpty {
+                        AppCard { DisclosureGroup("Game moves · \(game.notation.count)") { GameMoveTable(moves: game.notation).padding(.top, 8) } }
+                    }
+                    HStack { Button("Take back", systemImage: "arrow.uturn.backward") { model.undo() }.accessibilityHint("Undo your last move and the computer’s reply").disabled(game.moves.count < 2); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished) }.buttonStyle(.bordered).controlSize(.large)
                 } else if model.busy { ProgressView("Preparing the game…").frame(maxWidth: .infinity).padding(.vertical, 40) }
                 else { GameSetupForm(model: model, onStart: { _ = model.start() }) }
             }.padding()
-        }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").toolbar { SettingsButton() }
+        }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").navigationBarTitleDisplayMode(.inline).toolbar { SettingsButton() }
     }
     private func scheduleReview() {
         reviewPresentationTask?.cancel()
@@ -340,12 +345,13 @@ private struct GameSetupForm: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var bughousePresented = false
     @ObservedObject var model: ComputerGameModel
+    var resumeOnBughouseDismiss = true
     var onStart: () -> Void
     @State private var choosingOpening = false
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Choose your challenge").font(.title2.bold())
-            Picker("Game style", selection: $model.mode) { ForEach(GameMode.allCases) { Text($0.title).tag($0) } }.accessibilityIdentifier("game-style")
+            AppCard {
+            Picker("Game style", selection: $model.mode) { ForEach(GameMode.allCases) { Text($0.title).tag($0) } }.pickerStyle(.menu).frame(minHeight: 44).accessibilityIdentifier("game-style")
             if model.mode != .blindBoard && model.mode != .blindText { Text(model.mode.explanation).font(.subheadline).foregroundStyle(.secondary) }
             if model.mode == .bughouse {
                 Button("Set up Bughouse", systemImage: "rectangle.split.2x1") { model.pause(); bughousePresented = true }.buttonStyle(.borderedProminent)
@@ -356,16 +362,18 @@ private struct GameSetupForm: View {
             TextField("Requested rating", text: $model.ratingText).keyboardType(.numberPad).textFieldStyle(.roundedBorder)
             Slider(value: Binding(get: { min(3500, max(100, Double(model.ratingText) ?? 1000)) }, set: { model.ratingText = String(Int($0)) }), in: 100...3500, step: 50)
                 .accessibilityLabel("Computer rating")
+            HStack { Text("100"); Spacer(); Text("3500") }.font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
             if model.mode == .normal {
                 Button { choosingOpening = true } label: { Label(model.requestedOpening?.name ?? "Request an opening", systemImage: "books.vertical") }
                 if model.requestedOpening != nil { Button("No opening request") { model.requestedOpening = nil } }
-                Text("The computer follows the requested line while your moves match it. You are free to deviate.").font(.caption).foregroundStyle(.secondary)
+                if model.requestedOpening != nil { Text("The computer follows this line until you choose a different move.").font(.caption).foregroundStyle(.secondary) }
             }
             Button(action: onStart) { Label("Start game", systemImage: "play.fill").frame(maxWidth: .infinity).padding(7) }.buttonStyle(.borderedProminent)
             }
+            }
             if let error = model.error { Text(error).foregroundStyle(.red) }
         }
-        .fullScreenCover(isPresented: $bughousePresented, onDismiss: { model.activate(library) }) { BughousePlayView() }
+        .fullScreenCover(isPresented: $bughousePresented, onDismiss: { if resumeOnBughouseDismiss { model.activate(library) } }) { BughousePlayView() }
         .sheet(isPresented: $choosingOpening) { OpeningPicker { model.requestedOpening = $0 } }
     }
 }

@@ -15,15 +15,17 @@ struct PuzzleTrainingView: View {
     var body: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    AppCard {
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading) { Text("Your training estimate").font(.caption).foregroundStyle(.secondary); Text(String(Int(library.state.puzzle.rating.rounded()))).font(.largeTitle.bold().monospacedDigit()) }
                         Spacer()
                         VStack(alignment: .trailing) { Text("\(library.state.puzzle.solved) solved").font(.headline); Text("\(library.puzzles.count.formatted()) offline puzzles").font(.caption).foregroundStyle(.secondary) }
                     }
+                    }
                     if let puzzle {
                         HStack { Text("Difficulty ≈ \(puzzle.estimatedRating)").font(.headline); Spacer(); TurnBadge(side: board.turn) }
                         MoveBoard(position: board, enabled: !finished && board.turn == learner, flipped: learner == .black, premoveSide: finished ? nil : learner, onMove: attempt).id(generation)
-                        Text(finished ? "Position completed" : "\(learner.title) to move · find the best continuation").font(.headline)
+                        Text(finished ? "Position completed" : board.turn == learner ? "\(learner.title) to move · find the best continuation" : "Playing the reply…").font(.headline)
                         if !message.isEmpty { Text(message).foregroundStyle(finished ? Color.green : Color.secondary) }
                         if !played.isEmpty { Text(played.joined(separator: "  ")).font(.subheadline.monospaced()) }
                         HStack {
@@ -34,7 +36,7 @@ struct PuzzleTrainingView: View {
                         }
                     } else { ContentUnavailableView("Puzzle library unavailable", systemImage: "puzzlepiece", description: Text("Install the complete build to use the bundled puzzle library.")) }
                 }.padding()
-            }.modifier(AppSurface()).navigationTitle("Puzzles").toolbar { SettingsButton() }
+            }.modifier(AppSurface()).navigationTitle("Puzzles").navigationBarTitleDisplayMode(.inline).toolbar { SettingsButton() }
             .onAppear { if puzzle == nil { nextPuzzle() } else { replyIfNeeded() } }
             .onDisappear { replyTask?.cancel() }
     }

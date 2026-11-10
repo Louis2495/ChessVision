@@ -79,16 +79,18 @@ struct AnalysisView: View {
                     }
                 }
                 if let error = engine.error { Text(error).foregroundStyle(.red) }
+                AppCard {
                 Toggle("Position insights", isOn: $insights)
                 if insights {
                     insightCard
                 }
                 Toggle("Show notation", isOn: $showGameNotation)
                 if showGameNotation { recordedGame }
-                candidateLines
-                Button("Return to original position") { history = [original]; cursor = 0; selected = nil }
+                }
+                AppCard { candidateLines }
+                Button("Return to original position", systemImage: "arrow.counterclockwise") { history = [original]; cursor = 0; selected = nil }
                     .disabled(cursor == 0 && position == original)
-                SharePositionButton(position: position, game: gameHistory)
+                SharePositionButton(position: position, game: gameHistory).buttonStyle(.bordered).controlSize(.large)
                 if let message { Text(message).font(.footnote).foregroundStyle(.red) }
             }.padding()
         }

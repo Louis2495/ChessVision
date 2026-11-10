@@ -14,7 +14,15 @@ public struct VariantMove: Hashable, Identifiable, Sendable {
     public func piecePosition(from original: Position) -> Position {
         guard let from, let to, let piece = original.squares[from] else { return original }
         var board = original
-        if piece.kind == "p", from % 8 != to % 8, board.squares[to] == nil {
+        // Chess960 UCI encodes castling as king-to-own-rook, including stationary kings.
+        if piece.kind == "k", let rook = board.squares[to], rook.kind == "r", rook.side == piece.side, from / 8 == to / 8 {
+            let base = from / 8 * 8
+            let kingTo = base + (to > from ? 6 : 2), rookTo = base + (to > from ? 5 : 3)
+            board.squares[from] = nil; board.squares[to] = nil
+            board.squares[kingTo] = piece; board.squares[rookTo] = rook
+            return board
+        }
+        if piece.kind == "p", from % 8 != to % 8, board.squares[to] == nil, original.enPassant == Position.name(to) {
             let captured = to + (piece.side == .white ? 8 : -8)
             if board.squares.indices.contains(captured) { board.squares[captured] = nil }
         }

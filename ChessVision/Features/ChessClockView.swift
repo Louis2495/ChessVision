@@ -5,6 +5,7 @@ import SwiftUI
     @State private var visible = false
     @Environment(\.scenePhase) private var scenePhase
     @State private var setup = false
+    @State private var resumeAfterSetup = false
     @State private var resetting = false
     var body: some View {
         NavigationStack {
@@ -18,14 +19,25 @@ import SwiftUI
             }
             .modifier(AppSurface()).navigationTitle("Clock").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Time control") { setup = true } }
+                ToolbarItem(placement: .topBarLeading) { Button("Time control") {
+                    resumeAfterSetup = clock.phase == .running
+                    clock.pause(at: ProcessInfo.processInfo.systemUptime); setup = true
+                } }
                 ToolbarItem(placement: .topBarTrailing) { SettingsButton() }
             }
             .onAppear { visible = true; updateScreenAwake() }
             .onDisappear { visible = false; UIApplication.shared.isIdleTimerDisabled = false }
             .onChange(of: clock.phase) { _, _ in updateScreenAwake() }
             .onChange(of: scenePhase) { _, _ in updateScreenAwake() }
-            .sheet(isPresented: $setup) { ClockSetupView { control in clock = ChessClock(control: control) } }
+            .sheet(isPresented: $setup, onDismiss: {
+                if resumeAfterSetup && clock.phase == .paused { clock.start(at: ProcessInfo.processInfo.systemUptime) }
+                resumeAfterSetup = false
+            }) {
+                ClockSetupView { control in
+                    clock = ChessClock(control: control)
+                    clock.start(at: ProcessInfo.processInfo.systemUptime)
+                }
+            }
             .confirmationDialog("Reset both clocks?", isPresented: $resetting, titleVisibility: .visible) {
                 Button("Reset clock", role: .destructive) { clock = ChessClock(control: clock.control) }
             }
@@ -51,19 +63,28 @@ import SwiftUI
             .accessibilityLabel("\(side.title), \(time(clock.remaining(for: side, at: now)))\(active ? ", running" : "")")
             .accessibilityIdentifier("clock-\(side.rawValue)")
     }
+    private var resetButton: some View {
+        Button("Reset", systemImage: "arrow.counterclockwise") { resetting = true }
+    }
+    private var runButton: some View {
+        Button(clock.phase == .running ? "Pause" : clock.phase == .ready ? "Start" : "Resume", systemImage: clock.phase == .running ? "pause.fill" : "play.fill") {
+            let time = ProcessInfo.processInfo.systemUptime
+            if clock.phase == .running { clock.pause(at: time) } else { clock.start(at: time) }
+        }.disabled(clock.flagged(at: ProcessInfo.processInfo.systemUptime) != nil)
+    }
+    private func controlTitle(now: Double) -> some View {
+        VStack(spacing: 4) {
+            Text(clock.control.title).font(.headline.monospacedDigit())
+            if let loser = clock.flagged(at: now) { Text("\(loser.opposite.title) wins on time").font(.caption.bold()) }
+        }
+    }
     private func controls(now: Double) -> some View {
-        HStack {
-            Button("Reset", systemImage: "arrow.counterclockwise") { resetting = true }
-            Spacer()
-            VStack(spacing: 4) {
-                Text(clock.control.title).font(.headline.monospacedDigit())
-                if let loser = clock.flagged(at: now) { Text("\(loser.opposite.title) wins on time").font(.caption.bold()) }
+        ViewThatFits(in: .horizontal) {
+            HStack { resetButton; Spacer(); controlTitle(now: now); Spacer(); runButton }
+            VStack(spacing: 8) {
+                controlTitle(now: now)
+                HStack { resetButton; Spacer(); runButton }
             }
-            Spacer()
-            Button(clock.phase == .running ? "Pause" : clock.phase == .ready ? "Start" : "Resume", systemImage: clock.phase == .running ? "pause.fill" : "play.fill") {
-                let time = ProcessInfo.processInfo.systemUptime
-                if clock.phase == .running { clock.pause(at: time) } else { clock.start(at: time) }
-            }.disabled(clock.flagged(at: now) != nil)
         }.buttonStyle(.bordered).controlSize(.large)
     }
     private func time(_ seconds: Double) -> String {

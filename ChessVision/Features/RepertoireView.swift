@@ -128,7 +128,7 @@ struct RepertoireTrainerView: View {
                 if let line {
                     Text(line.name).font(.title2.bold())
                     BoardEvaluationLayout {
-                        MoveBoard(position: board, enabled: !finished && board.turn == line.side, flipped: line.side == .black, onMove: attempt)
+                        MoveBoard(position: board, enabled: !finished && board.turn == line.side, flipped: line.side == .black, premoveSide: finished ? nil : line.side, onMove: attempt).id(generation)
                         EvaluationBar(whiteFraction: EvaluationScale.whiteFraction(centipawns: principal?.centipawns, mate: principal?.mate))
                     }
                     Text(principal?.evaluation ?? "—").font(.title2.bold().monospacedDigit()).accessibilityLabel("Evaluation: \(principal?.evaluation ?? "pending")")

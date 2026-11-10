@@ -9,7 +9,7 @@ struct OpeningsHubView: View {
                         tile("Your Repertoire", detail: "Build and train your opening lines", icon: "books.vertical")
                     }
                     NavigationLink { OpeningExplorerView() } label: {
-                        tile("Research", detail: "Explore public Chess.com and Lichess games", icon: "magnifyingglass")
+                        tile("Research", detail: "Explore games on a chess.com or lichess account", icon: "magnifyingglass")
                     }
                 }.padding()
             }.modifier(AppSurface()).navigationTitle("Openings").toolbar { SettingsButton() }

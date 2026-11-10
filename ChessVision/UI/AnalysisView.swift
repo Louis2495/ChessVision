@@ -198,7 +198,9 @@ struct AnalysisView: View {
         if let source = selected {
             if source == index { selected = nil; return }
             let choices = position.legalMoves().filter { $0.from == source && $0.to == index }
-            if choices.count > 1 { promotions = choices; return }
+            if choices.count > 1 {
+                if MovePreferences.autoQueen, let queen = choices.first(where: { $0.promotion == "q" }) { play(queen) } else { promotions = choices }; return
+            }
             if let move = choices.first { play(move); return }
         }
         selected = position.squares[index]?.side == position.turn ? index : nil
@@ -265,17 +267,11 @@ private struct HistorySwipeBar: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: back) { Image(systemName: "chevron.left") }.disabled(current == 0).accessibilityLabel("Previous position")
-            VStack(spacing: 4) {
-                Text("Swipe through the game · \(current)/\(total)").font(.caption2).foregroundStyle(.secondary)
-                GeometryReader { geometry in
-                    Capsule().fill(Color.gray.opacity(0.18))
-                        .overlay(alignment: .leading) { Capsule().fill(Color.accentColor).frame(width: geometry.size.width * CGFloat(current) / CGFloat(max(1, total))) }
-                }.frame(height: 5)
-            }
+            Text("Swipe").font(.caption.bold()).frame(maxWidth: .infinity, minHeight: 30)
             Button(action: forward) { Image(systemName: "chevron.right") }.disabled(!canAdvance).accessibilityLabel("Next position")
         }
-        .padding(.horizontal, 12).padding(.vertical, 9)
-        .background(Color.gray.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 16).padding(.vertical, 8)
+        .background(Color.accentColor.opacity(0.13), in: Capsule())
         .contentShape(Rectangle())
         .gesture(DragGesture(minimumDistance: 18).onEnded { value in
             guard abs(value.translation.width) > abs(value.translation.height) else { return }
@@ -284,5 +280,6 @@ private struct HistorySwipeBar: View {
         })
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("analysis-history-bar")
+        .accessibilityValue("\(current)/\(total)")
     }
 }

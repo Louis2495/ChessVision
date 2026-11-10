@@ -5,30 +5,63 @@ struct MoveBoard: View {
     var enabled = true
     var flipped = false
     var hidePieces = false
+    var premoveSide: Side? = nil
     var onMove: (ChessMove) -> Void
+    @AppStorage("premoves") private var premovesEnabled = true
+    @AppStorage("autoQueen") private var autoQueen = false
     @State private var selected: Int?
     @State private var promotions: [ChessMove] = []
+    @State private var queue = PremoveQueue()
+    @State private var composer = PremoveComposer()
+    @State private var queuePromotion = false
     private var legal: [ChessMove] { enabled ? position.legalMoves() : [] }
+    private var queuing: Bool { premovesEnabled && premoveSide != nil && (!enabled || !queue.moves.isEmpty || composer.selected != nil) }
+    private var shown: Position { queuing ? queue.projected(position, side: premoveSide ?? position.turn) : position }
     var body: some View {
-        BoardView(position: position, selected: hidePieces ? nil : selected,
-                  legalTargets: hidePieces ? [] : Set(legal.filter { $0.from == selected }.map(\.to)),
+        BoardView(position: shown, selected: hidePieces ? nil : (queuing ? composer.selected : selected),
+                  legalTargets: hidePieces ? [] : queuing ? Set(queue.moves.compactMap { VariantMove(uci: $0, san: "").to }) : Set(legal.filter { $0.from == selected }.map(\.to)),
                   flipped: flipped, hidePieces: hidePieces) { index in
+            if queuing {
+                composer.tap(index, board: shown, side: premoveSide ?? position.turn, duck: false, queue: &queue)
+                if !composer.promotions.isEmpty {
+                    queuePromotion = true
+                    promotions = composer.promotions.compactMap { move in
+                        guard let from = move.from, let to = move.to else { return nil }
+                        return ChessMove(from: from, to: to, promotion: move.promotion)
+                    }
+                }
+                flush(); return
+            }
             guard enabled else { return }
             if let from = selected {
                 if from == index { selected = nil; return }
                 let choices = legal.filter { $0.from == from && $0.to == index }
-                if choices.count > 1 { promotions = choices; return }
+                if choices.count > 1 {
+                    if autoQueen, let queen = choices.first(where: { $0.promotion == "q" }) { selected = nil; onMove(queen) }
+                    else { queuePromotion = false; promotions = choices }; return
+                }
                 if let move = choices.first { selected = nil; onMove(move); return }
             }
             selected = position.squares[index]?.side == position.turn ? index : nil
         }
-        .onChange(of: position.fen) { _, _ in selected = nil; promotions = [] }
+        .onChange(of: position.fen) { _, _ in selected = nil; if !queuePromotion { promotions = [] }; flush() }
+        .onChange(of: premovesEnabled) { _, enabled in if !enabled { queue.clear(); composer = PremoveComposer() } }
+        .onChange(of: premoveSide) { _, side in if side == nil { queue.clear(); composer = PremoveComposer() } }
+        .onDisappear { queue.clear(); composer = PremoveComposer() }
         .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
-            PromotionPicker(side: position.turn, kinds: promotions.compactMap(\.promotion)) { kind in
-                if let move = promotions.first(where: { $0.promotion == kind }) { selected = nil; onMove(move) }
+            PromotionPicker(side: queuePromotion ? (premoveSide ?? position.turn) : position.turn, kinds: promotions.compactMap(\.promotion)) { kind in
+                if let move = promotions.first(where: { $0.promotion == kind }) {
+                    if queuePromotion { composer.complete(move.uci, duck: false, queue: &queue); queuePromotion = false; flush() }
+                    else { selected = nil; onMove(move) }
+                }
                 promotions = []
             }
         }
+    }
+    private func flush() {
+        guard enabled, position.turn == premoveSide, premovesEnabled else { return }
+        let moves = legal.map { VariantMove(uci: $0.uci, san: "") }
+        if let next = queue.take(legal: moves), let move = legal.first(where: { $0.uci == next.uci }) { onMove(move) }
     }
 }
 

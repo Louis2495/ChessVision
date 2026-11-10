@@ -41,7 +41,7 @@ import SwiftUI
             VStack(spacing: 12) {
                 Text(side.title).font(.headline)
                 Text(time(clock.remaining(for: side, at: now))).font(.system(size: 74, weight: .bold, design: .rounded)).monospacedDigit().minimumScaleFactor(0.45).lineLimit(1)
-                Text(flagged == side ? "Time expired" : active ? "Your clock is running · tap after your move" : clock.phase == .ready ? "Tap to start your opponent's clock" : " ").font(.caption)
+                Text(flagged == side ? "Time expired" : active ? "Your clock is running · tap after your move" : " ").font(.caption)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity).padding(20)
             .foregroundStyle(side == .white ? Color.black : Color.white)

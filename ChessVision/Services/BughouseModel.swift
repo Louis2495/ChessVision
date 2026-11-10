@@ -9,6 +9,7 @@ import Combine
     @Published private(set) var loading = false
     @Published private(set) var thinkingBoard: Int?
     @Published var error: String?
+    @Published var premoves = PremoveQueue()
     private weak var library: LibraryStore?
     private var task: Task<Void, Never>?
     private var ticker: Task<Void, Never>?
@@ -41,6 +42,7 @@ import Combine
         }
     }
     func pause() {
+        premoves.clear()
         task?.cancel(); ticker?.cancel(); generation = UUID(); running = false; loading = false; thinkingBoard = nil
         let now = ProcessInfo.processInfo.systemUptime
         for index in clocks.indices { clocks[index].pause(at: now) }
@@ -81,6 +83,14 @@ import Combine
             if generation == token { thinkingBoard = nil }
         }
     }
+    func flushPremoves() {
+        guard MovePreferences.premoves else { premoves.clear(); return }
+        guard running, states.count == 2, states[0].board.turn == match?.config.human else { return }
+        checkFlags(); guard running else { return }
+        if let next = premoves.take(legal: states[0].moves) {
+            do { try apply(next.uci, board: 0) } catch { self.error = error.localizedDescription }
+        }
+    }
     func play(_ move: VariantMove) {
         guard running, states.count == 2, let match, states[0].board.turn == match.config.human else { return }
         checkFlags(); guard running else { return }
@@ -98,7 +108,12 @@ import Combine
         if updated[board].finished {
             let status = updated[board].status
             finish(team: status == "draw" ? 2 : BughouseConfig.team(board, status == "white" ? .white : .black), reason: "Board \(board == 0 ? "A" : "B") ended", at: now)
-        } else { persist(at: now) }
+        } else {
+            persist(at: now)
+            if !MovePreferences.premoves { premoves.clear() }
+            if states[0].board.turn == current.config.human,
+               let next = premoves.take(legal: states[0].moves) { try apply(next.uci, board: 0) }
+        }
     }
     private func checkFlags() {
         guard running, clocks.count == 2 else { return }
@@ -118,6 +133,7 @@ import Combine
     }
     private func finish(team: Int, reason: String, at now: Double) {
         guard match?.winner == nil else { return }
+        premoves.clear()
         match?.winner = team; match?.reason = reason
         for index in clocks.indices { clocks[index].pause(at: now) }
         running = false; task?.cancel(); ticker?.cancel(); thinkingBoard = nil

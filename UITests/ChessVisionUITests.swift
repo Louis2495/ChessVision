@@ -1,5 +1,12 @@
 import XCTest
 final class ChessVisionUITests: XCTestCase {
+    func assertHistory(_ value: String, in app: XCUIApplication) {
+        let bar = app.otherElements["analysis-history-bar"]
+        let correct = NSPredicate(format: "value == %@", value)
+        let expectation = XCTNSPredicateExpectation(predicate: correct, object: bar)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
+        XCTAssertTrue(app.staticTexts["Swipe"].exists)
+    }
     func testLaunchImmediateAnalysisAndLivePlayback() {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["square-e2"].waitForExistence(timeout: 10))
@@ -15,11 +22,11 @@ final class ChessVisionUITests: XCTestCase {
         let next = app.buttons["Next position"]
         for _ in 0..<5 { if next.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(next.isEnabled); next.tap()
-        XCTAssertTrue(app.staticTexts["Swipe through the game · 1/1"].waitForExistence(timeout: 5))
+        assertHistory("1/1", in: app)
         // The analysis is still live after moving; there is no restart button.
         XCTAssertTrue(best.waitForExistence(timeout: 15))
         app.buttons["Return to original position"].tap()
-        XCTAssertTrue(app.staticTexts["Swipe through the game · 0/0"].waitForExistence(timeout: 5))
+        assertHistory("0/0", in: app)
         app.buttons["Share position"].tap()
         XCTAssertTrue(app.buttons["Share board image"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Share image & FEN"].exists)
@@ -64,8 +71,8 @@ extension ChessVisionUITests {
         XCTAssertTrue(best.waitForExistence(timeout: 15))
         let bar = app.otherElements["analysis-history-bar"]
         XCTAssertTrue(bar.waitForExistence(timeout: 5))
-        bar.swipeLeft(); XCTAssertTrue(app.staticTexts["Swipe through the game · 1/1"].waitForExistence(timeout: 5))
-        bar.swipeRight(); XCTAssertTrue(app.staticTexts["Swipe through the game · 0/1"].waitForExistence(timeout: 5))
+        bar.swipeLeft(); assertHistory("1/1", in: app)
+        bar.swipeRight(); assertHistory("0/1", in: app)
         app.buttons["Turn: White"].tap()
         XCTAssertTrue(app.buttons["Turn: Black"].waitForExistence(timeout: 5))
     }
@@ -76,7 +83,7 @@ extension ChessVisionUITests {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["square-e2"].waitForExistence(timeout: 5))
         app.buttons["square-e2"].tap(); app.buttons["square-e4"].tap()
-        XCTAssertTrue(app.staticTexts["Swipe through the game · 1/1"].waitForExistence(timeout: 5))
+        assertHistory("1/1", in: app)
         let insights = app.switches["Position insights"]
         if !insights.isHittable { app.swipeUp() }
         XCTAssertTrue(insights.exists)

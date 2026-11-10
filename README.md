@@ -147,3 +147,13 @@ Captures supply the same-color partner on the other board, including captured pr
 Finished matches automatically open review and appear in Game history, with both boards available for replay. Review assesses your moves on board A using Bughouse engine rules and groups suggestions into areas for improvement. Partner-board consequences are not fully evaluated by the engine. Existing games continue to receive automatic personalized post-game reviews.
 
 Validation: 81 portable Swift core tests and assertion-enabled native feature checks, including pocket transfers, drops, promoted captures, check-blocking drops, three AI seats, four clocks, persistence, flagging and two-board review. iOS compilation, rotation and layout require macOS/Xcode validation.
+
+## Version 0.12 premoves and deferred photos
+
+Settings → Moves has **Premoves** (on by default) and **Auto-queen** (off by default). Queue multiple moves while the computer thinks, including repeated moves by the same piece. Tap an unrelated board square to remove the last queued move, once per tap. Blindfold text input accepts coordinate premoves such as `g1f3` or `a7a8q`, and a cancel button is available when the board is hidden. Every queued turn must match the native legal moves when it is due; an illegal intent clears the remaining dependent queue. Pausing, leaving a game, taking back, resigning or starting another game clears premoves.
+
+Premoves work in every computer variant, including two-stage Duck turns and pocket drops in Crazyhouse/Bughouse, and during puzzle/repertoire opponent replies. Analysis and repertoire editing play immediately because they have no opponent waiting phase. Auto-queen applies to board promotion gestures throughout the app; with it off the piece picker remains available, including king promotions in Antichess.
+
+The Analysis camera menu offers **Take photo · choose afterward**, **Take photos for later**, and **Saved photos**. Choose immediate recognition or save the image without recognition. Continue with **Take another** to collect multiple positions during a game. Saved JPEGs remain in the app's protected local storage across relaunches; open them individually for analysis afterward or swipe to delete. No Photos library permission or upload is needed.
+
+The analysis history control is now a thicker bar with arrows and **Swipe** inside. Clock setup no longer shows the tap-to-start sentence, and starting by pressing a clock face now awards the first completed move's increment. Research now says “Explore games on a chess.com or lichess account.”

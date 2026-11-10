@@ -10,6 +10,10 @@ import SwiftUI
     @State private var reviewing = false
     @State private var reviewedID: UUID?
     @State private var reviewTask: Task<Void, Never>?
+    @AppStorage("premoves") private var premovesEnabled = true
+    @AppStorage("autoQueen") private var autoQueen = false
+    @State private var composer = PremoveComposer()
+    @State private var queuePromotion = false
     @State private var selected: Int?
     @State private var drop: Character?
     @State private var promotions: [VariantMove] = []
@@ -39,7 +43,10 @@ import SwiftUI
             .sheet(isPresented: $reviewing) { if let id = model.match?.id { NavigationStack { GameReviewView(id: id).toolbar { Button("Done") { reviewing = false } } } } }
             .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
                 PromotionPicker(side: model.match?.config.human ?? .white, kinds: promotions.compactMap(\.promotion)) { kind in
-                    if let move = promotions.first(where: { $0.promotion == kind }) { model.play(move) }; promotions = []
+                    if let move = promotions.first(where: { $0.promotion == kind }) {
+                        if queuePromotion { composer.complete(move.uci, duck: false, queue: &model.premoves); model.flushPremoves(); queuePromotion = false }
+                        else { model.play(move) }
+                    }; promotions = []
                 }
             }
             .confirmationDialog("Resign your team's match?", isPresented: $resigning) { Button("Resign", role: .destructive) { model.resign() } }
@@ -53,9 +60,11 @@ import SwiftUI
                 if orientation.isLandscape { sideways = true }
                 else if orientation.isPortrait { sideways = false; model.pause() }
             }
+            .onChange(of: premovesEnabled) { _, enabled in if !enabled { model.premoves.clear(); composer = PremoveComposer() } }
+            .onChange(of: model.match?.id) { _, _ in composer = PremoveComposer() }
             .onChange(of: model.running) { _, running in UIApplication.shared.isIdleTimerDisabled = running && sideways }
             .onChange(of: scenePhase) { _, phase in if phase != .active { reviewTask?.cancel(); model.pause() } else { scheduleReview() } }
-            .onChange(of: model.states.first?.board.fen) { _, _ in selected = nil; drop = nil; promotions = [] }
+            .onChange(of: model.states.first?.board.fen) { _, _ in selected = nil; drop = nil; if !queuePromotion { promotions = [] } }
             .onChange(of: model.match?.winner) { _, _ in scheduleReview() }
         }
     }
@@ -90,20 +99,20 @@ import SwiftUI
         let bottom = index == 0 ? human : human.opposite
         return VStack(spacing: 4) {
             HStack {
-                Text(index == 0 ? "A · Your board" : "B · Partner board").font(.caption.bold())
+                Text(index == 0 ? (model.premoves.moves.isEmpty ? "A · Your board" : "A · \(model.premoves.moves.count) premoves") : "B · Partner board").font(.caption.bold())
                 Spacer()
                 if model.thinkingBoard == index { ProgressView().controlSize(.mini) }
             }
             clockRow(index, side: bottom.opposite)
-            BoardView(position: state.board, selected: index == 0 ? selected : nil, legalTargets: index == 0 ? targets() : [], flipped: bottom == .black) { square in if index == 0 { tap(square) } }.frame(width: side, height: side).accessibilityElement(children: .contain).accessibilityIdentifier(index == 0 ? "bughouse-board-A" : "bughouse-board-B")
+            BoardView(position: index == 0 && isPremoving ? model.premoves.projected(state.board, side: human) : state.board, selected: index == 0 ? (isPremoving ? composer.selected : selected) : nil, legalTargets: index == 0 ? (isPremoving ? Set(model.premoves.moves.compactMap { VariantMove(uci: $0, san: "").to }) : targets()) : [], flipped: bottom == .black) { square in if index == 0 { tap(square) } }.frame(width: side, height: side).accessibilityElement(children: .contain).accessibilityIdentifier(index == 0 ? "bughouse-board-A" : "bughouse-board-B")
             clockRow(index, side: bottom)
             HStack(spacing: 4) {
                 ForEach(Array("PNBRQ"), id: \.self) { kind in
                     let symbol = bottom == .white ? kind : Character(kind.lowercased())
                     let count = state.pockets.filter { $0.symbol == symbol }.count
-                    Button { selected = nil; drop = kind } label: {
+                    Button { if isPremoving { composer.selected = nil; composer.drop = kind } else { selected = nil; drop = kind } } label: {
                         HStack(spacing: 0) { PieceView(piece: Piece(symbol)).frame(width: 22, height: 22); Text("\(count)").font(.caption2) }
-                    }.disabled(index != 0 || count == 0 || state.board.turn != human || !model.running)
+                    }.disabled(index != 0 || count == 0 || (!premovesEnabled && state.board.turn != human) || !model.running)
                 }
             }
         }.frame(width: side)
@@ -122,11 +131,22 @@ import SwiftUI
         guard model.states.count == 2 else { return [] }
         return Set(model.states[0].moves.filter { drop != nil ? $0.drop == drop : $0.from == selected }.compactMap(\.to))
     }
+    private var isPremoving: Bool { premovesEnabled && (model.states.first?.board.turn != model.match?.config.human || !model.premoves.moves.isEmpty || composer.selected != nil || composer.drop != nil) }
     private func tap(_ square: Int) {
-        guard model.running, let human = model.match?.config.human, model.states[0].board.turn == human else { return }
+        guard model.running, let human = model.match?.config.human else { return }
+        if isPremoving {
+            composer.tap(square, board: model.premoves.projected(model.states[0].board, side: human), side: human, duck: false, queue: &model.premoves)
+            model.flushPremoves()
+            if !composer.promotions.isEmpty { queuePromotion = true; promotions = composer.promotions }
+            return
+        }
+        guard model.states[0].board.turn == human else { return }
         let state = model.states[0]
         let choices = state.moves.filter { $0.to == square && (drop != nil ? $0.drop == drop : selected != nil && $0.from == selected) }
-        if choices.count > 1 { promotions = choices; return }
+        if choices.count > 1 {
+            if autoQueen, let queen = choices.first(where: { $0.promotion == "q" }) { model.play(queen) }
+            else { queuePromotion = false; promotions = choices }; return
+        }
         if let move = choices.first { model.play(move); return }
         drop = nil; selected = state.board.squares[square]?.side == human ? square : nil
     }

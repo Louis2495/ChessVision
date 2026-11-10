@@ -11,6 +11,7 @@ import SwiftUI
     @Published private(set) var busy = false
     @Published private(set) var computerPiecePreview: Position?
     @Published var error: String?
+    @Published var premoves = PremoveQueue()
     private weak var library: LibraryStore?
     private var task: Task<Void, Never>?
     private var generation = UUID()
@@ -26,10 +27,11 @@ import SwiftUI
         if game != nil && game?.id == nil { game?.id = UUID(); library.state.computer = game }
         if game != nil { run() }
     }
-    func pause() { computerPiecePreview = nil; visible = false; task?.cancel(); generation = UUID(); busy = false }
+    func pause() { premoves.clear(); computerPiecePreview = nil; visible = false; task?.cancel(); generation = UUID(); busy = false }
     func start() -> Bool {
         guard mode != .bughouse else { error = "Open Bughouse setup to start a two-board match."; return false }
         guard let target = Int(ratingText), (1...10000).contains(target) else { error = "Enter a target rating from 1 to 10000. Ratings above the supported range use full strength."; return false }
+        premoves.clear()
         game = SavedComputerGame(mode: mode, human: human, targetRating: target, openingID: mode == .normal ? requestedOpening?.id : nil)
         game?.pawnWarsKings = pawnWarsKings
         if mode == .chess960 { game?.chess960Index = Int.random(in: 0..<960) }
@@ -61,15 +63,30 @@ import SwiftUI
                     try apply(move)
                 }
             } catch is CancellationError {} catch { if token == generation { self.error = error.localizedDescription } }
-            if token == generation { computerPiecePreview = nil; busy = false }
+            if token == generation {
+                computerPiecePreview = nil; busy = false
+                if !MovePreferences.premoves { premoves.clear() }
+                if let state = snapshot, !state.finished, state.board.turn == self.game?.human,
+                   let next = premoves.take(legal: state.moves) { play(next) }
+                if snapshot?.finished == true { premoves.clear() }
+            }
         }
+    }
+    func flushPremoves() {
+        guard MovePreferences.premoves else { premoves.clear(); return }
+        guard !busy, let state = snapshot, !state.finished, state.board.turn == game?.human else { return }
+        if let next = premoves.take(legal: state.moves) { play(next) }
     }
     func play(_ move: VariantMove) {
         guard !busy, let game, let snapshot, !snapshot.finished, snapshot.board.turn == game.human else { return }
         do { try apply(move.uci); run() } catch { self.error = error.localizedDescription }
     }
     @discardableResult func enter(_ text: String) -> Bool {
-        guard !busy, let snapshot, let game, !snapshot.finished, snapshot.board.turn == game.human else { return false }
+        guard let snapshot, let game, !snapshot.finished else { return false }
+        if busy || snapshot.board.turn != game.human || !premoves.moves.isEmpty {
+            guard MovePreferences.premoves, let intent = PremoveQueue.coordinateIntent(text) else { error = "Use coordinates for a premove, for example g1f3 or a7a8q."; return false }
+            premoves.append(intent); return true
+        }
         do { let move = try snapshot.move(named: text); play(move); return true }
         catch { self.error = error.localizedDescription; return false }
     }
@@ -81,6 +98,7 @@ import SwiftUI
         archiveIfFinished()
     }
     func undo() {
+        premoves.clear()
         guard var game, game.moves.count >= 2 else { return }
         if snapshot?.finished == true { game.id = UUID() }
         task?.cancel(); game.moves.removeLast(2)
@@ -88,6 +106,7 @@ import SwiftUI
         self.game = game; library?.state.computer = game; run()
     }
     func resign() {
+        premoves.clear()
         guard var game, snapshot?.finished == false else { return }
         task?.cancel(); generation = UUID(); computerPiecePreview = nil; busy = false
         game.resigned = game.human; self.game = game; library?.state.computer = game
@@ -113,6 +132,10 @@ struct ComputerPlayView: View {
     @State private var lastReviewedGame: UUID?
     @State private var reviewPresentationTask: Task<Void, Never>?
     @State private var visible = false
+    @AppStorage("premoves") private var premovesEnabled = true
+    @AppStorage("autoQueen") private var autoQueen = false
+    @State private var composer = PremoveComposer()
+    @State private var queuePromotion = false
     @State private var textMove = ""
     @State private var selected: Int?
     @State private var selectedDrop: Character?
@@ -143,19 +166,24 @@ struct ComputerPlayView: View {
             }
             .confirmationDialog("Resign this game?", isPresented: $resigning, titleVisibility: .visible) { Button("Resign", role: .destructive) { model.resign() } }
             .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
-                PromotionPicker(side: model.snapshot?.board.turn ?? .white, kinds: promotions.compactMap(\.promotion)) { kind in
-                    if let move = promotions.first(where: { $0.promotion == kind }) { choose(move) }
+                PromotionPicker(side: queuePromotion ? (model.game?.human ?? .white) : (model.snapshot?.board.turn ?? .white), kinds: promotions.compactMap(\.promotion)) { kind in
+                    if let move = promotions.first(where: { $0.promotion == kind }) {
+                        if queuePromotion { composer.complete(move.uci, duck: model.game?.mode == .duck, queue: &model.premoves); model.flushPremoves(); queuePromotion = false }
+                        else { choose(move) }
+                    }
                     promotions = []; selected = nil
                 }
             }
             .onAppear { visible = true; model.activate(library); scheduleReview() }
-            .onDisappear { visible = false; reviewPresentationTask?.cancel(); model.pause() }
+            .onDisappear { visible = false; reviewPresentationTask?.cancel(); model.pause(); composer = PremoveComposer() }
             .onChange(of: scenePhase) { _, phase in
                 guard visible else { return }
                 if phase == .active && !historyPresented && reviewRoute == nil { model.activate(library); scheduleReview() }
                 else { reviewPresentationTask?.cancel(); model.pause() }
             }
-            .onChange(of: model.snapshot?.fen) { _, _ in selected = nil; selectedDrop = nil; promotions = []; duckChoices = [] }
+            .onChange(of: premovesEnabled) { _, enabled in if !enabled { model.premoves.clear(); composer = PremoveComposer() } }
+            .onChange(of: model.game?.id) { _, _ in composer = PremoveComposer() }
+            .onChange(of: model.snapshot?.fen) { _, _ in selected = nil; selectedDrop = nil; if !queuePromotion { promotions = [] }; duckChoices = [] }
         }
     }
     private var playContent: some View {
@@ -165,6 +193,13 @@ struct ComputerPlayView: View {
                     HStack { Text(game.mode.title).font(.headline); Spacer(); Text("Target ≈ \(game.targetRating)").font(.subheadline).foregroundStyle(.secondary) }
                     HStack { Text("You play \(game.human.title)"); Spacer(); TurnBadge(side: snapshot.board.turn) }
                     gameBoard(snapshot, game: game)
+                    if !model.premoves.moves.isEmpty {
+                        HStack {
+                            Text("Premoves: " + model.premoves.moves.joined(separator: " → ")).font(.caption).foregroundStyle(.tint)
+                            Spacer()
+                            Button { model.premoves.cancelLast(); composer = PremoveComposer() } label: { Image(systemName: "xmark.circle") }.accessibilityLabel("Cancel last premove")
+                        }
+                    }
                     if game.mode == .crazyhouse { pockets(snapshot, human: game.human) }
                     if let checks = snapshot.checksRemaining {
                         let values = checks.split(separator: "+")
@@ -176,8 +211,8 @@ struct ComputerPlayView: View {
                     if !duckChoices.isEmpty { Button("Cancel piece move") { duckChoices = [] } }
                     if !snapshot.finished && (game.mode == .blindBoard || game.mode == .blindText) {
                         HStack {
-                            TextField(game.mode == .crazyhouse ? "Move, e.g. Nf3 or N@f7" : "Move, e.g. Nf3", text: $textMove).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).onSubmit(enter)
-                            Button("Play", action: enter).buttonStyle(.borderedProminent).disabled(model.busy || snapshot.board.turn != game.human || textMove.isEmpty)
+                            TextField(isPremoving ? "Premove, e.g. g1f3" : "Move, e.g. Nf3", text: $textMove).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).onSubmit(enter)
+                            Button("Play", action: enter).buttonStyle(.borderedProminent).disabled((!premovesEnabled && (model.busy || snapshot.board.turn != game.human)) || textMove.isEmpty)
                         }
                     }
                     if let opening = model.opening { Text("Requested: \(opening.name)\(model.bookMatches ? "" : " · game has left this line")").font(.caption).foregroundStyle(.secondary) }
@@ -212,8 +247,8 @@ struct ComputerPlayView: View {
     @ViewBuilder private func gameBoard(_ snapshot: VariantSnapshot, game: SavedComputerGame) -> some View {
         if game.mode != .blindText {
             let hidden = game.mode == .blindBoard
-            BoardView(position: displayedBoard(snapshot, game: game), selected: hidden ? nil : selected,
-                      legalTargets: hidden ? [] : targets(snapshot), flipped: game.human == .black, hidePieces: hidden, obscured: game.mode == .fogOfWar && !snapshot.finished ? FogVisibility.hidden(in: snapshot.board, for: game.human) : [], duckSquare: snapshot.duckSquare, onTap: tap)
+            BoardView(position: displayedBoard(snapshot, game: game), selected: hidden ? nil : (isPremoving ? composer.selected : selected),
+                      legalTargets: hidden ? [] : (isPremoving ? Set(model.premoves.moves.compactMap { VariantMove(uci: $0, san: "").to }) : targets(snapshot)), flipped: game.human == .black, hidePieces: hidden, obscured: game.mode == .fogOfWar && !snapshot.finished ? FogVisibility.hidden(in: snapshot.board, for: game.human) : [], duckSquare: snapshot.duckSquare, onTap: tap)
                 .accessibilityHidden(snapshot.finished)
                 .overlay {
                     if let result = snapshot.result {
@@ -231,7 +266,13 @@ struct ComputerPlayView: View {
         guard move.duckDestination != nil, let snapshot = model.snapshot else { model.play(move); return }
         duckChoices = snapshot.moves.filter { $0.pieceMove == move.pieceMove }; selected = nil
     }
+    private var isPremoving: Bool { premovesEnabled && (model.busy || model.snapshot?.board.turn != model.game?.human || !model.premoves.moves.isEmpty || composer.duckPiece != nil || composer.selected != nil || composer.drop != nil) }
     private func displayedBoard(_ snapshot: VariantSnapshot, game: SavedComputerGame) -> Position {
+        if isPremoving {
+            let projected = model.premoves.projected(snapshot.board, side: game.human)
+            if let pending = composer.duckPiece { return VariantMove(uci: pending, san: "").piecePosition(from: projected) }
+            return projected
+        }
         if let preview = model.computerPiecePreview { return preview }
         if let move = duckChoices.first { return move.piecePosition(from: snapshot.board) }
         return snapshot.board
@@ -253,12 +294,22 @@ struct ComputerPlayView: View {
         return Set(moves.compactMap(\.to))
     }
     private func tap(_ index: Int) {
-        guard let snapshot = model.snapshot, let game = model.game, !model.busy, !snapshot.finished, snapshot.board.turn == game.human else { return }
+        guard let snapshot = model.snapshot, let game = model.game, !snapshot.finished else { return }
+        if isPremoving {
+            composer.tap(index, board: displayedBoard(snapshot, game: game), side: game.human, duck: game.mode == .duck, promotionKinds: game.mode == .antichess ? "qrbnk" : "qrbn", queue: &model.premoves)
+            model.flushPremoves()
+            if !composer.promotions.isEmpty { queuePromotion = true; promotions = composer.promotions }
+            return
+        }
+        guard !model.busy, snapshot.board.turn == game.human else { return }
         if !duckChoices.isEmpty { if let move = duckChoices.first(where: { $0.duckDestination == index }) { duckChoices = []; model.play(move) }; return }
         if selected == index { selected = nil; selectedDrop = nil; return }
         let choices = snapshot.moves.filter { move in move.to == index && (selectedDrop != nil ? move.drop == selectedDrop : selected != nil && move.from == selected) }
         let distinct = Dictionary(grouping: choices, by: \.pieceMove).values.compactMap(\.first)
-        if distinct.count > 1 { promotions = distinct; return }
+        if distinct.count > 1 {
+            if autoQueen, let queen = distinct.first(where: { $0.promotion == "q" }) { choose(queen) }
+            else { queuePromotion = false; promotions = distinct }; return
+        }
         if let move = choices.first { choose(move); return }
         selectedDrop = nil
         selected = snapshot.board.squares[index]?.side == game.human ? index : nil
@@ -272,10 +323,10 @@ struct ComputerPlayView: View {
                         let symbol = side == .white ? kind : Character(kind.lowercased())
                         let count = snapshot.pockets.filter { $0.symbol == symbol }.count
                         if count > 0 {
-                            Button { selected = nil; selectedDrop = kind } label: {
+                            Button { if isPremoving { composer.selected = nil; composer.drop = kind } else { selected = nil; selectedDrop = kind } } label: {
                                 VStack(spacing: 1) { PieceView(piece: Piece(symbol)).frame(width: 31, height: 31); Text(String(count)).font(.caption2) }
                                     .padding(3).background(selectedDrop == kind && side == human ? Color.accentColor.opacity(0.2) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
-                            }.buttonStyle(.plain).disabled(side != human || snapshot.board.turn != human || model.busy || snapshot.finished)
+                            }.buttonStyle(.plain).disabled(side != human || (!premovesEnabled && (snapshot.board.turn != human || model.busy)) || snapshot.finished)
                         }
                     }
                     Spacer()

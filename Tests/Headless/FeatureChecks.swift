@@ -61,7 +61,9 @@ import Darwin
             bugs.newMatch(BughouseConfig(human: .white, ratings: [1200,800,1300,1800], seconds: 30, increment: 1))
             try await wait { !bugs.loading && bugs.states.count == 2 && bugs.running }
             bugs.play(try bugs.states[0].move(named: "e4"))
-            try await wait { (bugs.match?.events.filter { $0.board == 0 }.count ?? 0) >= 2 || bugs.error != nil }
+            bugs.premoves.append("g1f3"); bugs.premoves.append("f3g5")
+            try await wait { (bugs.match?.events.filter { $0.board == 0 }.count ?? 0) >= 6 || bugs.error != nil }
+            try require(bugs.premoves.moves.isEmpty && bugs.match?.events.filter { $0.board == 0 && $0.side == .white }.count == 3, "Bughouse consecutive premoves did not execute")
             try require(bugs.error == nil, "Bughouse AI failed: \(bugs.error ?? "")")
             bugs.pause()
             let savedCount = bugs.match!.events.count
@@ -111,6 +113,21 @@ import Darwin
                 try require(model.game?.moves.isEmpty == true, "Takeback did not restore the start")
                 print("Checked model: \(mode.title)"); fflush(stdout)
             }
+            // A deterministic book reply tests actual model scheduling through two queued turns.
+            let premoveBook = try openings.first(where: { $0.moves.count >= 6 }).unwrap("Missing premove opening fixture")
+            model.mode = .normal; model.human = .white; model.requestedOpening = premoveBook
+            try require(model.start(), "Premove setup failed"); try await wait { !model.busy }
+            model.play(try model.snapshot!.move(named: premoveBook.moves[0]))
+            model.premoves.append(premoveBook.moves[2]); model.premoves.append(premoveBook.moves[4])
+            try await wait { !model.busy && (model.game?.moves.count ?? 0) >= 6 }
+            try require(Array(model.game!.moves.prefix(6)) == Array(premoveBook.moves.prefix(6)) && model.premoves.moves.isEmpty, "Multiple premoves did not execute across consecutive computer replies")
+            try require(model.start(), "Illegal premove setup failed"); try await wait { !model.busy }
+            model.play(try model.snapshot!.move(named: premoveBook.moves[0]))
+            model.premoves.append("a1a8"); model.premoves.append(premoveBook.moves[2])
+            try await wait { !model.busy }
+            try require(model.game?.moves.count == 2 && model.premoves.moves.isEmpty && model.error == nil, "Illegal premove was played or dependent queue survived")
+            model.requestedOpening = nil
+            print("PASS: consecutive legal premoves execute automatically; illegal intents cancel their dependent queue."); fflush(stdout)
             model.mode = .duck; model.human = .black; model.ratingText = "1000"
             try require(model.start(), "Duck cancellation setup failed")
             try await wait { model.computerPiecePreview != nil }

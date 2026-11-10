@@ -22,7 +22,7 @@ struct PuzzleTrainingView: View {
                     }
                     if let puzzle {
                         HStack { Text("Difficulty ≈ \(puzzle.estimatedRating)").font(.headline); Spacer(); TurnBadge(side: board.turn) }
-                        MoveBoard(position: board, enabled: !finished && board.turn == learner, flipped: learner == .black, onMove: attempt)
+                        MoveBoard(position: board, enabled: !finished && board.turn == learner, flipped: learner == .black, premoveSide: finished ? nil : learner, onMove: attempt).id(generation)
                         Text(finished ? "Position completed" : "\(learner.title) to move · find the best continuation").font(.headline)
                         if !message.isEmpty { Text(message).foregroundStyle(finished ? Color.green : Color.secondary) }
                         if !played.isEmpty { Text(played.joined(separator: "  ")).font(.subheadline.monospaced()) }

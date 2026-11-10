@@ -32,6 +32,8 @@ struct SettingsView: View {
     @AppStorage("background") private var background = "Default"
     @AppStorage("boardStyle") private var board = "Classic"
     @AppStorage("pieceStyle") private var pieces = "Illustrated"
+    @AppStorage("premoves") private var premoves = true
+    @AppStorage("autoQueen") private var autoQueen = false
     @AppStorage("classicalMusic") private var music = false
     var body: some View {
         Form {
@@ -44,6 +46,11 @@ struct SettingsView: View {
                 Picker("Board", selection: $board) { ForEach(BoardStyle.allCases, id: \.rawValue) { Text($0.rawValue).tag($0.rawValue) } }
                 Picker("Pieces", selection: $pieces) { ForEach(PieceStyle.allCases, id: \.rawValue) { Text($0.rawValue).tag($0.rawValue) } }
                 BoardView(position: .initial).padding(.vertical, 8)
+            }.listRowBackground(ThemeCardBackground())
+            Section("Moves") {
+                Toggle("Premoves", isOn: $premoves)
+                Text("Queue moves while the computer thinks. Tap an unrelated square to cancel the last premove; tap again to cancel another.").font(.caption).foregroundStyle(.secondary)
+                Toggle("Auto-queen", isOn: $autoQueen)
             }.listRowBackground(ThemeCardBackground())
             Section("Sound") {
                 Toggle("Classical music", isOn: $music)

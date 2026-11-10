@@ -18,10 +18,12 @@ public struct VariantMove: Hashable, Identifiable, Sendable {
             let captured = to + (piece.side == .white ? 8 : -8)
             if board.squares.indices.contains(captured) { board.squares[captured] = nil }
         }
-        if piece.kind == "k", abs(to - from) == 2 {
+        if piece.kind == "k", abs(to - from) == 2, from / 8 == to / 8 {
             let rookFrom = to > from ? from + 3 : from - 4
             let rookTo = to > from ? from + 1 : from - 1
-            board.squares[rookTo] = board.squares[rookFrom]; board.squares[rookFrom] = nil
+            if board.squares.indices.contains(rookFrom), board.squares[rookFrom]?.kind == "r" {
+                board.squares[rookTo] = board.squares[rookFrom]; board.squares[rookFrom] = nil
+            }
         }
         board.squares[to] = piece; board.squares[from] = nil
         if let promotion { board.squares[to] = Piece(piece.side == .white ? Character(promotion.uppercased()) : promotion) }

@@ -72,7 +72,7 @@ struct OpeningExplorerView: View {
     var body: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("Explore a player's public games.").font(.subheadline).foregroundStyle(.secondary)
+                    Text("Explore games on a chess.com or lichess account").font(.subheadline).foregroundStyle(.secondary)
                     Picker("Site", selection: $model.site) { ForEach(PublicChessSite.allCases) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
                     TextField("Public username", text: $model.username).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
                     Button { history = [.initial]; notation = []; model.load() } label: { Label("Load opening tree", systemImage: "arrow.down.circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(model.busy || !PublicGames.validUsername(model.username))

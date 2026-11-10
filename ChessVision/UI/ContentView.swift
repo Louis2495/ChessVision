@@ -2,6 +2,13 @@ import SwiftUI
 import AVFoundation
 
 @MainActor struct ContentView: View {
+    @StateObject private var savedPhotos = SavedPhotoStore()
+    @State private var photosPresented = false
+    @State private var saveForLater = false
+    @State private var photoChoice = false
+    @State private var awaitingPhotoChoice = false
+    @State private var pendingSavedImage: UIImage?
+    @State private var captureNotice: String?
     @State private var camera = false
     @State private var processing = false
     @State private var recognitionTask: Task<Void, Never>?
@@ -19,7 +26,11 @@ import AVFoundation
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         HStack(spacing: 20) {
-                            Button(action: takePhoto) { Image(systemName: "camera") }.accessibilityLabel("Scan board")
+                            Menu {
+                                Button("Take photo · choose afterward") { saveForLater = false; takePhoto() }
+                                Button("Take photos for later") { saveForLater = true; takePhoto() }
+                                Button("Saved photos (\(savedPhotos.photos.count))") { savedPhotos.refresh(); photosPresented = true }
+                            } label: { Image(systemName: "camera") }.accessibilityLabel("Scan board")
                             SettingsButton()
                         }
                     }
@@ -27,8 +38,24 @@ import AVFoundation
                         if position != nil { Button("Start over", action: startOver) }
                     }
                 }
-                .fullScreenCover(isPresented: $camera) {
+                .fullScreenCover(isPresented: $camera, onDismiss: { if awaitingPhotoChoice { awaitingPhotoChoice = false; photoChoice = true } }) {
                     CameraView(onPhoto: capturedPhoto, onCancel: { camera = false }).ignoresSafeArea()
+                }
+                .sheet(isPresented: $photosPresented, onDismiss: {
+                    if let image = pendingSavedImage { pendingSavedImage = nil; lastPhoto = image; process(image) }
+                }) {
+                    NavigationStack { SavedPhotosView(store: savedPhotos) { image in pendingSavedImage = image; photosPresented = false }.toolbar { Button("Done") { photosPresented = false } } }
+                }
+                .confirmationDialog("When would you like to analyze this photo?", isPresented: $photoChoice, titleVisibility: .visible) {
+                    Button("Analyze now") { if let lastPhoto { process(lastPhoto) } }
+                    Button("Save for later") { saveCapturedPhoto() }
+                    Button("Save and take another") { if saveCapturedPhoto() { saveForLater = true; takePhoto() } }
+                    Button("Discard", role: .cancel) { lastPhoto = nil }
+                }
+                .safeAreaInset(edge: .bottom) {
+                    if let captureNotice {
+                        HStack { Text(captureNotice).font(.caption); Spacer(); Button("Take another") { saveForLater = true; takePhoto() }; Button("Done") { self.captureNotice = nil } }.padding(12).background(.regularMaterial)
+                    }
                 }
                 .alert("ChessVision", isPresented: showingMessage) {
                     Button("OK", role: .cancel) { }
@@ -45,7 +72,7 @@ import AVFoundation
         if let board = position {
             ScrollView {
                 EditorView(position: board, uncertain: uncertain, photo: photo,
-                           onRetake: takePhoto, onRecognizeAgain: retryRecognition)
+                           onRetake: { saveForLater = false; takePhoto() }, onRecognizeAgain: retryRecognition)
                     .id(recognitionID).padding()
             }.modifier(AppSurface()).navigationTitle("Analysis").disabled(processing)
         } else {
@@ -64,10 +91,18 @@ import AVFoundation
         position = nil; photo = nil; uncertain = []; lastPhoto = nil
     }
     private func capturedPhoto(_ image: UIImage) {
-        camera = false; lastPhoto = image; process(image)
+        lastPhoto = image
+        if saveForLater { _ = saveCapturedPhoto() } else { awaitingPhotoChoice = true }
+        camera = false
+    }
+    @discardableResult private func saveCapturedPhoto() -> Bool {
+        guard let lastPhoto else { return false }
+        if savedPhotos.save(lastPhoto) { captureNotice = "\(savedPhotos.photos.count) photos saved for later"; return true }
+        message = savedPhotos.error; return false
     }
     private func retryRecognition() { if let lastPhoto { process(lastPhoto) } }
     private func takePhoto() {
+        captureNotice = nil
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else { message="A camera is not available here. Use a physical iPhone to photograph a board. You can play on the analysis board in Simulator."; return }
         Task {
             let granted = await AVCaptureDevice.requestAccess(for:.video)

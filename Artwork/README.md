@@ -1,1 +1,1 @@
-The current home-screen icon uses KnightLens-source.png: a sculpted ivory knight with a camera-lens detail on forest green. The original generated artwork is preserved; the asset catalog contains an opaque RGB 1024×1024 export. KnightBinoculars-source.png preserves the previous icon for provenance.
+The current home-screen icon uses SimpleKnight-source.png: a simple ivory chess-knight silhouette on deep green. The asset catalog contains an opaque RGB 1024×1024 export. KnightLens-source.png and KnightBinoculars-source.png preserve previous generated artwork for provenance.

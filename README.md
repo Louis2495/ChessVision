@@ -58,7 +58,7 @@ A real **Fairy-Stockfish** engine handles the rules and computer moves. Targets 
 
 For **Normal** only, **Request an opening** searches 3,865 named lines. The computer follows that book line while your moves match it, then returns to normal play when you deviate or leave the line. You are not forced to play the requested moves. Games persist, can be resumed, taken back or resigned. Switching tabs pauses their engine work.
 
-The home-screen icon is new original artwork of a sculpted ivory knight with a camera-lens detail on a forest-green background. The 1024px opaque asset is checked in; its original is preserved in `Artwork/`.
+The home-screen icon is new original artwork of a simple ivory chess-knight silhouette on a forest-green background. The 1024px opaque asset is checked in; its original is preserved in `Artwork/`.
 
 ## Validation commands
 

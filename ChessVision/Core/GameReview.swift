@@ -86,7 +86,7 @@ public enum GameReviewLogic {
         let text = lines.map { "\($0.id)|\($0.name)|\($0.side.rawValue)|\($0.startingFEN)|\($0.moves.joined(separator: " "))" }.sorted().joined(separator: "\n")
         var hash: UInt64 = 14695981039346656037
         for byte in text.utf8 { hash = (hash ^ UInt64(byte)) &* 1099511628211 }
-        return String(hash, radix: 16)
+        return "sf19-nnue-1a298aa575a0-review3000-v1:" + String(hash, radix: 16)
     }
     public static func repertoireSuggestion(at board: Position, played: String, san: String, ply: Int, lines: [RepertoireLine] = [], choices supplied: [RepertoireMatch]? = nil) -> (matched: Bool, suggestion: GameSuggestion?) {
         let choices = supplied ?? RepertoireTraining.choices(at: board, in: lines)

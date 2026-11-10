@@ -1,0 +1,4 @@
+# Preserve unmodified upstream source formatting, including historical whitespace.
+Vendor/Stockfish19/** -whitespace
+# This is the real offline model, not a Git LFS pointer or text file.
+*.nnue binary

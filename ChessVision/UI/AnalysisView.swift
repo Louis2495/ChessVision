@@ -18,6 +18,7 @@ struct AnalysisView: View {
     @State private var history: [Position]
     @State private var cursor = 0
     @State private var rank = 1
+    @AppStorage("analysisCandidates") private var analysisCandidates = 1
     @AppStorage("positionInsights") private var insights = false
     @AppStorage("showGameNotation") private var showGameNotation = false
     @State private var observations: [String] = []
@@ -74,7 +75,7 @@ struct AnalysisView: View {
                 } else {
                     HStack(spacing: 6) {
                         if engine.running { Circle().fill(.green).frame(width: 6, height: 6) }
-                        Text(engine.running ? "Analyzing continuously · Depth \(principal?.depth ?? 0)" : "Preparing analysis…")
+                        Text(engine.running ? "\(engine.analysisEngineName) · Depth \(principal?.depth ?? 0)" : "Preparing Stockfish 19…")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -100,6 +101,10 @@ struct AnalysisView: View {
         .onAppear {
             visible = true
             if scenePhase == .active { engine.analyze(position) }
+        }
+        .onChange(of: analysisCandidates) { _, _ in
+            rank = 1
+            if visible && scenePhase == .active { engine.analyze(position) }
         }
         .onChange(of: position.fen) { _, _ in
             selected = nil; promotions = []; message = nil
@@ -164,16 +169,20 @@ struct AnalysisView: View {
         }.padding().background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
     }
     private var candidateLines: some View {
-        DisclosureGroup("Candidate lines") {
+        VStack(alignment: .leading, spacing: 12) {
             if let move = moves.first {
                 Text("\(rank == 1 ? "Best move" : "Candidate move"): \(move.san)").font(.headline)
             }
-            Picker("Variation", selection: $rank) {
-                ForEach(1...3, id: \.self) { number in
-                    Text("\(number) · \(liveLines.first { $0.rank == number }?.evaluation ?? "—")").tag(number)
+            DisclosureGroup("Continuation") {
+                if analysisCandidates == 3 {
+                    Picker("Variation", selection: $rank) {
+                        ForEach(1...3, id: \.self) { number in
+                            Text("\(number) · \(liveLines.first { $0.rank == number }?.evaluation ?? "—")").tag(number)
+                        }
+                    }.pickerStyle(.segmented)
                 }
-            }.pickerStyle(.segmented)
-            VariationTable(moves: moves, rootFEN: position.fen, onSelect: playThrough)
+                VariationTable(moves: moves, rootFEN: position.fen, onSelect: playThrough)
+            }
         }
     }
     @ViewBuilder private var recordedGame: some View {

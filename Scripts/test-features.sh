@@ -5,6 +5,7 @@ root="$PWD"
 build="$root/.build/features"
 mkdir -p "$build/include"
 library=$(bash Scripts/build-engine-library.sh)
+modern=$(python3 Scripts/build-modern-engine.py)
 cp Engine/StockfishBridge.h "$build/include/StockfishBridge.h"
 cat > "$build/include/module.modulemap" <<'MAP'
 module CStockfish { header "StockfishBridge.h" export * }
@@ -28,5 +29,5 @@ else
  link_options=(-Xlinker -lc++)
  platform_options=(-target "$(uname -m)-apple-macosx13.0")
 fi
-swiftc -swift-version 5 "${platform_options[@]}" -parse-as-library -I "$build/include" ChessVision/Core/*.swift "$build"/*.swift ChessVision/Services/LibraryStore.swift ChessVision/Services/PublicGameService.swift ChessVision/Services/GameReviewModel.swift ChessVision/Services/BughouseModel.swift Tests/Headless/FeatureChecks.swift "$library" "${link_options[@]}" -o "$build/feature-checks"
+swiftc -swift-version 5 "${platform_options[@]}" -parse-as-library -I "$build/include" ChessVision/Core/*.swift "$build"/*.swift ChessVision/Services/LibraryStore.swift ChessVision/Services/PublicGameService.swift ChessVision/Services/GameReviewModel.swift ChessVision/Services/BughouseModel.swift Tests/Headless/FeatureChecks.swift "$library" "$modern" "${link_options[@]}" -o "$build/feature-checks"
 "$build/feature-checks" "$root"

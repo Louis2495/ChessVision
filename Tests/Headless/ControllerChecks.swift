@@ -20,7 +20,7 @@ import Darwin
             let engine = EngineController.shared
             engine.analyze(.initial)
             try await wait { engine.ready && engine.lines.first?.depth ?? 0 >= 4 }
-            try require(engine.running, "Continuous search stopped unexpectedly")
+            try require(engine.running && engine.searchEngine == "Stockfish 19 NNUE", "Analysis did not use the official NNUE engine")
             try require(engine.analyzedFEN == Position.initial.fen, "Wrong initial FEN")
             let firstDepth = engine.lines.first!.depth
             try await wait { engine.lines.first?.depth ?? 0 > firstDepth }
@@ -49,6 +49,18 @@ import Darwin
             engine.stopAnalysis() // A departing analysis tab must not cancel another tab's game.
             let reply = try await response.value
             try require(Position.initial.legalMoves().contains { $0.uci == reply }, "Analysis cleanup canceled the game tab")
+            let rated = try await engine.computerMove(variant: "chess", history: [], rating: 1320, side: .white)
+            try require(engine.searchEngine == "Stockfish 19 NNUE" && Position.initial.legalMoves().contains { $0.uci == rated }, "Rated normal play did not use official Stockfish")
+            UserDefaults.standard.set(3, forKey: "analysisCandidates")
+            engine.analyze(.initial)
+            try await wait { engine.lines.count == 3 && engine.lines.allSatisfy { $0.depth >= 6 } }
+            try require(engine.searchEngine == "Stockfish 19 NNUE", "Full-strength analysis did not recover after rated play")
+            engine.stop(); try await wait { !engine.running }
+            UserDefaults.standard.set(1, forKey: "analysisCandidates")
+            engine.analyze(.initial)
+            try await wait { engine.lines.count == 1 && (engine.lines.first?.depth ?? 0) >= 6 }
+            engine.stop(); try await wait { !engine.running }
+            print("PASS: SF19 NNUE routing, full-strength reset after rated play and 1/3-line analysis modes.")
             print("PASS: actual Swift controller + Stockfish: continuous depth, board changes, latest request wins, cancellation, mate/stalemate, restart.")
             fflush(stdout)
             // Match the app's process-lifetime engine; bypass global iostream teardown in this CLI harness.

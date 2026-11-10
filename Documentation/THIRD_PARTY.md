@@ -31,3 +31,7 @@ Import regression PGN: a public Chess.com game recorded in sarartur/chess.com co
 ## Additional piece sets
 
 Merida by Armando Hernandez Marroquin (GPL-2.0-or-later, used under GPL-3.0-or-later), and Spatial (displayed as Sculpted) / Fantasy by Maurizio Monge (MIT) are imported from lichess-org/lila commit a1590345c9c3a31b6f9c6705eefeeb7dab32a78e. Original SVG files, SHA-256 hashes and full license texts are preserved in Vendor/PieceStyles. SVGs were rendered to vector PDF without changing designs. Scripts/build-piece-styles.py verifies hashes and regenerates the 36 bundled PDF assets; no download or conversion is required in Xcode.
+
+## Official Stockfish 19 and default NNUE
+
+Standard chess uses official-stockfish/Stockfish release sf_19, commit edb0d9db6731067ec50ce619ff372b463bc4dd5d, under GPL-3.0-or-later. Unmodified corresponding sources, AUTHORS and Copying.txt are in Vendor/Stockfish19. The full default nn-1a298aa575a0.nnue model is bundled under the same upstream license; its origin and exact SHA-256 are documented in Vendor/Stockfish19/CHESSVISION.md. ChessVision's separate bridge and build scripts are included. Fairy-Stockfish remains linked for variants and low-rated play.

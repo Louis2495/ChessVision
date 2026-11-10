@@ -1,3 +1,9 @@
+Official Stockfish 19 and its default NNUE evaluation network
+Copyright (C) 2004-2026 the Stockfish developers. GPL-3.0-or-later.
+https://github.com/official-stockfish/Stockfish/tree/sf_19
+Network nn-1a298aa575a0.nnue, SHA-256 1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2.
+Corresponding source and build scripts accompany this project in Vendor/Stockfish19, Engine and Scripts.
+
 ChessVision — third-party notices
 
 ChessVision combined work: AGPL-3.0-or-later.

@@ -8,7 +8,7 @@ if os.environ.get('ENGINE_ASSERTIONS')=='1': flags.remove('-DNDEBUG')
 if sys.platform == "darwin": flags.append("-mmacosx-version-min=13.0")
 config=json.dumps([compiler,flags,subprocess.check_output(compiler+['--version'],text=True).splitlines()[0]])
 configfile=build/'configuration.json';refresh=not configfile.exists() or configfile.read_text()!=config
-headers=list((root/'Vendor/FairyStockfish').rglob('*.h'))+list((root/'Engine').glob('*.h'))
+headers=list((root/'Vendor/FairyStockfish').rglob('*.h'))+[root/'Engine/StockfishBridge.h']
 latest_header=max(p.stat().st_mtime for p in headers)
 sources=[root/'Engine/StockfishBridge.cpp']+sorted(p for p in (root/'Vendor/FairyStockfish').rglob('*.cpp') if p.name not in ['main.cpp','pyffish.cpp','ffishjs.cpp'])
 def compile(source):

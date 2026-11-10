@@ -12,7 +12,7 @@ import Darwin
     enum Failure: Error { case failed(String) }
     static func require(_ value: Bool, _ message: String) throws { if !value { throw Failure.failed(message) } }
     @MainActor static func wait(_ predicate: () -> Bool) async throws {
-        for _ in 0..<400 { if predicate() { return }; try await Task.sleep(for: .milliseconds(50)) }
+        for _ in 0..<1200 { if predicate() { return }; try await Task.sleep(for: .milliseconds(50)) }
         throw Failure.failed("Feature workflow timed out")
     }
     @MainActor static func publicAPIChecks() async throws {

@@ -34,6 +34,8 @@ assert 'Vendor/FairyStockfish/main.cpp' not in pbx
 assert 'Vendor/FairyStockfish/pyffish.cpp' not in pbx
 assert 'Vendor/FairyStockfish/ffishjs.cpp' not in pbx
 assert 'Vendor/Stockfish/' not in pbx
+assert 'Vendor/Stockfish19/src/main.cpp' not in pbx
+assert 'Engine/ModernStockfishBridge.cpp' in pbx and '-std=c++20' in pbx
 assert 'NNUE_EMBEDDING_OFF' in pbx and 'c++17' in pbx
 puzzles=json.loads((ROOT/'ChessVision/Core/Resources/Puzzles.json').read_text())
 assert len(puzzles)==2000 and len({p['id'] for p in puzzles})==2000
@@ -80,3 +82,20 @@ assert set(app_info['UISupportedInterfaceOrientations']) == {'UIInterfaceOrienta
 assert 'UIApplicationDelegateAdaptor(ChessVisionDelegate.self)' in (ROOT/'ChessVision/ChessVisionApp.swift').read_text()
 assert 'BughousePlayView.swift' in pbx and 'OrientationPolicy.swift' in pbx
 print('PASS: Bughouse project membership and landscape declarations.')
+
+network=ROOT/'ChessVision/Resources/Engine/nn-1a298aa575a0.nnue'
+assert network.stat().st_size==98511183
+assert hashlib.sha256(network.read_bytes()).hexdigest()=='1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2'
+assert str(network.relative_to(ROOT)) in pbx
+print('PASS: official Stockfish 19 NNUE network SHA-256 and dual-engine project membership.')
+
+# Keep Xcode's object filenames unique across the two engine source trees.
+engine_sources=re.findall(r'path = "([^";]+\.cpp)";',pbx)
+assert len([Path(s).name for s in engine_sources])==len(set(Path(s).name for s in engine_sources))
+wrappers=list((ROOT/'Engine/ModernSources').glob('*.cpp'))
+upstream=[p for p in (ROOT/'Vendor/Stockfish19/src').rglob('*.cpp') if p.name!='main.cpp' and 'universal' not in p.parts]
+assert len(wrappers)==len(upstream)==25
+for wrapper in wrappers:
+ target=re.search(r'#include "([^"]+)"',wrapper.read_text())[1]
+ assert (wrapper.parent/target).resolve() in [p.resolve() for p in upstream]
+print('PASS: unique engine object basenames and all 25 unmodified modern translation units.')

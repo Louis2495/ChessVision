@@ -76,3 +76,13 @@ A prepared iOS UI test checks automatic review after resignation and the Game hi
 94 portable Swift core tests passed, including new Chess960 king-to-rook/stationary-king projection and diagonal pawn projection regressions. Assertion-enabled feature checks cover opening import cancel/restart, previous-result preservation on failure, stale error recovery, all thirteen single-board game modes, linked Bughouse, premoves, reviews, clocks and persistence. Project regeneration, asset membership, source parsing and whitespace checks passed. The new mallard PNG was visually inspected with its transparent background and copied unchanged into the asset and artwork source directory.
 
 An iOS UI regression for the new Saved photos entry point is included but has not run here. This Linux environment cannot compile SwiftUI against the iOS SDK or validate actual iPhone layouts, VoiceOver, camera presentation, clock sheets or orientation. Those checks remain for Xcode/device testing.
+
+## Version 0.14 engine upgrade
+
+Official Stockfish 19 (sf_19, commit edb0d9db6731067ec50ce619ff372b463bc4dd5d) is linked in an isolated namespace alongside Fairy-Stockfish. Its full default network nn-1a298aa575a0.nnue has the independently verified 98,511,183-byte size and SHA-256 1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2.
+
+The embedded bridge matched the official Linux release's exact move **and** score at fixed depth 12 in five positions: start, tactical middlegame, forced mate, pawn ending, and Black to move after e4. Settings were one thread, 16 MiB hash, MultiPV 1, full strength, fresh process. Expected results and origin are checked in at Tests/modern-engine-reference.json. Missing and malformed networks return an engine error through the bridge instead of terminating the host process. These checks are not an Elo measurement or a proof of universal move accuracy.
+
+94 portable core tests passed. Assertion-enabled controller tests passed continuous analysis, latest-position replacement, cancellation, terminal handling, restart, NNUE routing, strength reset after rated play and one/three-line searches. Assertion-enabled app workflows passed all ordinary variants, linked Bughouse, premoves, history, longer engine reviews, repertoire-first corrections and persistence. Project/source membership and network hash checks passed.
+
+Linux checks cannot compile the iOS SDK, measure iPhone thermal/memory behavior, or verify Apple NEON execution. The checked-in macOS CI now runs the network/reference checks before the native and Xcode tests; device performance and Xcode build remain to be verified there.

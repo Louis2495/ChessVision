@@ -54,7 +54,7 @@ Choose your color and requested rating, then choose one of:
 - Crazyhouse: captured-piece pockets and legal drops, including promoted-piece reversion to pawns.
 - Duck, Atomic, Fog of War, Pawn Wars (kings on by default, optional pawn race), and Antichess.
 
-A real **Fairy-Stockfish** engine handles the rules and computer moves. Targets from 1 to 10,000 may be entered; its built-in limited-strength control spans 500–2850, lower requests use the weakest setting and higher requests full strength. These are approximate targets, affected by hardware/variant/classical evaluation, not guaranteed measured Elo. The pinned engine uses classical evaluation with NNUE disabled, so there are no network weights or external services.
+Official **Stockfish 19 with its exact default NNUE network** handles standard-chess analysis, review and computer opponents rated 1320 or higher. **Fairy-Stockfish** handles variant rules/searches and weaker standard opponents. Targets from 1 to 10,000 may be entered, but they are approximate rather than measured Chess.com Elo. The official engine's calibrated range is 1320–3190; higher requests use full strength. All analysis and review use full strength regardless of the selected playing rating. The 98.5 MB neural network is bundled for offline use; no model download or external analysis service is needed.
 
 For **Normal** only, **Request an opening** searches 3,865 named lines. The computer follows that book line while your moves match it, then returns to normal play when you deviate or leave the line. You are not forced to play the requested moves. Games persist, can be resumed, taken back or resigned. Switching tabs pauses their engine work.
 
@@ -165,3 +165,13 @@ Analysis, Research, Play setup and puzzle stats now use consistent themed cards.
 New-game setup pauses the existing computer game and resumes on dismissal, including after backgrounding; Bughouse setup no longer restarts the other game behind the sheet. Clock setup pauses the timer, restores it on cancel, and starts White when a new control is confirmed. Clock controls adapt to wider text. Opening imports isolate canceled requests, retain previous results on failure, and clear obsolete errors on filtering. Chess960 castling and diagonal pawn premove previews preserve the correct pieces.
 
 Validation includes full portable core tests, assertion-enabled native game/review/import workflows and project/source checks. These do not replace iPhone/Xcode checks for layout, VoiceOver, camera presentation or rotation.
+
+## Version 0.14 official Stockfish 19 NNUE
+
+The Analysis tab now uses the latest official stable Stockfish release (`sf_19`, verified 2026-11-10), with its **full default nn-1a298aa575a0.nnue model**. The previous standard search used Fairy-Stockfish with neural evaluation disabled. The new engine runs two search threads when the device supports them and uses a 128 MiB hash table. Analysis always runs at full strength continuously; the opponent rating never weakens it.
+
+Settings → Analysis offers one candidate line (default, deepest search) or three alternatives. The best move is visible without opening the continuation. Search depth and engine/model identity appear beside the board. Different engines, depths, multi-PV counts, castling/en-passant rights and search histories can still produce different scores; this upgrade does not claim perfect analysis or equal results at unequal budgets.
+
+Standard post-game reviews spend about **3 seconds on each before/after position**, rather than 250ms. Existing saved reviews are invalidated by an engine/model/search-policy version so they refresh automatically when opened. Progress/pause/resume and repertoire-first suggestions remain available. Full games consequently take longer to review. Variants retain Fairy-Stockfish because official Stockfish does not implement their rules, and low-rated standard opponents retain its weaker settings.
+
+The bundled NNUE is 98,511,183 bytes, SHA-256 `1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2`. Builds verify that hash. No LFS setup, model conversion or internet is required to build on a Mac. The app displays a model-loading failure rather than silently using classical evaluation. See Vendor/Stockfish19/CHESSVISION.md and Scripts/test-modern-engine.py for provenance and fixed-depth comparisons against the official release.

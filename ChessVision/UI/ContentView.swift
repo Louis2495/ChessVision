@@ -3,7 +3,6 @@ import AVFoundation
 
 @MainActor struct ContentView: View {
     @State private var camera = false
-    @State private var path: [String] = []
     @State private var processing = false
     @State private var recognitionTask: Task<Void, Never>?
     @State private var processingID = UUID()
@@ -15,15 +14,15 @@ import AVFoundation
     @State private var lastPhoto: UIImage?
     @State private var recognitionID = UUID()
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack() {
             screen
-                .navigationDestination(for: String.self) { _ in
-                    ScrollView {
-                        EditorView(position: .initial, uncertain: [], photo: nil, onRetake: takePhoto).padding()
-                    }
-                }
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) { SettingsButton() }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 20) {
+                            Button(action: takePhoto) { Image(systemName: "camera") }.accessibilityLabel("Scan board")
+                            SettingsButton()
+                        }
+                    }
                     ToolbarItem(placement: .topBarLeading) {
                         if position != nil { Button("Start over", action: startOver) }
                     }
@@ -42,30 +41,15 @@ import AVFoundation
                 }
         }
     }
-    private var screen: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                if let board = position {
-                    EditorView(position: board, uncertain: uncertain, photo: photo,
-                               onRetake: takePhoto, onRecognizeAgain: retryRecognition).id(recognitionID)
-                } else {
-                    startingOptions
-                }
-            }.padding().disabled(processing)
-        }.modifier(AppSurface()).navigationTitle("Analysis")
-    }
-    private var startingOptions: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("Find your next move").font(.title2.bold())
-            Text("Play from the starting position, or scan a board.").foregroundStyle(.secondary)
-            NavigationLink { AnalysisView(original: .initial) } label: {
-                Label("Start analysis", systemImage: "play.fill").frame(maxWidth: .infinity).padding(10)
-            }.buttonStyle(.borderedProminent).controlSize(.large)
-            BoardView(position: .initial).accessibilityLabel("Example starting position")
-            Button(action: takePhoto) {
-                Label("Take Pic of Board", systemImage: "camera.fill").frame(maxWidth: .infinity).padding(10)
-            }.buttonStyle(.bordered).controlSize(.large)
-            NavigationLink("Explore the board editor with an example", value: "example")
+    @ViewBuilder private var screen: some View {
+        if let board = position {
+            ScrollView {
+                EditorView(position: board, uncertain: uncertain, photo: photo,
+                           onRetake: takePhoto, onRecognizeAgain: retryRecognition)
+                    .id(recognitionID).padding()
+            }.modifier(AppSurface()).navigationTitle("Analysis").disabled(processing)
+        } else {
+            AnalysisView(original: .initial, showsSettings: false).disabled(processing)
         }
     }
     private var showingMessage: Binding<Bool> {
@@ -84,7 +68,7 @@ import AVFoundation
     }
     private func retryRecognition() { if let lastPhoto { process(lastPhoto) } }
     private func takePhoto() {
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else { message="A camera is not available here. Use a physical iPhone to photograph a board. The example editor works in Simulator."; return }
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else { message="A camera is not available here. Use a physical iPhone to photograph a board. You can play on the analysis board in Simulator."; return }
         Task {
             let granted = await AVCaptureDevice.requestAccess(for:.video)
             if granted { camera=true } else { message="Camera access is required. Enable it in Settings → ChessVision → Camera." }
@@ -105,7 +89,7 @@ import AVFoundation
             do {
                 let result = try await withTaskCancellationHandler(operation: { try await worker.value }, onCancel: { worker.cancel() })
                 guard !Task.isCancelled && processingID == operation else { return }
-                position = result.position; uncertain = result.uncertain; photo = result.image; recognitionID = UUID(); path = []
+                position = result.position; uncertain = result.uncertain; photo = result.image; recognitionID = UUID()
             } catch {
                 if !Task.isCancelled && processingID == operation { message = error.localizedDescription }
             }

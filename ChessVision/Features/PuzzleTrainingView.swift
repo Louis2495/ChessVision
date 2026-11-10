@@ -28,11 +28,11 @@ struct PuzzleTrainingView: View {
                         if !message.isEmpty { Text(message).foregroundStyle(finished ? Color.green : Color.secondary) }
                         if !played.isEmpty { Text(played.joined(separator: "  ")).font(.subheadline.monospaced()) }
                         HStack {
-                            Button("Hint", systemImage: "lightbulb") { hint() }.disabled(finished || board.turn != learner)
-                            Spacer()
-                            Button(finished ? "Next puzzle" : "Skip puzzle", systemImage: "arrow.right") { if !finished { grade(false) }; nextPuzzle() }.buttonStyle(.borderedProminent)
+                            Button { hint() } label: { Label("Hint", systemImage: "lightbulb").frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).controlSize(.large).disabled(finished || board.turn != learner)
+                            Button { if !finished { grade(false) }; nextPuzzle() } label: {
+                                Label(finished ? "Next puzzle" : "Skip puzzle", systemImage: "arrow.right").frame(maxWidth: .infinity, minHeight: 44)
+                            }.buttonStyle(.borderedProminent).controlSize(.large)
                         }
-                        if !puzzle.themes.isEmpty { Text(puzzle.themes.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) }
                     } else { ContentUnavailableView("Puzzle library unavailable", systemImage: "puzzlepiece", description: Text("Install the complete build to use the bundled puzzle library.")) }
                 }.padding()
             }.modifier(AppSurface()).navigationTitle("Puzzles").toolbar { SettingsButton() }

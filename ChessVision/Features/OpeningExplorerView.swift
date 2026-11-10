@@ -4,7 +4,6 @@ import SwiftUI
     enum Filter: String, CaseIterable, Sendable { case white = "White", black = "Black" }
     @Published var site: PublicChessSite = .chesscom
     @Published var username = ""
-    @Published var limit = 1000
     @Published var filter = Filter.white
     @Published var tree = OpeningTree()
     @Published var status = ""
@@ -16,16 +15,16 @@ import SwiftUI
     private var task: Task<Void, Never>?
     func load() {
         task?.cancel(); busy = true; error = nil
-        let site = site, user = username.trimmingCharacters(in: .whitespacesAndNewlines), limit = limit
+        let site = site, user = username.trimmingCharacters(in: .whitespacesAndNewlines)
         task = Task {
             do {
-                let imported = try await PublicGameService().load(site: site, username: user, limit: limit) { text in
+                let imported = try await PublicGameService().load(site: site, username: user) { text in
                     Task { @MainActor in self.status = text }
                 }
                 try Task.checkCancellation()
                 let built = try await buildTree(games: imported.games, username: user)
                 games = imported.games; importedUsername = user; tree = built; profileLabel = "\(user) · \(site.title)"
-                status = "\(tree.gameCount) games in this color filter · \(imported.fetched) fetched · \(imported.skipped) skipped"
+                status = "\(tree.gameCount) games"
             } catch is CancellationError { status = "Import canceled." }
             catch { self.error = Self.importMessage(error); status = tree.gameCount == 0 ? "Could not load this profile." : "Import did not finish. Previous results are retained." }
             busy = false
@@ -35,7 +34,7 @@ import SwiftUI
         guard !games.isEmpty else { return }
         task?.cancel(); busy = true
         task = Task {
-            do { tree = try await buildTree(); status = "\(tree.gameCount) games in this color filter" }
+            do { tree = try await buildTree(); status = "\(tree.gameCount) games" }
             catch is CancellationError {} catch { self.error = error.localizedDescription }
             busy = false
         }
@@ -88,7 +87,7 @@ struct OpeningExplorerView: View {
                     if !notation.isEmpty { Text(notation.joined(separator: " ")).font(.footnote.monospaced()) }
                     HStack { Button("Back", systemImage: "chevron.left") { history.removeLast(); notation.removeLast() }.disabled(history.count == 1); Spacer(); Button("Starting position") { history = [.initial]; notation = [] } }
                     let branches = model.tree.branches(at: position)
-                    if branches.isEmpty { ContentUnavailableView(model.profileLabel.isEmpty ? "Load a profile to begin" : "No imported games here", systemImage: "tree", description: Text("Standard public games only. The tree covers the first 40 half-moves of the requested recent-game sample.")) }
+                    if branches.isEmpty { ContentUnavailableView(model.profileLabel.isEmpty ? "Load a profile to begin" : "No imported games here", systemImage: "tree", description: Text("Standard public games only. The tree covers the first 40 half-moves of your public standard games.")) }
                     ForEach(branches) { branch in
                         Button { if let move = position.legalMoves().first(where: { $0.uci == branch.uci }) { play(move) } } label: {
                             VStack(alignment: .leading, spacing: 7) {

@@ -64,7 +64,7 @@ struct BoardView: View {
             ZStack {
                 Rectangle().fill(squareColor(light: light))
                 if !hidePieces && !obscured.contains(index), let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
-                if duckSquare == index { Text("🦆").font(.system(size: cell * 0.65)).accessibilityLabel("Duck") }
+                if duckSquare == index { Image("CartoonDuck").resizable().scaledToFit().padding(cell * 0.06).accessibilityLabel("Duck") }
                 if obscured.contains(index) { Rectangle().fill(Color(white: 0.18).opacity(0.94)) }
                 if legalTargets.contains(index) {
                     if position.squares[index] == nil { Circle().fill(.black.opacity(0.20)).frame(width: cell * 0.24, height: cell * 0.24) }

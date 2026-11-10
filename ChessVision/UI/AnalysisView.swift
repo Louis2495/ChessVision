@@ -7,6 +7,7 @@ private struct NotationRequest: Hashable {
 
 struct AnalysisView: View {
     let original: Position
+    let showsSettings: Bool
     @ObservedObject private var engine = EngineController.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var history: [Position]
@@ -20,7 +21,8 @@ struct AnalysisView: View {
     @State private var notationFEN: String?
     @State private var message: String?
 
-    init(original: Position) {
+    init(original: Position, showsSettings: Bool = true) {
+        self.showsSettings = showsSettings
         self.original = original
         _history = State(initialValue: [original])
     }
@@ -93,7 +95,7 @@ struct AnalysisView: View {
             }.padding()
         }
         .modifier(AppSurface()).navigationTitle("Analysis")
-        .toolbar { SettingsButton() }
+        .toolbar { if showsSettings { SettingsButton() } }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             visible = true

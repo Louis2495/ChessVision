@@ -119,7 +119,7 @@ struct ComputerPlayView: View {
                         else if model.busy { ProgressView("Computer is thinking…") }
                         else { Text(!duckChoices.isEmpty ? "Place the duck" : snapshot.inCheck ? "Your king is in check." : "Your move").font(.headline) }
                         if !duckChoices.isEmpty { Button("Cancel piece move") { duckChoices = [] } }
-                        if !snapshot.finished && duckChoices.isEmpty {
+                        if !snapshot.finished && (game.mode == .blindBoard || game.mode == .blindText) {
                             HStack {
                                 TextField(game.mode == .crazyhouse ? "Move, e.g. Nf3 or N@f7" : "Move, e.g. Nf3", text: $textMove).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).onSubmit(enter)
                                 Button("Play", action: enter).buttonStyle(.borderedProminent).disabled(model.busy || snapshot.board.turn != game.human || textMove.isEmpty)

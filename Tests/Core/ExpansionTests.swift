@@ -6,9 +6,9 @@ import XCTest
 #endif
 
 final class ExpansionTests: XCTestCase {
-    func testExactly1000UniquePuzzlesAndAllSolutionPliesAreLegal() throws {
+    func testExactly2000UniquePuzzlesAndAllSolutionPliesAreLegal() throws {
         let puzzles = try TrainingAssets.puzzles()
-        XCTAssertEqual(puzzles.count, 1000); XCTAssertEqual(Set(puzzles.map(\.id)).count, 1000)
+        XCTAssertEqual(puzzles.count, 2000); XCTAssertEqual(Set(puzzles.map(\.id)).count, 2000)
         for puzzle in puzzles {
             var board = try Position(fen: puzzle.fen)
             XCTAssertTrue(board.problems.isEmpty, puzzle.id)

@@ -7,7 +7,7 @@ A native SwiftUI chess app with five bottom tabs: **Analysis**, **Openings**, **
 ## Open on your Mac
 
 1. Open **`ChessVision.xcodeproj`** in Xcode 16 or newer. Do not open `Package.swift` for the app; that package contains the portable core/test workflow.
-2. Select **ChessVision** and an installed iPhone Simulator, then press **⌘R**. No Homebrew, CocoaPods, model downloads or project generation is needed: models, engine, artwork, 1,000 puzzles and 3,865 opening lines are bundled.
+2. Select **ChessVision** and an installed iPhone Simulator, then press **⌘R**. No Homebrew, CocoaPods, model downloads or project generation is needed: models, engine, artwork, 2,000 puzzles and 3,865 opening lines are bundled.
 3. Press **⌘U** for hosted/unit/UI tests. These SDK/UI tests have not been run in this cloud machine.
 4. For a real iPhone, connect/trust the device, enable Developer Mode if asked, select your Development Team under **Signing & Capabilities**, use a unique bundle ID if required, select the device and run. Camera capture requires a physical iPhone and camera permission.
 
@@ -25,13 +25,13 @@ Photo recognition uses two physical-piece models and grid validation. Last measu
 
 ### Openings
 
-Enter anyone's public **Chess.com** or **Lichess** username, choose 200/1,000/5,000 recent games and load their opening tree. Choose White, Black or both; play moves or tap a branch to see frequencies and White/draw/Black outcomes. Named openings come from the bundled CC0 catalog. The sample and skipped-game count are visible. This is public standard-chess history, first 40 half-moves per game, rather than a claim to retrieve private or unlimited history.
+Enter anyone's public **Chess.com** or **Lichess** username and load all their available public standard games. Choose White or Black, then play moves or tap a branch to see frequencies and White/draw/Black outcomes. The count shows “N games”. The tree covers the first 40 half-moves per game; site availability and rate limits apply.
 
 Endpoints are `api.chess.com/pub/player/.../games/...` and `lichess.org/api/games/user/...`. Requests are sequential where needed, cancelable, and respect rate limits. The user-entered public username is sent only to the chosen site; private repertoire/photos are never uploaded. Live requests were blocked by this cloud instance's network policy; the actual client passed isolated HTTP fixtures, but service access needs validation on device or after enabling the saved network domains.
 
 ### Puzzles
 
-Exactly **1,000 distinct, legally validated puzzles** are available offline, with source themes and estimated difficulty. Your training estimate starts at **1000**, rises for unassisted solutions and falls for mistakes, hints or skips. Selection follows your estimate and favors unseen puzzles. A multi-ply puzzle is graded once per attempt; opponent replies play automatically. A legal alternate checkmate is also accepted.
+Exactly **2,000 distinct, legally validated puzzles** are available offline, with source themes and estimated difficulty. Your training estimate starts at **1000**, rises for unassisted solutions and falls for mistakes, hints or skips. Selection follows your estimate and favors unseen puzzles. A multi-ply puzzle is graded once per attempt; opponent replies play automatically. A legal alternate checkmate is also accepted.
 
 The estimated Chess.com-style difficulty is a heuristic: 0.8 × source Lichess puzzle rating, rounded to 50. It has not been calibrated against Chess.com users and is not an official Chess.com rating. This distinction is shown in the app. IDs, source rating, FEN, solution and original game URL remain available in the bundled data; see `Vendor/ChessData/PROVENANCE.json`.
 
@@ -91,3 +91,11 @@ Analysis opens without a photograph: tap **Start analysis** to play from the nor
 The gear button opens saved settings for system/light/dark display, Forest/Ocean/Plum accents, warm/cool/default backgrounds, Classic/Walnut/Slate boards and illustrated/traditional pieces. Optional music plays a bundled original classical-style piano prelude, loops quietly, mixes with other audio, and pauses outside the foreground. Regeneration source: `Scripts/generate-music.py`; no streaming or external recording is used.
 
 Play ordering: Normal, Crazyhouse, Fog of War, Chess960, 3-Check, King of the Hill, Atomic, Duck, Horde, Pawn Wars, Antichess, then both blindfold modes. Chess960 selects one of all 960 layouts for each new game and preserves it when saved. To castle in Chess960, move the king onto its rook.
+
+## Version 0.6
+
+The Analysis tab immediately shows the playable starting position, continuous evaluation and optional insights. The camera button opens board scanning; there is no example-editor link. Opening explorer imports every available public standard game: all monthly Chess.com archives, or an uncapped streaming Lichess export. The result count is simply “N games”; site rate limits and export availability still apply.
+
+Puzzle training includes 2,000 unique puzzles, retains every original puzzle ID, and has larger Hint/Next/Skip controls without theme-keyword clutter. Board-based Play modes use taps and promotion pictures; typed moves are available only in the two blindfold modes. Duck chess uses a bundled cartoon rubber duck. The updated home-screen mark is an ivory knight with a mint diamond.
+
+Engine integration now follows upstream's no-strict-aliasing requirement and clears search state when switching variants. The native checks can run with assertions enabled using `ENGINE_ASSERTIONS=1`; CI uses that mode to catch assertion failures instead of masking them.

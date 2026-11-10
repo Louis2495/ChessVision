@@ -84,7 +84,7 @@ private func receiveEngineLine(_ pointer: UnsafePointer<CChar>?) {
             ready = false; switchingVariant = request.variant
             send("setoption name UCI_Variant value \(request.variant)")
             send("setoption name UCI_Chess960 value \(request.variant.hasPrefix("cv960") ? "true" : "false")")
-            send("setoption name Use NNUE value false"); send("isready")
+            send("setoption name Use NNUE value false"); send("ucinewgame"); send("isready")
             return
         }
         pending = nil; stopping = false

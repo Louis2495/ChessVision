@@ -11,3 +11,5 @@ The bridge registers three app-specific variants using the upstream INI parser: 
 Every saved move is validated against legal moves from the variant start. UCI ready/bestmove barriers protect variant table changes. Stalemate and checkmate results use each variant's rules. Native rule results drive UI legal targets, pockets, counters and endings.
 
 Chess960: the bridge registers all 960 Scharnagl starts as cv9600…cv960959. Game saves retain their chosen index. Native position setup and computer UCI both enable Chess960 castling encoding (king-to-rook); ordinary Analysis resets that option. All starts and sampled castling histories are independently checked in Scripts/test-chess960.py.
+
+Build safety: upstream optimized builds require -fno-strict-aliasing. Both the portable build and Xcode (GCC_STRICT_ALIASING=NO) now honor this setting. EngineController sends ucinewgame before the variant-ready barrier to clear transposition/search state after rule changes. ENGINE_ASSERTIONS=1 builds a separate native library without NDEBUG; macOS CI uses it.

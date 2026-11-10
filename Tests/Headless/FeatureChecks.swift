@@ -18,14 +18,18 @@ import Darwin
     @MainActor static func publicAPIChecks() async throws {
         let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [PublicAPIStub.self]
         let service = PublicGameService(session: URLSession(configuration: config))
-        let chesscom = try await service.load(site: .chesscom, username: "Alice", limit: 200) { _ in }
+        let chesscom = try await service.load(site: .chesscom, username: "Alice") { _ in }
         try require(chesscom.games.count == 1 && chesscom.games[0].moves == ["e2e4", "e7e5"], "Chess.com export import failed")
-        let fallback = try await service.load(site: .chesscom, username: "Fallback", limit: 200) { _ in }
+        let fallback = try await service.load(site: .chesscom, username: "Fallback") { _ in }
         try require(fallback.games.count == 2, "Missing JSON game fields did not fall back to PGN")
-        let lichess = try await service.load(site: .lichess, username: "Alice", limit: 200) { _ in }
+        let lichess = try await service.load(site: .lichess, username: "Alice") { _ in }
         try require(lichess.games.count == 1 && lichess.fetched == 2 && lichess.skipped == 1, "Lichess NDJSON import/variant filter failed")
-        do { _ = try await service.load(site: .chesscom, username: "Missing", limit: 200) { _ in }; throw Failure.failed("404 was accepted") }
+        do { _ = try await service.load(site: .chesscom, username: "Missing") { _ in }; throw Failure.failed("404 was accepted") }
         catch let error as ChessError { try require(error.localizedDescription.contains("not found"), "Missing-profile error was lost") }
+        let bulkChess = try await service.load(site: .chesscom, username: "Bulk") { _ in }
+        try require(bulkChess.games.count == 1200, "Archive import stopped at 1000 or skipped older months")
+        let bulkLichess = try await service.load(site: .lichess, username: "Bulk") { _ in }
+        try require(bulkLichess.games.count == 1005, "Lichess export was capped")
         print("PASS: actual public API client with isolated HTTP fixtures (not live service access).")
     }
     @MainActor static func main() async {
@@ -62,6 +66,15 @@ import Darwin
             model.play(model.snapshot!.moves[0]); try await wait { !model.busy }
             try require(model.error == nil && model.game?.moves.count == 2, "Pawn race computer failed")
             model.pawnWarsKings = true
+            model.mode = .threeCheck; model.human = .white; model.ratingText = "1000"
+            try require(model.start(), "3-Check regression setup failed"); try await wait { !model.busy }
+            for _ in 0..<30 {
+                guard let state = model.snapshot, !state.finished else { break }
+                let move = state.moves.first(where: { $0.san.contains("+") || $0.san.contains("#") }) ?? state.moves[0]
+                model.play(move); try await wait { !model.busy }
+                try require(model.error == nil, "3-Check multi-move regression failed")
+            }
+            print("PASS: multi-turn 3-Check computer game with assertions enabled when ENGINE_ASSERTIONS=1."); fflush(stdout)
             for mode in [GameMode.normal, .horde, .crazyhouse] {
                 model.mode = mode; model.human = .black; model.ratingText = "1000"
                 try require(model.start(), "Black-side game did not start"); try await wait { !model.busy }
@@ -105,7 +118,16 @@ private final class PublicAPIStub: URLProtocol {
     override func startLoading() {
         let url = request.url!, path = url.path.lowercased()
         var status = 200, body = ""
-        if path == "/pub/player/alice/games/archives" {
+        if path == "/pub/player/bulk/games/archives" {
+            body = #"{"archives":["https://api.chess.com/pub/player/bulk/games/2026/09","https://api.chess.com/pub/player/bulk/games/2026/10"]}"#
+        } else if path.hasPrefix("/pub/player/bulk/games/2026/") {
+            let game = #"{"pgn":"[White \"Bulk\"]\n[Black \"Bob\"]\n[Result \"1-0\"]\n\n1. e4 e5 1-0","rules":"chess"}"#
+            body = "{\"games\":[" + Array(repeating: game, count: 600).joined(separator: ",") + "]}"
+        } else if path == "/api/games/user/bulk" {
+            let game = #"{"players":{"white":{"user":{"name":"Bulk"}},"black":{}},"variant":"standard","status":"mate","winner":"white","moves":"e4 e5"}"#
+            body = Array(repeating: game, count: 1005).joined(separator: "\n")
+            if URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { $0.name == "max" }) == true { status = 400 }
+        } else if path == "/pub/player/alice/games/archives" {
             body = #"{"archives":["https://api.chess.com/pub/player/alice/games/2026/10"]}"#
         } else if path == "/pub/player/alice/games/2026/10" {
             body = #"{"games":[{"pgn":"[White \"Alice\"]\n[Black \"Bob\"]\n[Result \"1-0\"]\n\n1. e4 e5 1-0","rules":"chess"},{"rules":"chess"}]}"#

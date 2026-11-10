@@ -9,6 +9,8 @@ jobs:
   ios:
     runs-on: macos-15
     timeout-minutes: 30
+    env:
+      ENGINE_ASSERTIONS: "1"
     steps:
       - uses: actions/checkout@v4
       - name: Toolchain

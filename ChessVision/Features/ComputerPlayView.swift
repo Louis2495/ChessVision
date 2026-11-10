@@ -127,6 +127,7 @@ struct ComputerPlayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model = ComputerGameModel()
     @State private var settingUp = false
+    @State private var dismissedResult: UUID?
     @State private var historyPresented = false
     @State private var reviewRoute: CompletedReviewRoute?
     @State private var lastReviewedGame: UUID?
@@ -164,8 +165,13 @@ struct ComputerPlayView: View {
                 if showing { reviewPresentationTask?.cancel(); model.pause() }
                 else { if visible && scenePhase == .active { model.activate(library) }; scheduleReview() }
             }
-            .sheet(isPresented: $settingUp) {
-                NavigationStack { ScrollView { GameSetupForm(model: model, resumeOnBughouseDismiss: false) { if model.start() { settingUp = false } }.padding() }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("New game").toolbar { Button("Cancel") { settingUp = false } } }
+            .navigationDestination(isPresented: $settingUp) {
+                ScrollView {
+                    GameSetupForm(model: model, resumeOnBughouseDismiss: false) {
+                        if model.start() { settingUp = false }
+                    }.padding()
+                }.scrollDismissesKeyboard(.interactively).modifier(AppSurface())
+                    .navigationTitle("New game").navigationBarTitleDisplayMode(.inline)
             }
             .confirmationDialog("Resign this game?", isPresented: $resigning, titleVisibility: .visible) { Button("Resign", role: .destructive) { model.resign() } }
             .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
@@ -185,7 +191,7 @@ struct ComputerPlayView: View {
                 else { reviewPresentationTask?.cancel(); model.pause() }
             }
             .onChange(of: premovesEnabled) { _, enabled in if !enabled { model.premoves.clear(); composer = PremoveComposer() } }
-            .onChange(of: model.game?.id) { _, _ in composer = PremoveComposer() }
+            .onChange(of: model.game?.id) { _, _ in composer = PremoveComposer(); dismissedResult = nil }
             .onChange(of: model.snapshot?.fen) { _, _ in selected = nil; selectedDrop = nil; if !queuePromotion { promotions = [] }; duckChoices = [] }
         }
     }
@@ -208,7 +214,7 @@ struct ComputerPlayView: View {
                         let values = checks.split(separator: "+")
                         Text("Checks remaining · White \(values.first ?? "") · Black \(values.last ?? "")").font(.caption.monospaced())
                     }
-                    if let result = snapshot.result, game.mode == .blindText { resultButton(result) }
+                    if let result = snapshot.result, game.mode == .blindText, dismissedResult != game.id { resultButton(result) }
                     else if model.busy { ProgressView(model.computerPiecePreview == nil ? "Computer is thinking…" : "Placing the duck…") }
                     else if !snapshot.finished { Text(!duckChoices.isEmpty ? "Place the duck" : snapshot.inCheck ? "Your king is in check." : "Your move").font(.headline) }
                     if !duckChoices.isEmpty { Button("Cancel piece move") { duckChoices = [] } }
@@ -254,9 +260,9 @@ struct ComputerPlayView: View {
             let hidden = game.mode == .blindBoard
             BoardView(position: displayedBoard(snapshot, game: game), selected: hidden ? nil : (isPremoving ? composer.selected : selected),
                       legalTargets: hidden ? [] : (isPremoving ? Set(model.premoves.moves.compactMap { VariantMove(uci: $0, san: "").to }) : targets(snapshot)), flipped: game.human == .black, hidePieces: hidden, obscured: game.mode == .fogOfWar && !snapshot.finished ? FogVisibility.hidden(in: snapshot.board, for: game.human) : [], duckSquare: snapshot.duckSquare, onTap: tap)
-                .accessibilityHidden(snapshot.finished)
+                .accessibilityHidden(snapshot.finished && dismissedResult != game.id)
                 .overlay {
-                    if let result = snapshot.result {
+                    if let result = snapshot.result, dismissedResult != game.id {
                         ZStack {
                             Color.black.opacity(0.18).clipShape(RoundedRectangle(cornerRadius: 10))
                             resultButton(result).padding(24)
@@ -283,11 +289,15 @@ struct ComputerPlayView: View {
         return snapshot.board
     }
     private func resultButton(_ result: String) -> some View {
-        Button { settingUp = true } label: {
+        Button {
+            dismissedResult = model.game?.id
+            reviewPresentationTask?.cancel()
+            lastReviewedGame = model.game?.id
+        } label: {
             Text(result).font(.largeTitle.bold()).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, minHeight: 88).padding(16)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
-        }.buttonStyle(.plain).accessibilityHint("Start a new game")
+        }.buttonStyle(.plain).accessibilityHint("Dismiss the result and view the final position")
             .accessibilityIdentifier("game-result")
     }
 

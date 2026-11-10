@@ -175,3 +175,11 @@ Settings → Analysis offers one candidate line (default, deepest search) or thr
 Standard post-game reviews spend about **3 seconds on each before/after position**, rather than 250ms. Existing saved reviews are invalidated by an engine/model/search-policy version so they refresh automatically when opened. Progress/pause/resume and repertoire-first suggestions remain available. Full games consequently take longer to review. Variants retain Fairy-Stockfish because official Stockfish does not implement their rules, and low-rated standard opponents retain its weaker settings.
 
 The bundled NNUE is 98,511,183 bytes, SHA-256 `1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2`. Builds verify that hash. No LFS setup, model conversion or internet is required to build on a Mac. The app displays a model-loading failure rather than silently using classical evaluation. See Vendor/Stockfish19/CHESSVISION.md and Scripts/test-modern-engine.py for provenance and fixed-depth comparisons against the official release.
+
+## Version 0.15 played-move navigation and game setup
+
+Analysis has a **Candidate lines** toggle next to Position insights and Show notation. Turning it off hides the suggestions without stopping analysis. The swipe bar and arrows navigate only existing played history: forward is disabled at the last position, even when the engine has a continuation. Choosing a suggestion explicitly can still play it on the board.
+
+**New game** pushes a full options screen in Play, with normal back navigation and the complete rating/color/variant/opening controls. The finished-game result rectangle now dismisses when tapped, leaving the final board visible. It never opens setup, and tapping it also suppresses a pending automatic review presentation. Review game and the separate New game action remain available.
+
+Settings now includes two more conventional piece sets, **Chessnut** and **Celtic**, with 24 additional vector pieces. Existing styles and selections remain available. All asset source hashes and licenses are included; no conversion or download is required on a Mac.

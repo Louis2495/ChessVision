@@ -10,27 +10,27 @@ final class ChessVisionUITests: XCTestCase {
     func testLaunchImmediateAnalysisAndLivePlayback() {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["square-e2"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.buttons["Explore the board editor with an example"].exists)
-        XCTAssertTrue(app.navigationBars["Analysis"].waitForExistence(timeout: 5))
-        app.buttons["Candidate lines"].tap()
+        XCTAssertTrue(app.navigationBars["Analysis"].exists)
+        let next = app.buttons["Next position"]
+        XCTAssertFalse(next.isEnabled)
+        app.buttons["square-e2"].tap(); app.buttons["square-e4"].tap()
+        assertHistory("1/1", in: app)
+        XCTAssertFalse(next.isEnabled)
+        app.buttons["Previous position"].tap(); assertHistory("0/1", in: app)
+        next.tap(); assertHistory("1/1", in: app)
+        let toggle = app.switches["Candidate lines"]
+        for _ in 0..<6 { if toggle.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(toggle.exists)
+        if toggle.value as? String == "0" { toggle.tap() }
         let best = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Best move:")).firstMatch
         XCTAssertTrue(best.waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["White"].exists)
-        XCTAssertTrue(app.staticTexts["Black"].exists)
-        XCTAssertFalse(app.buttons["Analyze again"].exists)
-        XCTAssertFalse(app.staticTexts["Evaluation is from White's perspective."].exists)
-        let next = app.buttons["Next position"]
-        for _ in 0..<5 { if next.isHittable { break }; app.swipeUp() }
-        XCTAssertTrue(next.isEnabled); next.tap()
+        toggle.tap(); XCTAssertFalse(best.exists)
+        toggle.tap(); XCTAssertTrue(best.waitForExistence(timeout: 5))
+        for _ in 0..<6 { if next.isHittable { break }; app.swipeDown() }
+        XCTAssertFalse(next.isEnabled)
         assertHistory("1/1", in: app)
-        // The analysis is still live after moving; there is no restart button.
-        XCTAssertTrue(best.waitForExistence(timeout: 15))
-        app.buttons["Return to original position"].tap()
-        assertHistory("0/0", in: app)
-        app.buttons["Share position"].tap()
-        XCTAssertTrue(app.buttons["Share board image"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Share image & FEN"].exists)
     }
+
 }
 
 extension ChessVisionUITests {
@@ -66,16 +66,18 @@ extension ChessVisionUITests {
 extension ChessVisionUITests {
     func testAnalysisSwipeBarAndTurnToggle() {
         let app = XCUIApplication(); app.launch()
-        app.buttons["Candidate lines"].tap()
-        let best = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Best move:")).firstMatch
-        XCTAssertTrue(best.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["square-e2"].waitForExistence(timeout: 5))
         let bar = app.otherElements["analysis-history-bar"]
-        XCTAssertTrue(bar.waitForExistence(timeout: 5))
+        bar.swipeLeft(); assertHistory("0/0", in: app)
+        app.buttons["square-e2"].tap(); app.buttons["square-e4"].tap()
         bar.swipeLeft(); assertHistory("1/1", in: app)
+        XCTAssertFalse(app.buttons["Next position"].isEnabled)
         bar.swipeRight(); assertHistory("0/1", in: app)
+        XCTAssertTrue(app.buttons["Next position"].isEnabled)
         app.buttons["Turn: White"].tap()
         XCTAssertTrue(app.buttons["Turn: Black"].waitForExistence(timeout: 5))
     }
+
 }
 
 extension ChessVisionUITests {
@@ -142,6 +144,16 @@ extension ChessVisionUITests {
         XCTAssertTrue(app.navigationBars["Game review"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Areas for improvement"].waitForExistence(timeout: 5))
         app.navigationBars.buttons["Done"].tap()
+        let banner = app.buttons["game-result"]
+        for _ in 0..<8 { if banner.isHittable { break }; app.swipeDown() }
+        XCTAssertTrue(banner.exists); banner.tap()
+        XCTAssertFalse(banner.exists)
+        XCTAssertTrue(app.navigationBars["Play computer"].exists)
+        app.buttons["New game"].tap()
+        XCTAssertTrue(app.navigationBars["New game"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Start game"].exists)
+        XCTAssertEqual(app.sheets.count, 0)
+        app.navigationBars["New game"].buttons.firstMatch.tap()
         app.buttons["Game history"].tap()
         XCTAssertTrue(app.navigationBars["Game history"].waitForExistence(timeout: 5))
     }

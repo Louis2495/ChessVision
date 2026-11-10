@@ -14,4 +14,4 @@ for display,details in provenance['sets'].items():
    target=root/f'ChessVision/Resources/Assets.xcassets/{display}-{symbol}.imageset';target.mkdir(exist_ok=True)
    cairosvg.svg2pdf(url=str(source),write_to=str(target/f'{symbol}.pdf'))
    (target/'Contents.json').write_text(json.dumps({'images':[{'filename':symbol+'.pdf','idiom':'universal'}],'info':{'author':'xcode','version':1},'properties':{'preserves-vector-representation':True}}))
-print('Built 36 vector piece assets from verified source files.')
+print(f'Built {len(provenance["sets"])*12} vector piece assets from verified source files.')

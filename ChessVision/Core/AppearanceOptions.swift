@@ -65,7 +65,7 @@ public enum BoardStyle: String, CaseIterable, Sendable {
     }
 }
 public enum PieceStyle: String, CaseIterable, Sendable {
-    case illustrated = "Illustrated", merida = "Merida", sculpted = "Sculpted", fantasy = "Fantasy"
+    case illustrated = "Illustrated", merida = "Merida", sculpted = "Sculpted", fantasy = "Fantasy", chessnut = "Chessnut", celtic = "Celtic"
     public func asset(for piece: Piece) -> String {
         let name = (piece.side == .white ? "w" : "b") + piece.kind.uppercased()
         return self == .illustrated ? name : rawValue + "-" + name

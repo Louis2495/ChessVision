@@ -20,6 +20,7 @@ struct AnalysisView: View {
     @State private var rank = 1
     @AppStorage("analysisCandidates") private var analysisCandidates = 1
     @AppStorage("positionInsights") private var insights = false
+    @AppStorage("showCandidateLines") private var showCandidateLines = true
     @AppStorage("showGameNotation") private var showGameNotation = false
     @State private var observations: [String] = []
     @State private var insightFEN: String?
@@ -61,7 +62,7 @@ struct AnalysisView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 EvaluatedBoard(position: position, whiteFraction: whiteFraction, selected: selected, legalTargets: legalTargets, onTap: tapSquare)
-                HistorySwipeBar(current: cursor, total: history.count - 1, canAdvance: cursor + 1 < history.count || !moves.isEmpty,
+                HistorySwipeBar(current: cursor, total: history.count - 1, canAdvance: cursor + 1 < history.count,
                                 back: { if cursor > 0 { cursor -= 1 } }, forward: advance)
                 HStack(alignment: .firstTextBaseline) {
                     Text(evaluation).font(.largeTitle.bold().monospacedDigit()).accessibilityIdentifier("analysis-evaluation")
@@ -87,8 +88,9 @@ struct AnalysisView: View {
                 }
                 Toggle("Show notation", isOn: $showGameNotation)
                 if showGameNotation { recordedGame }
+                Toggle("Candidate lines", isOn: $showCandidateLines)
                 }
-                AppCard { candidateLines }
+                if showCandidateLines { AppCard { candidateLines } }
                 Button("Return to original position", systemImage: "arrow.counterclockwise") { history = [original]; cursor = 0; selected = nil }
                     .disabled(cursor == 0 && position == original)
                 SharePositionButton(position: position, game: gameHistory).buttonStyle(.bordered).controlSize(.large)
@@ -173,7 +175,7 @@ struct AnalysisView: View {
             if let move = moves.first {
                 Text("\(rank == 1 ? "Best move" : "Candidate move"): \(move.san)").font(.headline)
             }
-            DisclosureGroup("Continuation") {
+            Group {
                 if analysisCandidates == 3 {
                     Picker("Variation", selection: $rank) {
                         ForEach(1...3, id: \.self) { number in
@@ -197,7 +199,6 @@ struct AnalysisView: View {
     }
     private func advance() {
         if cursor + 1 < history.count { cursor += 1 }
-        else if let first = moves.first { playThrough(first, line: moves, fen: position.fen) }
     }
     private func flipTurn() {
         var changed = position

@@ -74,7 +74,7 @@ for display,details in piece_provenance['sets'].items():
 assert '"Traditional"' not in (ROOT/'ChessVision/UI/SettingsView.swift').read_text()
 assert 'piece.glyph' not in (ROOT/'ChessVision/UI/BoardView.swift').read_text()
 assert 'Find your next move' not in (ROOT/'ChessVision/UI/ContentView.swift').read_text()
-print('PASS: all 36 additional vector pieces and source hashes; glyph pieces and old analysis heading removed.')
+print(f'PASS: all {len(piece_provenance["sets"])*12} additional vector pieces and source hashes; glyph pieces and old analysis heading removed.')
 
 # Landscape is advertised for Bughouse and restricted elsewhere by the app delegate.
 app_info=plistlib.loads((ROOT/'ChessVision/Info.plist').read_bytes())

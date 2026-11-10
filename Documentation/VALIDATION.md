@@ -86,3 +86,9 @@ The embedded bridge matched the official Linux release's exact move **and** scor
 94 portable core tests passed. Assertion-enabled controller tests passed continuous analysis, latest-position replacement, cancellation, terminal handling, restart, NNUE routing, strength reset after rated play and one/three-line searches. Assertion-enabled app workflows passed all ordinary variants, linked Bughouse, premoves, history, longer engine reviews, repertoire-first corrections and persistence. Project/source membership and network hash checks passed.
 
 Linux checks cannot compile the iOS SDK, measure iPhone thermal/memory behavior, or verify Apple NEON execution. The checked-in macOS CI now runs the network/reference checks before the native and Xcode tests; device performance and Xcode build remain to be verified there.
+
+## Version 0.15 analysis and game navigation
+
+Source/project checks verify the complete Chessnut/Celtic vector assets and their original SVG SHA-256 values, bringing the additional sets to 60 verified pieces. A board-scale contact sheet of both new sets was visually checked for complete rendering, recognizable silhouettes and both colors.
+
+The iOS regression suite now covers a Candidate lines switch, no engine continuation through forward arrows/swipes, back/forward through played moves, dismissing a finished-game banner, and pushing a full New game screen without a sheet. These screen tests cannot run in this Linux environment and remain for Xcode/Simulator. Portable core tests and Swift source parsing remain available here.

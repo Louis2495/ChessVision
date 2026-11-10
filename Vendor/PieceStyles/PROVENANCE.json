@@ -16,6 +16,16 @@
       "source": "fantasy",
       "author": "Maurizio Monge",
       "license": "MIT"
+    },
+    "Chessnut": {
+      "source": "chessnut",
+      "author": "Alexis Luengas",
+      "license": "Apache-2.0"
+    },
+    "Celtic": {
+      "source": "celtic",
+      "author": "Maurizio Monge",
+      "license": "MIT"
     }
   },
   "conversion": "SVG to vector PDF using CairoSVG; original piece designs unchanged",
@@ -55,6 +65,30 @@
     "fantasy/bR.svg": "236d1fa4d39bd5563ecbde3453ac80d0b0266a570a7f7644b8ba7902380c14f1",
     "fantasy/bB.svg": "6e7e079b8c73b066537a6ce2623a14b65d1d625a408af8f42f5cffe3ea798e63",
     "fantasy/bN.svg": "aa8eb58d10722fca992dff04985d16165a7b8cf8a3a231c426dc7685a6981040",
-    "fantasy/bP.svg": "09b98781c32a4933533a3dfd3fa7ce20618f36827b3d649f69ac32dd7b82469c"
+    "fantasy/bP.svg": "09b98781c32a4933533a3dfd3fa7ce20618f36827b3d649f69ac32dd7b82469c",
+    "chessnut/wK.svg": "f64f2d088fe96a10fa77104cd1a42339e5495f56d6dcfda491298decbda7b2fa",
+    "chessnut/wQ.svg": "2d20b17499c7c268ca87f3c4038a3b1335e0a087010037b0d854f2f7f84aa254",
+    "chessnut/wR.svg": "57d662b9b905a603e1cf28e36d61576dfd1a50695b23724c7189cd0f15736f03",
+    "chessnut/wB.svg": "ec62a67ea0212ec75e151ff673b2ef27e33e1732665839148dfdd27c357ab096",
+    "chessnut/wN.svg": "f0fac07e481f7b31d1b074e458908f8fcad9ee4abdc76d84c274b8c4f438e388",
+    "chessnut/wP.svg": "81cde9f22edf3f750a282335a6d1367f011642d5a9bb8a94c6c6859ab1b326ea",
+    "chessnut/bK.svg": "9e3c0ec404aec41dfabea96a204712c3feae80a456496ec0398499a1a77e642f",
+    "chessnut/bQ.svg": "cf47f78c1ad9a99163e942f70365f8dd2b6d911011a5d8298be3d0596ad924a2",
+    "chessnut/bR.svg": "b588445132bd2295989b94b058d6ed91605b5dffbb5b4533a2f782848cae1684",
+    "chessnut/bB.svg": "933697379921e0a36f17a6863f5324e7f05fa73b243dab3d94e5ce8c37d064c2",
+    "chessnut/bN.svg": "8842b49915174de6d224273f9dffd2a84f65dc5fc2b67c83441cfbe1b423d008",
+    "chessnut/bP.svg": "22da60dfa9fc6bfb54b1ee369dc9e3555e567e43eaea0fccad2e0211259ff0aa",
+    "celtic/wK.svg": "8f8ddf272134dcbae8e50831e22bada71d01719378c7fa83e5f0d981dcd62b91",
+    "celtic/wQ.svg": "9750aea417a338541776362c098bad01f53a8ffbf45a48cb77fd9586026eff79",
+    "celtic/wR.svg": "0c4fe9b03ad21bfb6b9b8b7bc731fe66c3f4db155284edec2fd739d1c1da8659",
+    "celtic/wB.svg": "b467f2849185de0924a69a4e0c1b49d70410302af7638024671fe27856e301a2",
+    "celtic/wN.svg": "5bb16b24efc7f3958835269572a57c9fbbea920d0b7273fe87857e743a98eac7",
+    "celtic/wP.svg": "191c0d283ffd7292c2494142a56204d32bc26447a0df37e33962fa5f3f674c5b",
+    "celtic/bK.svg": "6169f0454f87277725f0a2c89b14a45aad4a09585e717df2fc6af82318bce5ee",
+    "celtic/bQ.svg": "d54b68ea845b70692280ca634ad8066d6723d3db49a3c32892f76bcf22cdccd3",
+    "celtic/bR.svg": "426bc22db33c7fc1851558045a72577e3400e8179c69812b514106ba5be3d9e7",
+    "celtic/bB.svg": "7cdb3c9500f55b4834cfef5cc33f5bafe11ac870d62ede3b3f0fcf48c6bd9397",
+    "celtic/bN.svg": "b82f388cb50401a32066b37dfb378f68079f079419ad7a9c850bcf3a5471b440",
+    "celtic/bP.svg": "6deef22c5c1ad21338cafbcce42b58202b48cbefc8b3c921e017d578c311cbcb"
   }
 }

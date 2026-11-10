@@ -5,10 +5,9 @@ import SwiftUI
     var body: some View {
         TabView {
             ContentView().tabItem { Label("Analysis", systemImage: "square.grid.3x3") }
-            OpeningExplorerView().tabItem { Label("Openings", systemImage: "tree") }
-            PuzzleTrainingView().tabItem { Label("Puzzles", systemImage: "puzzlepiece.extension") }
-            RepertoireView().tabItem { Label("Repertoire", systemImage: "books.vertical") }
             ComputerPlayView().tabItem { Label("Play", systemImage: "desktopcomputer") }
+            OpeningsHubView().tabItem { Label("Openings", systemImage: "books.vertical") }
+            ChessClockView().tabItem { Label("Clock", systemImage: "clock") }
         }
         .modifier(AppAppearance())
         .environmentObject(library)

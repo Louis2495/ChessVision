@@ -1,6 +1,6 @@
 # ChessVision for iPhone
 
-A native SwiftUI chess app with five bottom tabs: **Analysis**, **Openings**, **Puzzles**, **My Repertoire**, and **Play**. Camera recognition, training, saved repertoire and computer games run locally. Opening explorer downloads public games only when you enter a username and request an import. No account, subscription or paid API is required.
+A native SwiftUI chess app with four bottom tabs: **Analysis**, **Play**, **Openings**, and **Clock**. Camera recognition, training, saved repertoire and computer games run locally. Opening explorer downloads public games only when you enter a username and request an import. No account, subscription or paid API is required.
 
 **Build status:** prepared for Xcode 16+ and iOS 17+. This Linux environment cannot compile or launch an iOS UI. Portable Swift, actual C++/Swift engine workflows, all bundled puzzle/opening data and variant rules have been tested here. See [Validation](Documentation/VALIDATION.md) for executed versus unrun checks. Photo recognition remains experimental.
 
@@ -11,7 +11,7 @@ A native SwiftUI chess app with five bottom tabs: **Analysis**, **Openings**, **
 3. Press **⌘U** for hosted/unit/UI tests. These SDK/UI tests have not been run in this cloud machine.
 4. For a real iPhone, connect/trust the device, enable Developer Mode if asked, select your Development Team under **Signing & Capabilities**, use a unique bundle ID if required, select the device and run. Camera capture requires a physical iPhone and camera permission.
 
-## The five tabs
+## The app sections
 
 ### Analysis
 
@@ -107,3 +107,13 @@ Settings now offers 12 board palettes, 8 color themes and 11 backgrounds, includ
 Piece choices are Illustrated, Merida, Sculpted and Fantasy, each with complete vector artwork for both sides. The font-based piece option is removed; old selections migrate to Illustrated. Existing board and theme preferences remain valid. The analysis screen has no “Find your next move” heading. The home-screen icon is now an ivory rook on navy, and the cartoon duck has a small highlighted eye and a gentler face.
 
 The additional sets retain their creators’ licenses and source attribution; see Documentation/THIRD_PARTY.md.
+
+## Version 0.8 navigation, clock and game flow
+
+The bottom bar is now **Analysis → Play → Openings → Clock**. Openings contains two large cards: **Your Repertoire** above **Research** (the former opening explorer). Puzzle training remains available from the top of Play; its Hint text and bulb are yellow.
+
+Clock includes 1+0, 2+1, 3+0, 3+2, 5+0, 5+3, 10+0, 10+5, 15+10 and 30+0 presets, plus custom minutes, seconds and increment. Start begins White's timer; tapping a face before starting begins the opponent's timer. During play, tap the running face after moving to add increment and switch sides. Pause/resume and confirmed reset are available. Elapsed system uptime keeps the clock accurate when changing tabs or briefly backgrounding. The clock screen stays awake while running; the session resets if the app is terminated.
+
+Finished computer games display a large **White wins / Black wins / Draw** button on the board; tapping it opens new-game setup. Blindfold text-only games show the same large result without revealing a board. Computer Duck turns visibly move the piece, wait half a second, then place the duck. Interrupted previews are canceled without partially saving a turn.
+
+The artwork has been refreshed to a cream king on teal and a soft yellow baby duckling.

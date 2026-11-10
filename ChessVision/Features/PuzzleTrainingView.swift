@@ -13,7 +13,6 @@ struct PuzzleTrainingView: View {
     @State private var replyTask: Task<Void, Never>?
     @State private var generation = UUID()
     var body: some View {
-        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack(alignment: .firstTextBaseline) {
@@ -28,7 +27,7 @@ struct PuzzleTrainingView: View {
                         if !message.isEmpty { Text(message).foregroundStyle(finished ? Color.green : Color.secondary) }
                         if !played.isEmpty { Text(played.joined(separator: "  ")).font(.subheadline.monospaced()) }
                         HStack {
-                            Button { hint() } label: { Label("Hint", systemImage: "lightbulb").frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).controlSize(.large).disabled(finished || board.turn != learner)
+                            Button { hint() } label: { Label("Hint", systemImage: "lightbulb").foregroundStyle(Color.yellow).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).controlSize(.large).disabled(finished || board.turn != learner)
                             Button { if !finished { grade(false) }; nextPuzzle() } label: {
                                 Label(finished ? "Next puzzle" : "Skip puzzle", systemImage: "arrow.right").frame(maxWidth: .infinity, minHeight: 44)
                             }.buttonStyle(.borderedProminent).controlSize(.large)
@@ -38,7 +37,6 @@ struct PuzzleTrainingView: View {
             }.modifier(AppSurface()).navigationTitle("Puzzles").toolbar { SettingsButton() }
             .onAppear { if puzzle == nil { nextPuzzle() } else { replyIfNeeded() } }
             .onDisappear { replyTask?.cancel() }
-        }
     }
     private func nextPuzzle() {
         replyTask?.cancel(); generation = UUID()

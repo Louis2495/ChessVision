@@ -70,7 +70,6 @@ struct OpeningExplorerView: View {
     @State private var notation: [String] = []
     private var position: Position { history.last ?? .initial }
     var body: some View {
-        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     Text("Explore a player's public games.").font(.subheadline).foregroundStyle(.secondary)
@@ -98,9 +97,8 @@ struct OpeningExplorerView: View {
                         Divider()
                     }
                 }.padding()
-            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Opening explorer").toolbar { SettingsButton() }
+            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Research").toolbar { SettingsButton() }
             .onChange(of: model.filter) { _, _ in history = [.initial]; notation = []; model.refilter() }
-        }
     }
     private func play(_ move: ChessMove) {
         guard let san = try? position.san(for: move), let next = try? position.playing(move) else { return }

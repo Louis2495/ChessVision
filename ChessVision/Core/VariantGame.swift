@@ -10,6 +10,24 @@ public struct VariantMove: Hashable, Identifiable, Sendable {
     public var pieceMove: String { String(uci.split(separator: ",").first ?? "") }
     public var duckDestination: Int? { uci.contains(",") ? Position.index(String(uci.suffix(2))) : nil }
     public var promotion: Character? { drop == nil && pieceMove.count == 5 ? pieceMove.last : nil }
+    /// Visual first half of a legal Duck move. The complete turn is still committed by the rules engine.
+    public func piecePosition(from original: Position) -> Position {
+        guard let from, let to, let piece = original.squares[from] else { return original }
+        var board = original
+        if piece.kind == "p", from % 8 != to % 8, board.squares[to] == nil {
+            let captured = to + (piece.side == .white ? 8 : -8)
+            if board.squares.indices.contains(captured) { board.squares[captured] = nil }
+        }
+        if piece.kind == "k", abs(to - from) == 2 {
+            let rookFrom = to > from ? from + 3 : from - 4
+            let rookTo = to > from ? from + 1 : from - 1
+            board.squares[rookTo] = board.squares[rookFrom]; board.squares[rookFrom] = nil
+        }
+        board.squares[to] = piece; board.squares[from] = nil
+        if let promotion { board.squares[to] = Piece(piece.side == .white ? Character(promotion.uppercased()) : promotion) }
+        return board
+    }
+
 }
 public struct VariantSnapshot: Sendable {
     public var fen: String

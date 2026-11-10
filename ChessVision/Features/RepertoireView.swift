@@ -4,7 +4,6 @@ struct RepertoireView: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var adding = false
     var body: some View {
-        NavigationStack {
             List {
                 Section {
                     NavigationLink { RepertoireTrainerView() } label: { Label("Train repertoire", systemImage: "brain.head.profile") }.disabled(library.state.repertoire.isEmpty)
@@ -21,10 +20,9 @@ struct RepertoireView: View {
                         }
                     }.onDelete { offsets in library.state.repertoire.remove(atOffsets: offsets) }
                 }.listRowBackground(ThemeCardBackground())
-            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("My Repertoire").toolbar { SettingsButton() }
+            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Your Repertoire").toolbar { SettingsButton() }
             .toolbar { ToolbarItem(placement: .topBarTrailing) { EditButton() } }
             .sheet(isPresented: $adding) { RepertoireLineEditor() }
-        }
     }
 }
 

@@ -9,6 +9,7 @@ import SwiftUI
     @Published private(set) var game: SavedComputerGame?
     @Published private(set) var snapshot: VariantSnapshot?
     @Published private(set) var busy = false
+    @Published private(set) var computerPiecePreview: Position?
     @Published var error: String?
     private weak var library: LibraryStore?
     private var task: Task<Void, Never>?
@@ -24,19 +25,19 @@ import SwiftUI
         if game == nil { game = library.state.computer }
         if game != nil { run() }
     }
-    func pause() { visible = false; task?.cancel(); generation = UUID(); busy = false }
+    func pause() { computerPiecePreview = nil; visible = false; task?.cancel(); generation = UUID(); busy = false }
     func start() -> Bool {
         guard let target = Int(ratingText), (1...10000).contains(target) else { error = "Enter a target rating from 1 to 10000. Ratings above the supported range use full strength."; return false }
         game = SavedComputerGame(mode: mode, human: human, targetRating: target, openingID: mode == .normal ? requestedOpening?.id : nil)
         game?.pawnWarsKings = pawnWarsKings
         if mode == .chess960 { game?.chess960Index = Int.random(in: 0..<960) }
-        snapshot = nil; error = nil; library?.state.computer = game
+        computerPiecePreview = nil; snapshot = nil; error = nil; library?.state.computer = game
         run(); return true
     }
     private func run() {
         guard visible, let game else { return }
         task?.cancel(); generation = UUID(); let token = generation
-        busy = true; error = nil
+        computerPiecePreview = nil; busy = true; error = nil
         task = Task {
             do {
                 try await EngineController.shared.prepareVariant(game.variant)
@@ -49,10 +50,15 @@ import SwiftUI
                     if let opening, bookMatches, game.moves.count < opening.moves.count { move = opening.moves[game.moves.count] }
                     else { move = try await EngineController.shared.computerMove(variant: game.variant, history: game.moves, rating: game.targetRating, side: state.board.turn) }
                     try Task.checkCancellation(); guard token == generation else { return }
+                    if game.mode == .duck, let legal = state.moves.first(where: { $0.uci == move }), legal.duckDestination != nil {
+                        computerPiecePreview = legal.piecePosition(from: state.board)
+                        try await Task.sleep(for: .milliseconds(500))
+                        try Task.checkCancellation(); guard token == generation else { return }
+                    }
                     try apply(move)
                 }
             } catch is CancellationError {} catch { if token == generation { self.error = error.localizedDescription } }
-            if token == generation { busy = false }
+            if token == generation { computerPiecePreview = nil; busy = false }
         }
     }
     func play(_ move: VariantMove) {
@@ -78,7 +84,7 @@ import SwiftUI
     }
     func resign() {
         guard var game, snapshot?.finished == false else { return }
-        task?.cancel(); generation = UUID(); busy = false
+        task?.cancel(); generation = UUID(); computerPiecePreview = nil; busy = false
         game.resigned = game.human; self.game = game; library?.state.computer = game
         snapshot?.status = game.human == .white ? "black" : "white"
     }
@@ -100,24 +106,26 @@ struct ComputerPlayView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    NavigationLink {
+                        PuzzleTrainingView()
+                            .onAppear { model.pause() }
+                            .onDisappear { if visible && scenePhase == .active { model.activate(library) } }
+                    } label: {
+                        Label("Puzzle training", systemImage: "puzzlepiece.extension").font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding()
+                            .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                    }
                     if let game = model.game, let snapshot = model.snapshot {
                         HStack { Text(game.mode.title).font(.headline); Spacer(); Text("Target ≈ \(game.targetRating)").font(.subheadline).foregroundStyle(.secondary) }
                         HStack { Text("You play \(game.human.title)"); Spacer(); TurnBadge(side: snapshot.board.turn) }
-                        if game.mode != .blindText {
-                            let hidden = game.mode == .blindBoard
-                            BoardView(position: displayedBoard(snapshot, game: game), selected: hidden ? nil : selected,
-                                      legalTargets: hidden ? [] : targets(snapshot), flipped: game.human == .black, hidePieces: hidden, obscured: game.mode == .fogOfWar && !snapshot.finished ? FogVisibility.hidden(in: snapshot.board, for: game.human) : [], duckSquare: snapshot.duckSquare, onTap: tap)
-                        } else {
-                            Text("Enter your move").font(.title2.bold()).padding(.vertical, 24)
-                        }
+                        gameBoard(snapshot, game: game)
                         if game.mode == .crazyhouse { pockets(snapshot, human: game.human) }
                         if let checks = snapshot.checksRemaining {
                             let values = checks.split(separator: "+")
                             Text("Checks remaining · White \(values.first ?? "") · Black \(values.last ?? "")").font(.caption.monospaced())
                         }
-                        if let result = snapshot.result { Text(result).font(.title2.bold()) }
-                        else if model.busy { ProgressView("Computer is thinking…") }
-                        else { Text(!duckChoices.isEmpty ? "Place the duck" : snapshot.inCheck ? "Your king is in check." : "Your move").font(.headline) }
+                        if let result = snapshot.result, game.mode == .blindText { resultButton(result) }
+                        else if model.busy { ProgressView(model.computerPiecePreview == nil ? "Computer is thinking…" : "Placing the duck…") }
+                        else if !snapshot.finished { Text(!duckChoices.isEmpty ? "Place the duck" : snapshot.inCheck ? "Your king is in check." : "Your move").font(.headline) }
                         if !duckChoices.isEmpty { Button("Cancel piece move") { duckChoices = [] } }
                         if !snapshot.finished && (game.mode == .blindBoard || game.mode == .blindText) {
                             HStack {
@@ -152,24 +160,42 @@ struct ComputerPlayView: View {
             .onChange(of: model.snapshot?.fen) { _, _ in selected = nil; selectedDrop = nil; promotions = []; duckChoices = [] }
         }
     }
+    @ViewBuilder private func gameBoard(_ snapshot: VariantSnapshot, game: SavedComputerGame) -> some View {
+        if game.mode != .blindText {
+            let hidden = game.mode == .blindBoard
+            BoardView(position: displayedBoard(snapshot, game: game), selected: hidden ? nil : selected,
+                      legalTargets: hidden ? [] : targets(snapshot), flipped: game.human == .black, hidePieces: hidden, obscured: game.mode == .fogOfWar && !snapshot.finished ? FogVisibility.hidden(in: snapshot.board, for: game.human) : [], duckSquare: snapshot.duckSquare, onTap: tap)
+                .accessibilityHidden(snapshot.finished)
+                .overlay {
+                    if let result = snapshot.result {
+                        ZStack {
+                            Color.black.opacity(0.18).clipShape(RoundedRectangle(cornerRadius: 10))
+                            resultButton(result).padding(24)
+                        }
+                    }
+                }
+        } else if !snapshot.finished {
+            Text("Enter your move").font(.title2.bold()).padding(.vertical, 24)
+        }
+    }
     private func choose(_ move: VariantMove) {
         guard move.duckDestination != nil, let snapshot = model.snapshot else { model.play(move); return }
         duckChoices = snapshot.moves.filter { $0.pieceMove == move.pieceMove }; selected = nil
     }
     private func displayedBoard(_ snapshot: VariantSnapshot, game: SavedComputerGame) -> Position {
-        var board = snapshot.board
-        if let move = duckChoices.first, let from = move.from, let to = move.to {
-            let piece = board.squares[from]
-            if piece?.kind == "p", from % 8 != to % 8, board.squares[to] == nil { board.squares[to + (game.human == .white ? 8 : -8)] = nil }
-            if piece?.kind == "k", abs(to - from) == 2 {
-                let rookFrom = to > from ? from + 3 : from - 4, rookTo = to > from ? from + 1 : from - 1
-                board.squares[rookTo] = board.squares[rookFrom]; board.squares[rookFrom] = nil
-            }
-            board.squares[to] = piece; board.squares[from] = nil
-            if let kind = move.promotion { board.squares[to] = Piece(game.human == .white ? Character(kind.uppercased()) : kind) }
-        }
-        return board
+        if let preview = model.computerPiecePreview { return preview }
+        if let move = duckChoices.first { return move.piecePosition(from: snapshot.board) }
+        return snapshot.board
     }
+    private func resultButton(_ result: String) -> some View {
+        Button { settingUp = true } label: {
+            Text(result).font(.largeTitle.bold()).multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 88).padding(16)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+        }.buttonStyle(.plain).accessibilityHint("Start a new game")
+            .accessibilityIdentifier("game-result")
+    }
+
     private func enter() { if model.enter(textMove) { textMove = "" } }
     private func targets(_ snapshot: VariantSnapshot) -> Set<Int> {
         if !duckChoices.isEmpty { return Set(duckChoices.compactMap(\.duckDestination)) }

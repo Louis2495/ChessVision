@@ -29,13 +29,17 @@ final class ChessVisionUITests: XCTestCase {
 extension ChessVisionUITests {
     func testBottomTabsAndNewTrainingFlows() {
         let app = XCUIApplication(); app.launch()
-        for title in ["Analysis", "Openings", "Puzzles", "Repertoire", "Play"] { XCTAssertTrue(app.tabBars.buttons[title].waitForExistence(timeout: 5)) }
+        for title in ["Analysis", "Play", "Openings", "Clock"] { XCTAssertTrue(app.tabBars.buttons[title].waitForExistence(timeout: 5)) }
         app.tabBars.buttons["Openings"].tap()
+        app.buttons["Research"].tap()
         XCTAssertTrue(app.textFields["Public username"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Puzzles"].tap()
+        app.tabBars.buttons["Play"].tap()
+        app.buttons["Puzzle training"].tap()
         XCTAssertTrue(app.staticTexts["Your training estimate"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Hint"].exists)
-        app.tabBars.buttons["Repertoire"].tap()
+        app.tabBars.buttons["Openings"].tap()
+        app.navigationBars.buttons["Openings"].tap()
+        app.buttons["Your Repertoire"].tap()
         app.buttons["Add a line"].tap()
         app.buttons["square-e2"].tap(); app.buttons["square-e4"].tap()
         let name = "UI line " + UUID().uuidString.prefix(8)
@@ -81,5 +85,21 @@ extension ChessVisionUITests {
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Appearance"].exists)
+    }
+}
+
+extension ChessVisionUITests {
+    func testFourTabOrderAndClock() {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertEqual(app.tabBars.buttons.allElementsBoundByIndex.map(\.label), ["Analysis", "Play", "Openings", "Clock"])
+        app.tabBars.buttons["Clock"].tap()
+        XCTAssertTrue(app.buttons["clock-w"].waitForExistence(timeout: 5))
+        app.buttons["clock-w"].tap()
+        let running = expectation(for: NSPredicate(format: "label CONTAINS %@", "running"), evaluatedWith: app.buttons["clock-b"])
+        wait(for: [running], timeout: 3)
+        app.buttons["Pause"].tap()
+        XCTAssertTrue(app.buttons["Resume"].exists)
+        app.buttons["Time control"].tap()
+        XCTAssertTrue(app.switches["Custom time control"].waitForExistence(timeout: 5))
     }
 }

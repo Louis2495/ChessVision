@@ -52,3 +52,7 @@ HTTP fixture regressions imported 1,200 games across multiple Chess.com months a
 All 36 added vector piece assets have verified original SVG hashes and complete white/black king, queen, rook, bishop, knight and pawn membership. A contact sheet of all four sets was inspected for intact rendering and distinct silhouettes. Icon dimensions/opacity, duck asset presence, resource paths and Swift syntax are checked. The glyph-based renderer and old analysis heading are absent. Native iOS appearance, settings migration, navigation/tab bars, and device layout still require Xcode verification; the contact sheet is an artwork check, not an iOS screenshot.
 
 The existing portable core suite passed all 58 tests after adding the appearance catalog. Engine/rules code is unchanged by this appearance update.
+
+## Version 0.8 clock and game-flow checks
+
+63 portable Swift tests passed, including new elapsed-time/increment, inactive taps, pause/resume, flagging without increment resurrection, background elapsed time, and Duck preview castling/en-passant/promotion regressions. The real app-model suite passed with native assertions enabled: all 13 game styles, multi-turn 3-Check, measured half-second computer Duck staging, cancellation during the preview and safe resumption without a half-saved turn. UI tests were updated for four-tab navigation, combined opening destinations and the clock. These iOS UI tests, idle-timer behavior and visual layouts remain unrun on Linux.

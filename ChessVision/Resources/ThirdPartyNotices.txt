@@ -1544,3 +1544,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 The current navy rook icon and friendly cartoon duck are original generated artwork; originals are in Artwork/.
+
+The current cream-king icon and baby-duck token are original generated artwork, preserved in Artwork/KingIcon-source.png and Artwork/BabyDuck-source.png.

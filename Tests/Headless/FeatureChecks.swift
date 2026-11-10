@@ -52,7 +52,14 @@ import Darwin
                 try require(model.error == nil && model.snapshot?.board.turn == .white, "Variant setup failed: \(mode)")
                 let move = (mode == .horde || mode == .duck || mode == .chess960) ? model.snapshot!.moves[0] : try model.snapshot!.move(named: "e4")
                 model.play(move)
-                try await wait { !model.busy }
+                if mode == .duck {
+                    try await wait { model.computerPiecePreview != nil || !model.busy }
+                    try require(model.computerPiecePreview != nil, "Duck computer piece preview was not shown")
+                    let began = ProcessInfo.processInfo.systemUptime
+                    try await wait { !model.busy }
+                    try require(ProcessInfo.processInfo.systemUptime - began >= 0.40, "Duck was placed without the half-second pause")
+                    try require(model.computerPiecePreview == nil, "Duck preview survived the completed turn")
+                } else { try await wait { !model.busy } }
                 try require(model.error == nil, "Computer reply failed: \(model.error ?? "")")
                 try require(model.game?.moves.count == 2, "Computer did not reply in \(mode)")
                 try require(model.snapshot?.board.turn == .white, "Turn did not return to the user")
@@ -60,6 +67,14 @@ import Darwin
                 try require(model.game?.moves.isEmpty == true, "Takeback did not restore the start")
                 print("Checked model: \(mode.title)"); fflush(stdout)
             }
+            model.mode = .duck; model.human = .black; model.ratingText = "1000"
+            try require(model.start(), "Duck cancellation setup failed")
+            try await wait { model.computerPiecePreview != nil }
+            model.pause()
+            try await Task.sleep(for: .milliseconds(600))
+            try require(model.game?.moves.isEmpty == true && model.computerPiecePreview == nil, "Interrupted duck turn was partially saved")
+            model.activate(store); try await wait { !model.busy }
+            try require(model.error == nil && model.game?.moves.count == 1, "Interrupted duck turn did not resume safely")
             model.mode = .pawnWars; model.pawnWarsKings = false; model.human = .white
             try require(model.start(), "Pawn race setup failed"); try await wait { !model.busy }
             try require(model.error == nil && model.snapshot?.board.squares.compactMap { $0 }.allSatisfy { $0.kind == "p" } == true, "No-kings pawn race still has kings")

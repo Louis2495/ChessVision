@@ -4,15 +4,12 @@ struct PieceView: View {
     @AppStorage("pieceStyle") private var style = "Illustrated"
     var piece: Piece
     var body: some View {
-        Group {
-        if style == "Traditional" { Text(piece.glyph).font(.system(size: 42)).minimumScaleFactor(0.5).foregroundStyle(piece.side == .white ? Color.white : Color.black).shadow(color: .gray, radius: 0.5) } else {
-        Image((piece.side == .white ? "w" : "b") + String(piece.kind).uppercased())
+        Image((PieceStyle(rawValue: style) ?? .illustrated).asset(for: piece))
             .resizable().renderingMode(.original).scaledToFit()
-            .shadow(color: .black.opacity(0.16), radius: 0.8, y: 1)
+            .shadow(color: .black.opacity(0.14), radius: 0.8, y: 1)
             .accessibilityLabel(piece.name)
-        }
-        }.accessibilityLabel(piece.name)
     }
+
 }
 
 struct BoardView: View {
@@ -44,12 +41,14 @@ struct BoardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
     private func squareColor(light: Bool) -> Color {
-        if light { return Color(red: 0.91, green: 0.89, blue: 0.82) }
-        switch style {
-        case "Walnut": return Color(red: 0.43, green: 0.28, blue: 0.18)
-        case "Slate": return Color(red: 0.32, green: 0.40, blue: 0.50)
-        default: return Color(red: 0.36, green: 0.47, blue: 0.40)
-        }
+        let board = BoardStyle(rawValue: style) ?? .classic
+        return Color(hex: light ? board.lightHex : board.darkHex)
+    }
+    private func coordinateColor(light: Bool) -> Color {
+        let board = BoardStyle(rawValue: style) ?? .classic
+        let value = light ? board.lightHex : board.darkHex
+        let brightness = Double((value >> 16) & 255) * 0.299 + Double((value >> 8) & 255) * 0.587 + Double(value & 255) * 0.114
+        return brightness > 150 ? .black.opacity(0.78) : .white.opacity(0.95)
     }
     private func squareLabel(_ index: Int) -> String {
         let contents: String
@@ -68,16 +67,16 @@ struct BoardView: View {
                 if obscured.contains(index) { Rectangle().fill(Color(white: 0.18).opacity(0.94)) }
                 if legalTargets.contains(index) {
                     if position.squares[index] == nil { Circle().fill(.black.opacity(0.20)).frame(width: cell * 0.24, height: cell * 0.24) }
-                    else { Circle().strokeBorder(.cyan.opacity(0.8), lineWidth: 3).padding(2) }
+                    else { Circle().strokeBorder(Color.accentColor.opacity(0.8), lineWidth: 3).padding(2) }
                 }
                 if uncertain.contains(index) { Rectangle().strokeBorder(Color.orange, lineWidth: 3) }
-                if selected == index { Rectangle().strokeBorder(Color.cyan, lineWidth: 3) }
+                if selected == index { Rectangle().strokeBorder(Color.accentColor, lineWidth: 3) }
             }
             .overlay(alignment: .topLeading) {
-                if col == 0 { Text(String(8 - index / 8)).padding(2).coordinateStyle(cell: cell, light: light) }
+                if col == 0 { Text(String(8 - index / 8)).padding(2).coordinateStyle(cell: cell, foreground: coordinateColor(light: light)) }
             }
             .overlay(alignment: .bottomTrailing) {
-                if row == 7 { Text(String(Position.name(index).prefix(1))).padding(2).coordinateStyle(cell: cell, light: light) }
+                if row == 7 { Text(String(Position.name(index).prefix(1))).padding(2).coordinateStyle(cell: cell, foreground: coordinateColor(light: light)) }
             }
             .frame(width: cell, height: cell)
         }
@@ -89,9 +88,9 @@ struct BoardView: View {
 }
 
 private extension View {
-    func coordinateStyle(cell: CGFloat, light: Bool) -> some View {
+    func coordinateStyle(cell: CGFloat, foreground: Color) -> some View {
         font(.system(size: max(9, cell * 0.20), weight: .bold))
-            .foregroundStyle(light ? Color(red: 0.25, green: 0.37, blue: 0.29) : Color(red: 0.96, green: 0.94, blue: 0.86))
+            .foregroundStyle(foreground)
     }
 }
 

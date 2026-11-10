@@ -173,7 +173,7 @@ struct EditorView: View {
                 Button("Empty square") {position.squares[index]=nil; uncertain.remove(index); editingSquare=nil; selected=nil}
                 if position.squares[index] != nil { Button("Move this piece…") {movingFrom=index; editingSquare=nil} }
                 Button("Cancel",role:.cancel) {editingSquare=nil; selected=nil}
-            }.padding().presentationDetents([.medium])
+            }.padding().modifier(AppSurface()).presentationDetents([.medium])
         }
     }
     private var gameDetails: some View {

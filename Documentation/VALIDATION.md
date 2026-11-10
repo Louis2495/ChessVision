@@ -46,3 +46,9 @@ Reproduced native assertions with assertions enabled (ENGINE_ASSERTIONS=1). The 
 Passed with assertions enabled: native smoke/perft and controller replacement/cancellation; 1,366 independent rule positions and 11 endings across seven variants; all 960 Chess960 starts plus sampled castling histories; all 13 real computer-game models, no-kings Pawn Wars, takebacks, save/reload and Analysis handover. The full model suite, including a multi-turn 3-Check game, also passed with Clang. Portable Swift tests: 58 passed; all 2,000 puzzles and every solution ply validated. All original 1,000 puzzle IDs remain present.
 
 HTTP fixture regressions imported 1,200 games across multiple Chess.com months and 1,005 Lichess games without a max parameter, alongside missing-record, PGN fallback and 404 cases. The Apple streaming transport and live remote services still require macOS/device verification. Updated UI tests cover direct first-board moves; no iOS UI or audio/device test was run in this Linux workspace. These checks reduce known failure risks; they cannot guarantee the absence of all future errors.
+
+## Version 0.7 appearance checks
+
+All 36 added vector piece assets have verified original SVG hashes and complete white/black king, queen, rook, bishop, knight and pawn membership. A contact sheet of all four sets was inspected for intact rendering and distinct silhouettes. Icon dimensions/opacity, duck asset presence, resource paths and Swift syntax are checked. The glyph-based renderer and old analysis heading are absent. Native iOS appearance, settings migration, navigation/tab bars, and device layout still require Xcode verification; the contact sheet is an artwork check, not an iOS screenshot.
+
+The existing portable core suite passed all 58 tests after adding the appearance catalog. Engine/rules code is unchanged by this appearance update.

@@ -37,19 +37,19 @@ struct SettingsView: View {
         Form {
             Section("Appearance") {
                 Picker("Display", selection: $appearance) { ForEach(["System", "Light", "Dark"], id: \.self) { Text($0) } }
-                Picker("Theme", selection: $theme) { ForEach(["Forest", "Ocean", "Plum"], id: \.self) { Text($0) } }
-                Picker("Background", selection: $background) { ForEach(["Default", "Warm", "Cool"], id: \.self) { Text($0) } }
-            }
+                Picker("Theme", selection: $theme) { ForEach(AppTheme.allCases, id: \.rawValue) { Text($0.rawValue).tag($0.rawValue) } }
+                Picker("Background", selection: $background) { ForEach(AppBackdrop.allCases, id: \.rawValue) { Text($0.rawValue).tag($0.rawValue) } }
+            }.listRowBackground(ThemeCardBackground())
             Section("Chessboard") {
-                Picker("Board", selection: $board) { ForEach(["Classic", "Walnut", "Slate"], id: \.self) { Text($0) } }
-                Picker("Pieces", selection: $pieces) { ForEach(["Illustrated", "Traditional"], id: \.self) { Text($0) } }
+                Picker("Board", selection: $board) { ForEach(BoardStyle.allCases, id: \.rawValue) { Text($0.rawValue).tag($0.rawValue) } }
+                Picker("Pieces", selection: $pieces) { ForEach(PieceStyle.allCases, id: \.rawValue) { Text($0.rawValue).tag($0.rawValue) } }
                 BoardView(position: .initial).padding(.vertical, 8)
-            }
+            }.listRowBackground(ThemeCardBackground())
             Section("Sound") {
                 Toggle("Classical music", isOn: $music)
                 Text("An original classical-style piano prelude. Music pauses when you leave the app.").font(.caption).foregroundStyle(.secondary)
-            }
-            Section { NavigationLink("Privacy & licenses") { AppInfoView() } }
+            }.listRowBackground(ThemeCardBackground())
+            Section { NavigationLink("Privacy & licenses") { AppInfoView() } }.listRowBackground(ThemeCardBackground())
         }.modifier(AppSurface()).navigationTitle("Settings").toolbar { Button("Done") { dismiss() } }
     }
 }
@@ -60,26 +60,71 @@ struct AppAppearance: ViewModifier {
     @AppStorage("background") private var background = "Default"
     @AppStorage("classicalMusic") private var music = false
     @Environment(\.scenePhase) private var phase
-    private var tint: Color { theme == "Ocean" ? .blue : theme == "Plum" ? .purple : Color(red: 0.20, green: 0.44, blue: 0.34) }
+    @AppStorage("pieceStyle") private var pieces = "Illustrated"
+    private var tint: Color { Color(hex: (AppTheme(rawValue: theme) ?? .forest).hex) }
     func body(content: Content) -> some View {
-        content.tint(tint).preferredColorScheme(appearance == "Light" ? .light : appearance == "Dark" ? .dark : nil)
-            .background(background == "Warm" ? Color.brown.opacity(0.10) : background == "Cool" ? Color.blue.opacity(0.08) : Color.clear)
-            .onAppear { ClassicalMusic.shared.setEnabled(music && phase == .active) }
+        content.accentColor(tint).tint(tint).preferredColorScheme(appearance == "Light" ? .light : appearance == "Dark" ? .dark : nil)
+            .background { AppCanvas().ignoresSafeArea() }
+            .onAppear {
+                if PieceStyle(rawValue: pieces) == nil { pieces = PieceStyle.illustrated.rawValue }
+                ClassicalMusic.shared.setEnabled(music && phase == .active)
+            }
             .onChange(of: music) { _, enabled in ClassicalMusic.shared.setEnabled(enabled && phase == .active) }
             .onChange(of: phase) { _, value in ClassicalMusic.shared.setEnabled(music && value == .active) }
     }
 }
 
-struct AppSurface: ViewModifier {
+extension Color {
+    init(hex: UInt32) {
+        self.init(red: Double((hex >> 16) & 255) / 255, green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255)
+    }
+}
+
+struct AppCanvas: View {
     @AppStorage("background") private var background = "Default"
+    @AppStorage("theme") private var theme = "Forest"
+    @Environment(\.colorScheme) private var scheme
+    private var backdrop: AppBackdrop { AppBackdrop(rawValue: background) ?? .standard }
+    private var accent: Color { Color(hex: (AppTheme(rawValue: theme) ?? .forest).hex) }
+    var body: some View {
+        ZStack {
+            Color(uiColor: .systemBackground)
+            if let hex = backdrop.hex { Color(hex: hex).opacity(scheme == .dark ? 0.20 : 0.12) }
+            if backdrop == .theme { accent.opacity(scheme == .dark ? 0.20 : 0.09) }
+            if backdrop == .aurora {
+                LinearGradient(colors: [accent.opacity(0.16), Color.purple.opacity(0.10), Color.teal.opacity(0.12)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            }
+            if backdrop == .sunset {
+                LinearGradient(colors: [Color.orange.opacity(0.12), Color.pink.opacity(0.12)], startPoint: .top, endPoint: .bottom)
+            }
+            if backdrop == .grid {
+                Canvas { context, size in
+                    var lines = Path()
+                    for x in stride(from: CGFloat.zero, to: size.width, by: 28) { lines.move(to: CGPoint(x: x, y: 0)); lines.addLine(to: CGPoint(x: x, y: size.height)) }
+                    for y in stride(from: CGFloat.zero, to: size.height, by: 28) { lines.move(to: CGPoint(x: 0, y: y)); lines.addLine(to: CGPoint(x: size.width, y: y)) }
+                    context.stroke(lines, with: .color(accent.opacity(0.07)), lineWidth: 0.5)
+                }
+            }
+        }
+    }
+}
+
+struct ThemeCardBackground: View {
+    var body: some View {
+        Color(uiColor: .secondarySystemGroupedBackground).overlay(Color.accentColor.opacity(0.05))
+    }
+}
+
+struct AppSurface: ViewModifier {
+    @AppStorage("theme") private var theme = "Forest"
+    @Environment(\.colorScheme) private var scheme
+    private var bar: Color {
+        Color(hex: (AppTheme(rawValue: theme) ?? .forest).hex).opacity(scheme == .dark ? 0.18 : 0.08)
+    }
     func body(content: Content) -> some View {
         content.scrollContentBackground(.hidden)
-            .background {
-                ZStack {
-                    Color(uiColor: .systemBackground)
-                    if background == "Warm" { Color.brown.opacity(0.12) }
-                    if background == "Cool" { Color.blue.opacity(0.10) }
-                }.ignoresSafeArea()
-            }
+            .background { AppCanvas().ignoresSafeArea() }
+            .toolbarBackground(bar, for: .navigationBar, .tabBar)
+            .toolbarBackground(.visible, for: .navigationBar, .tabBar)
     }
 }

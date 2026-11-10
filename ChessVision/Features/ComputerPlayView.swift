@@ -137,7 +137,7 @@ struct ComputerPlayView: View {
             }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").toolbar { SettingsButton() }
             .toolbar { if model.game != nil { Button("New game") { settingUp = true } } }
             .sheet(isPresented: $settingUp) {
-                NavigationStack { ScrollView { GameSetupForm(model: model) { if model.start() { settingUp = false } }.padding() }.scrollDismissesKeyboard(.interactively).navigationTitle("New game").toolbar { Button("Cancel") { settingUp = false } } }
+                NavigationStack { ScrollView { GameSetupForm(model: model) { if model.start() { settingUp = false } }.padding() }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("New game").toolbar { Button("Cancel") { settingUp = false } } }
             }
             .confirmationDialog("Resign this game?", isPresented: $resigning, titleVisibility: .visible) { Button("Resign", role: .destructive) { model.resign() } }
             .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
@@ -199,7 +199,7 @@ struct ComputerPlayView: View {
                         if count > 0 {
                             Button { selected = nil; selectedDrop = kind } label: {
                                 VStack(spacing: 1) { PieceView(piece: Piece(symbol)).frame(width: 31, height: 31); Text(String(count)).font(.caption2) }
-                                    .padding(3).background(selectedDrop == kind && side == human ? Color.cyan.opacity(0.2) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                                    .padding(3).background(selectedDrop == kind && side == human ? Color.accentColor.opacity(0.2) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
                             }.buttonStyle(.plain).disabled(side != human || snapshot.board.turn != human || model.busy || snapshot.finished)
                         }
                     }
@@ -246,7 +246,7 @@ private struct OpeningPicker: View {
         NavigationStack {
             List(matches) { opening in
                 Button { onSelect(opening); dismiss() } label: { VStack(alignment: .leading) { Text(opening.name); Text(opening.eco).font(.caption).foregroundStyle(.secondary) } }
-            }.searchable(text: $search, prompt: "Sicilian, London, C42…").navigationTitle("Request an opening").toolbar { Button("Cancel") { dismiss() } }
+            }.searchable(text: $search, prompt: "Sicilian, London, C42…").modifier(AppSurface()).navigationTitle("Request an opening").toolbar { Button("Cancel") { dismiss() } }
         }
     }
 }

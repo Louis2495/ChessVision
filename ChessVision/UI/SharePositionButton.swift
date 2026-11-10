@@ -35,11 +35,12 @@ struct SharePositionButton: View {
 }
 
 private struct BoardSnapshot: View {
+    @AppStorage("theme") private var theme = "Forest"
     var position: Position
     var body: some View {
         VStack(spacing: 16) {
             HStack {
-                Text("ChessVision").font(.title2.bold()).foregroundStyle(Color(red: 0.20, green: 0.44, blue: 0.34))
+                Text("ChessVision").font(.title2.bold()).foregroundStyle(Color(hex: (AppTheme(rawValue: theme) ?? .forest).hex))
                 Spacer(); TurnBadge(side: position.turn)
             }
             BoardView(position: position).frame(width: 512, height: 512)

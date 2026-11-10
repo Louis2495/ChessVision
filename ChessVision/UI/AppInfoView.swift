@@ -13,7 +13,7 @@ struct AppInfoView: View {
                     Text(notices).font(.caption.monospaced()).textSelection(.enabled)
                 }
             }.padding()
-        }.navigationTitle("About ChessVision")
+        }.modifier(AppSurface()).navigationTitle("About ChessVision")
     }
     private var notices: String {
         guard let url = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt"),

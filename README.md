@@ -99,3 +99,11 @@ The Analysis tab immediately shows the playable starting position, continuous ev
 Puzzle training includes 2,000 unique puzzles, retains every original puzzle ID, and has larger Hint/Next/Skip controls without theme-keyword clutter. Board-based Play modes use taps and promotion pictures; typed moves are available only in the two blindfold modes. Duck chess uses a bundled cartoon rubber duck. The updated home-screen mark is an ivory knight with a mint diamond.
 
 Engine integration now follows upstream's no-strict-aliasing requirement and clears search state when switching variants. The native checks can run with assertions enabled using `ENGINE_ASSERTIONS=1`; CI uses that mode to catch assertion failures instead of masking them.
+
+## Version 0.7 appearance
+
+Settings now offers 12 board palettes, 8 color themes and 11 backgrounds, including subtle Aurora/Sunset gradients and a grid. Accents, navigation bars, tab bars, backgrounds, list cards, secondary pages, sheets and board selections follow the chosen appearance. Shared board headers also use the selected theme. Semantic warning/error colors remain distinct.
+
+Piece choices are Illustrated, Merida, Sculpted and Fantasy, each with complete vector artwork for both sides. The font-based piece option is removed; old selections migrate to Illustrated. Existing board and theme preferences remain valid. The analysis screen has no “Find your next move” heading. The home-screen icon is now an ivory rook on navy, and the cartoon duck has a small highlighted eye and a gentler face.
+
+The additional sets retain their creators’ licenses and source attribution; see Documentation/THIRD_PARTY.md.

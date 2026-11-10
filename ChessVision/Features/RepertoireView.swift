@@ -9,7 +9,7 @@ struct RepertoireView: View {
                 Section {
                     NavigationLink { RepertoireTrainerView() } label: { Label("Train repertoire", systemImage: "brain.head.profile") }.disabled(library.state.repertoire.isEmpty)
                     Button { adding = true } label: { Label("Add a line", systemImage: "plus.circle") }
-                }
+                }.listRowBackground(ThemeCardBackground())
                 Section("Your lines") {
                     if library.state.repertoire.isEmpty { Text("Add your first opening line or paste a PGN main line.").foregroundStyle(.secondary) }
                     ForEach(library.state.repertoire) { line in
@@ -20,7 +20,7 @@ struct RepertoireView: View {
                             }
                         }
                     }.onDelete { offsets in library.state.repertoire.remove(atOffsets: offsets) }
-                }
+                }.listRowBackground(ThemeCardBackground())
             }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("My Repertoire").toolbar { SettingsButton() }
             .toolbar { ToolbarItem(placement: .topBarTrailing) { EditButton() } }
             .sheet(isPresented: $adding) { RepertoireLineEditor() }
@@ -57,7 +57,7 @@ private struct RepertoireLineEditor: View {
                     }
                     if let message { Text(message).foregroundStyle(.red).font(.footnote) }
                 }.padding()
-            }.scrollDismissesKeyboard(.interactively).navigationTitle("New repertoire line")
+            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("New repertoire line")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || moves.isEmpty) }
@@ -100,7 +100,7 @@ private struct RepertoireLineDetail: View {
                 HStack { Button("Previous") { show(cursor - 1) }.disabled(cursor == 0); Spacer(); Text("\(cursor)/\(line.moves.count)"); Spacer(); Button("Next") { show(cursor + 1) }.disabled(cursor == line.moves.count) }
                 NavigationLink("Train this line") { RepertoireTrainerView(preferred: line.id) }.buttonStyle(.borderedProminent)
             }.padding()
-        }.scrollDismissesKeyboard(.interactively).navigationTitle(line.name).onAppear { show(cursor) }
+        }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle(line.name).onAppear { show(cursor) }
     }
     private func show(_ index: Int) {
         guard var position = try? Position(fen: line.startingFEN) else { return }
@@ -139,7 +139,7 @@ struct RepertoireTrainerView: View {
                     HStack { Button("Show move") { hint() }.disabled(finished || board.turn != line.side); Spacer(); Button(preferred == nil ? "Next line" : "Restart line") { start() }.buttonStyle(.borderedProminent) }
                 } else { ContentUnavailableView("Add a repertoire line first", systemImage: "books.vertical") }
             }.padding()
-        }.scrollDismissesKeyboard(.interactively).navigationTitle("Train repertoire")
+        }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Train repertoire")
         .onAppear { visible = true; if line == nil { start() } else { reply() }; if scenePhase == .active { engine.analyze(board) } }
         .onChange(of: board.fen) { _, _ in if visible && scenePhase == .active { engine.analyze(board) } }
         .onChange(of: scenePhase) { _, phase in if visible && phase == .active { engine.analyze(board) } else if visible { engine.stopAnalysis() } }

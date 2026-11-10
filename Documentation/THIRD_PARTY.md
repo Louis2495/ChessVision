@@ -27,3 +27,7 @@ The current binocular-knight app icon is original generated artwork, preserved i
 Public Chess.com/Lichess API calls use their supported anonymous game-export interfaces when requested by the user. Their service terms/rate limits remain applicable. No OAuth credentials, paid service, analytics SDK or remote engine is added.
 
 Import regression PGN: a public Chess.com game recorded in sarartur/chess.com commit 4ea67f858260802f7d42fccaf679962321356a0d, tests/fixtures/vcr_cassettes/get_player_games_by_month.yaml (FabianoCaruana–viditchess, 2020-05-05). Only the public game record is included, not client code.
+
+## Additional piece sets
+
+Merida by Armando Hernandez Marroquin (GPL-2.0-or-later, used under GPL-3.0-or-later), and Spatial (displayed as Sculpted) / Fantasy by Maurizio Monge (MIT) are imported from lichess-org/lila commit a1590345c9c3a31b6f9c6705eefeeb7dab32a78e. Original SVG files, SHA-256 hashes and full license texts are preserved in Vendor/PieceStyles. SVGs were rendered to vector PDF without changing designs. Scripts/build-piece-styles.py verifies hashes and regenerates the 36 bundled PDF assets; no download or conversion is required in Xcode.

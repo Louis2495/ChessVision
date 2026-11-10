@@ -42,7 +42,7 @@ import struct
 icon=(ROOT/'ChessVision/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png').read_bytes()
 assert icon[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',icon[16:24])==(1024,1024) and icon[25]==2
 
-print(f'PASS: {count} project paths, target/scheme references, plist files, both model packages, 12 piece assets, 2,000 puzzles, 3,865 openings, opaque icon and Swift source membership.')
+print(f'PASS: {count} project paths, target/scheme references, plist files, both model packages, 12 base piece assets, 2,000 puzzles, 3,865 openings, opaque icon and Swift source membership.')
 print('These are structural checks. iOS SDK compilation and runtime tests require macOS/Xcode.')
 
 # Settings media and privacy reason must survive project regeneration.
@@ -55,3 +55,21 @@ assert any(item['NSPrivacyAccessedAPIType']=='NSPrivacyAccessedAPICategoryUserDe
 
 assert 'GCC_STRICT_ALIASING = "NO"' in pbx
 assert (ROOT/'ChessVision/Resources/Assets.xcassets/CartoonDuck.imageset/CartoonDuck.png').exists()
+
+# Every selectable piece set must contain all twelve vector assets, with preserved source provenance.
+import hashlib
+piece_provenance=json.loads((ROOT/'Vendor/PieceStyles/PROVENANCE.json').read_text())
+for display,details in piece_provenance['sets'].items():
+ for side in 'wb':
+  for kind in 'KQRBNP':
+   symbol=side+kind
+   relative=details['source']+'/'+symbol+'.svg'
+   assert hashlib.sha256((ROOT/'Vendor/PieceStyles'/relative).read_bytes()).hexdigest()==piece_provenance['sha256'][relative]
+   directory=ROOT/f'ChessVision/Resources/Assets.xcassets/{display}-{symbol}.imageset'
+   definition=json.loads((directory/'Contents.json').read_text())
+   assert definition['properties']['preserves-vector-representation']
+   assert (directory/definition['images'][0]['filename']).read_bytes().startswith(b'%PDF')
+assert '"Traditional"' not in (ROOT/'ChessVision/UI/SettingsView.swift').read_text()
+assert 'piece.glyph' not in (ROOT/'ChessVision/UI/BoardView.swift').read_text()
+assert 'Find your next move' not in (ROOT/'ChessVision/UI/ContentView.swift').read_text()
+print('PASS: all 36 additional vector pieces and source hashes; glyph pieces and old analysis heading removed.')

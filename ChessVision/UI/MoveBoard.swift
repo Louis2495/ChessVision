@@ -48,6 +48,6 @@ struct PromotionPicker: View {
                     }.buttonStyle(.plain).accessibilityLabel(piece.name)
                 }
             }
-        }.padding().presentationDetents([.height(kinds.count > 4 ? 320 : 220)])
+        }.padding().modifier(AppSurface()).presentationDetents([.height(kinds.count > 4 ? 320 : 220)])
     }
 }

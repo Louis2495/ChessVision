@@ -28,5 +28,5 @@ else
  link_options=(-Xlinker -lc++)
  platform_options=(-target "$(uname -m)-apple-macosx13.0")
 fi
-swiftc -swift-version 5 "${platform_options[@]}" -parse-as-library -I "$build/include" ChessVision/Core/*.swift "$build"/*.swift ChessVision/Services/LibraryStore.swift ChessVision/Services/PublicGameService.swift Tests/Headless/FeatureChecks.swift "$library" "${link_options[@]}" -o "$build/feature-checks"
+swiftc -swift-version 5 "${platform_options[@]}" -parse-as-library -I "$build/include" ChessVision/Core/*.swift "$build"/*.swift ChessVision/Services/LibraryStore.swift ChessVision/Services/PublicGameService.swift ChessVision/Services/GameReviewModel.swift Tests/Headless/FeatureChecks.swift "$library" "${link_options[@]}" -o "$build/feature-checks"
 "$build/feature-checks" "$root"

@@ -50,6 +50,7 @@ extension ChessVisionUITests {
         app.buttons["square-e2"].tap(); app.buttons["square-e4"].tap()
         XCTAssertTrue(app.staticTexts["Line completed"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Play"].tap()
+        if app.navigationBars["Game review"].waitForExistence(timeout: 2) { app.navigationBars.buttons["Done"].tap() }
         XCTAssertTrue(app.navigationBars["Play computer"].waitForExistence(timeout: 5))
     }
 }
@@ -117,5 +118,24 @@ extension ChessVisionUITests {
         for _ in 0..<5 { if share.isHittable { break }; app.swipeUp() }
         share.tap()
         XCTAssertTrue(app.buttons["Share game GIF"].waitForExistence(timeout: 5))
+    }
+}
+
+extension ChessVisionUITests {
+    func testFinishedGameOpensReviewAndHistory() {
+        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Play"].tap()
+        if app.navigationBars["Game review"].waitForExistence(timeout: 2) { app.navigationBars.buttons["Done"].tap() }
+        if app.buttons["New game"].exists { app.buttons["New game"].tap() }
+        let start = app.buttons["Start game"]
+        for _ in 0..<6 { if start.isHittable { break }; app.swipeUp() }
+        start.tap()
+        let resign = app.buttons["Resign"]
+        for _ in 0..<8 { if resign.isHittable { break }; app.swipeUp() }
+        resign.tap(); app.sheets.buttons["Resign"].tap()
+        XCTAssertTrue(app.navigationBars["Game review"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Areas for improvement"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["Done"].tap()
+        app.buttons["Game history"].tap()
+        XCTAssertTrue(app.navigationBars["Game history"].waitForExistence(timeout: 5))
     }
 }

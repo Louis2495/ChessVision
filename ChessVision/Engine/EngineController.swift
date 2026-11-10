@@ -18,7 +18,7 @@ private func receiveEngineLine(_ pointer: UnsafePointer<CChar>?) {
     @Published private(set) var error: String?
     @Published private(set) var selectedVariant = "chess"
     private struct Request {
-        enum Kind { case analysis, computer, prepare }
+        enum Kind { case analysis, computer, prepare, review }
         var id: UUID
         var kind: Kind
         var variant: String
@@ -26,7 +26,9 @@ private func receiveEngineLine(_ pointer: UnsafePointer<CChar>?) {
         var side: Side
         var rating: Int?
         var position: Position?
+        var duration: Int?
     }
+    private var reviewResults: [UUID: EngineLine] = [:]
     private var pending: Request?
     private var active: Request?
     private var continuations: [UUID: CheckedContinuation<String, Error>] = [:]
@@ -56,6 +58,14 @@ private func receiveEngineLine(_ pointer: UnsafePointer<CChar>?) {
     func computerMove(variant: String, history: [String], rating: Int, side: Side) async throws -> String {
         let request = Request(id: UUID(), kind: .computer, variant: variant, setup: "position startpos moves " + history.joined(separator: " "), side: side, rating: max(1, min(10000, rating)))
         return try await awaitRequest(request)
+    }
+    func reviewPosition(variant: String, history: [String], side: Side, milliseconds: Int = 250) async throws -> EngineLine {
+        let request = Request(id: UUID(), kind: .review, variant: variant, setup: "position startpos moves " + history.joined(separator: " "), side: side, duration: max(100, min(2000, milliseconds)))
+        defer { reviewResults.removeValue(forKey: request.id) }
+        _ = try await awaitRequest(request)
+        try Task.checkCancellation()
+        guard let result = reviewResults[request.id] else { throw ChessError.invalid("The engine did not return an evaluation. Resume the review to retry.") }
+        return result
     }
     private func awaitRequest(_ request: Request) async throws -> String {
         try Task.checkCancellation()
@@ -104,7 +114,9 @@ private func receiveEngineLine(_ pointer: UnsafePointer<CChar>?) {
             else { send("setoption name Skill Level value -20") }
         } else { send("setoption name UCI_LimitStrength value false"); send("setoption name Skill Level value 20") }
         send(request.setup)
-        send(request.kind == .analysis ? "go infinite" : "go movetime \((request.rating ?? 1000) >= 2000 ? 1300 : 650)")
+        if request.kind == .analysis { send("go infinite") }
+        else if request.kind == .review { send("go movetime \(request.duration ?? 250)") }
+        else { send("go movetime \((request.rating ?? 1000) >= 2000 ? 1300 : 650)") }
     }
     private func cancel(_ id: UUID) {
         complete(id, .failure(CancellationError()))
@@ -148,6 +160,7 @@ private func receiveEngineLine(_ pointer: UnsafePointer<CChar>?) {
             if !stopping, let active {
                 publishTask?.cancel(); publishTask = nil; publish()
                 let move = line.split(separator: " ").dropFirst().first.map(String.init) ?? "(none)"
+                if active.kind == .review { reviewResults[active.id] = latest[1] }
                 bestMove = move; complete(active.id, .success(move))
             }
             running = false; stopping = false; active = nil; driveQueue()

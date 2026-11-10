@@ -23,6 +23,7 @@ import SwiftUI
     func activate(_ library: LibraryStore) {
         self.library = library; visible = true
         if game == nil { game = library.state.computer }
+        if game != nil && game?.id == nil { game?.id = UUID(); library.state.computer = game }
         if game != nil { run() }
     }
     func pause() { computerPiecePreview = nil; visible = false; task?.cancel(); generation = UUID(); busy = false }
@@ -45,6 +46,7 @@ import SwiftUI
                 var state = try VariantRules.snapshot(variant: game.variant, history: game.moves)
                 if let resigned = game.resigned { state.status = resigned == .white ? "black" : "white" }
                 snapshot = state
+                archiveIfFinished()
                 if !state.finished && state.board.turn != game.human {
                     let move: String
                     if let opening, bookMatches, game.moves.count < opening.moves.count { move = opening.moves[game.moves.count] }
@@ -75,9 +77,11 @@ import SwiftUI
         current.moves.append(uci); current.notation.append(move.san)
         let next = try VariantRules.snapshot(variant: current.variant, history: current.moves)
         game = current; snapshot = next; library?.state.computer = current
+        archiveIfFinished()
     }
     func undo() {
         guard var game, game.moves.count >= 2 else { return }
+        if snapshot?.finished == true { game.id = UUID() }
         task?.cancel(); game.moves.removeLast(2)
         game.notation = Array(game.notation.prefix(game.moves.count)); game.resigned = nil
         self.game = game; library?.state.computer = game; run()
@@ -87,14 +91,26 @@ import SwiftUI
         task?.cancel(); generation = UUID(); computerPiecePreview = nil; busy = false
         game.resigned = game.human; self.game = game; library?.state.computer = game
         snapshot?.status = game.human == .white ? "black" : "white"
+        archiveIfFinished()
     }
+    private func archiveIfFinished() {
+        guard let game, let snapshot, snapshot.finished else { return }
+        library?.recordCompleted(game, result: snapshot.status)
+    }
+
 }
+
+private struct CompletedReviewRoute: Identifiable { let id: UUID }
 
 struct ComputerPlayView: View {
     @EnvironmentObject private var library: LibraryStore
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model = ComputerGameModel()
     @State private var settingUp = false
+    @State private var historyPresented = false
+    @State private var reviewRoute: CompletedReviewRoute?
+    @State private var lastReviewedGame: UUID?
+    @State private var reviewPresentationTask: Task<Void, Never>?
     @State private var visible = false
     @State private var textMove = ""
     @State private var selected: Int?
@@ -104,38 +120,23 @@ struct ComputerPlayView: View {
     @State private var duckChoices: [VariantMove] = []
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    if let game = model.game, let snapshot = model.snapshot {
-                        HStack { Text(game.mode.title).font(.headline); Spacer(); Text("Target ≈ \(game.targetRating)").font(.subheadline).foregroundStyle(.secondary) }
-                        HStack { Text("You play \(game.human.title)"); Spacer(); TurnBadge(side: snapshot.board.turn) }
-                        gameBoard(snapshot, game: game)
-                        if game.mode == .crazyhouse { pockets(snapshot, human: game.human) }
-                        if let checks = snapshot.checksRemaining {
-                            let values = checks.split(separator: "+")
-                            Text("Checks remaining · White \(values.first ?? "") · Black \(values.last ?? "")").font(.caption.monospaced())
-                        }
-                        if let result = snapshot.result, game.mode == .blindText { resultButton(result) }
-                        else if model.busy { ProgressView(model.computerPiecePreview == nil ? "Computer is thinking…" : "Placing the duck…") }
-                        else if !snapshot.finished { Text(!duckChoices.isEmpty ? "Place the duck" : snapshot.inCheck ? "Your king is in check." : "Your move").font(.headline) }
-                        if !duckChoices.isEmpty { Button("Cancel piece move") { duckChoices = [] } }
-                        if !snapshot.finished && (game.mode == .blindBoard || game.mode == .blindText) {
-                            HStack {
-                                TextField(game.mode == .crazyhouse ? "Move, e.g. Nf3 or N@f7" : "Move, e.g. Nf3", text: $textMove).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).onSubmit(enter)
-                                Button("Play", action: enter).buttonStyle(.borderedProminent).disabled(model.busy || snapshot.board.turn != game.human || textMove.isEmpty)
-                            }
-                        }
-                        if let opening = model.opening { Text("Requested: \(opening.name)\(model.bookMatches ? "" : " · game has left this line")").font(.caption).foregroundStyle(.secondary) }
-                        if let error = model.error { Text(error).foregroundStyle(.red).font(.footnote) }
-                        if game.mode == .blindBoard || game.mode == .blindText {
-                            if snapshot.board.turn == game.human, let last = game.notation.last { Text("Computer: \(last)").font(.headline.monospaced()) }
-                        } else if game.mode != .fogOfWar { GameMoveTable(moves: game.notation) }
-                        HStack { Button("Take back two plies") { model.undo() }.disabled(game.moves.count < 2); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished) }
-                    } else if model.busy { ProgressView("Preparing the game…").frame(maxWidth: .infinity).padding(.vertical, 40) }
-                    else { GameSetupForm(model: model, onStart: { _ = model.start() }) }
-                }.padding()
-            }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").toolbar { SettingsButton() }
-            .toolbar { if model.game != nil { Button("New game") { settingUp = true } } }
+            playContent
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { reviewPresentationTask?.cancel(); if model.snapshot?.finished == true { lastReviewedGame = model.game?.id }; model.pause(); historyPresented = true } label: { Image(systemName: "clock.arrow.circlepath") }.accessibilityLabel("Game history")
+                }
+                ToolbarItem(placement: .topBarTrailing) { if model.game != nil { Button("New game") { settingUp = true } } }
+            }
+            .sheet(isPresented: $historyPresented, onDismiss: {
+                if visible && scenePhase == .active { model.activate(library) }
+            }) { NavigationStack { GameHistoryView() } }
+            .sheet(item: $reviewRoute) { route in
+                NavigationStack {
+                    GameReviewView(id: route.id).toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { reviewRoute = nil } } }
+                }
+            }
+            .onChange(of: model.snapshot?.result) { _, _ in scheduleReview() }
+            .onChange(of: settingUp) { _, showing in if !showing { scheduleReview() } }
             .sheet(isPresented: $settingUp) {
                 NavigationStack { ScrollView { GameSetupForm(model: model) { if model.start() { settingUp = false } }.padding() }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("New game").toolbar { Button("Cancel") { settingUp = false } } }
             }
@@ -146,11 +147,66 @@ struct ComputerPlayView: View {
                     promotions = []; selected = nil
                 }
             }
-            .onAppear { visible = true; model.activate(library) }
-            .onDisappear { visible = false; model.pause() }
-            .onChange(of: scenePhase) { _, phase in guard visible else { return }; if phase == .active { model.activate(library) } else { model.pause() } }
+            .onAppear { visible = true; model.activate(library); scheduleReview() }
+            .onDisappear { visible = false; reviewPresentationTask?.cancel(); model.pause() }
+            .onChange(of: scenePhase) { _, phase in
+                guard visible else { return }
+                if phase == .active && !historyPresented && reviewRoute == nil { model.activate(library); scheduleReview() }
+                else { reviewPresentationTask?.cancel(); model.pause() }
+            }
             .onChange(of: model.snapshot?.fen) { _, _ in selected = nil; selectedDrop = nil; promotions = []; duckChoices = [] }
         }
+    }
+    private var playContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                if let game = model.game, let snapshot = model.snapshot {
+                    HStack { Text(game.mode.title).font(.headline); Spacer(); Text("Target ≈ \(game.targetRating)").font(.subheadline).foregroundStyle(.secondary) }
+                    HStack { Text("You play \(game.human.title)"); Spacer(); TurnBadge(side: snapshot.board.turn) }
+                    gameBoard(snapshot, game: game)
+                    if game.mode == .crazyhouse { pockets(snapshot, human: game.human) }
+                    if let checks = snapshot.checksRemaining {
+                        let values = checks.split(separator: "+")
+                        Text("Checks remaining · White \(values.first ?? "") · Black \(values.last ?? "")").font(.caption.monospaced())
+                    }
+                    if let result = snapshot.result, game.mode == .blindText { resultButton(result) }
+                    else if model.busy { ProgressView(model.computerPiecePreview == nil ? "Computer is thinking…" : "Placing the duck…") }
+                    else if !snapshot.finished { Text(!duckChoices.isEmpty ? "Place the duck" : snapshot.inCheck ? "Your king is in check." : "Your move").font(.headline) }
+                    if !duckChoices.isEmpty { Button("Cancel piece move") { duckChoices = [] } }
+                    if !snapshot.finished && (game.mode == .blindBoard || game.mode == .blindText) {
+                        HStack {
+                            TextField(game.mode == .crazyhouse ? "Move, e.g. Nf3 or N@f7" : "Move, e.g. Nf3", text: $textMove).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).onSubmit(enter)
+                            Button("Play", action: enter).buttonStyle(.borderedProminent).disabled(model.busy || snapshot.board.turn != game.human || textMove.isEmpty)
+                        }
+                    }
+                    if let opening = model.opening { Text("Requested: \(opening.name)\(model.bookMatches ? "" : " · game has left this line")").font(.caption).foregroundStyle(.secondary) }
+                    if snapshot.finished, let id = game.id {
+                        Button("Review game", systemImage: "list.bullet.clipboard") { lastReviewedGame = id; reviewRoute = CompletedReviewRoute(id: id) }.buttonStyle(.borderedProminent)
+                    }
+                    if let error = model.error { Text(error).foregroundStyle(.red).font(.footnote) }
+                    if game.mode == .blindBoard || game.mode == .blindText {
+                        if snapshot.board.turn == game.human, let last = game.notation.last { Text("Computer: \(last)").font(.headline.monospaced()) }
+                    } else if game.mode != .fogOfWar { GameMoveTable(moves: game.notation) }
+                    HStack { Button("Take back two plies") { model.undo() }.disabled(game.moves.count < 2); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished) }
+                } else if model.busy { ProgressView("Preparing the game…").frame(maxWidth: .infinity).padding(.vertical, 40) }
+                else { GameSetupForm(model: model, onStart: { _ = model.start() }) }
+            }.padding()
+        }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").toolbar { SettingsButton() }
+    }
+    private func scheduleReview() {
+        reviewPresentationTask?.cancel()
+        guard model.snapshot?.finished == true else { return }
+        reviewPresentationTask = Task { @MainActor in
+            do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
+            guard !Task.isCancelled else { return }
+            presentReviewIfNeeded()
+        }
+    }
+    private func presentReviewIfNeeded() {
+        guard visible, scenePhase == .active, !settingUp, !historyPresented, promotions.isEmpty, reviewRoute == nil,
+              model.snapshot?.finished == true, let id = model.game?.id,
+              lastReviewedGame != id, library.state.history.contains(where: { $0.id == id }) else { return }
+        lastReviewedGame = id; reviewRoute = CompletedReviewRoute(id: id)
     }
     @ViewBuilder private func gameBoard(_ snapshot: VariantSnapshot, game: SavedComputerGame) -> some View {
         if game.mode != .blindText {

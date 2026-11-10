@@ -127,3 +127,13 @@ Position insights now assess material, checks and mate, attacked/loose pieces, p
 **Show notation** displays the actual played line up to the selected position in White/Black columns, separately from engine candidates. It respects the current branch, move numbers and custom starts. A manual position/turn edit starts a fresh notation segment.
 
 After playing a move, **Share position → Share game GIF** exports an animated GIF of the recorded positions through the current point. It loops, pauses at the beginning/end, follows the selected board/piece styles, supports cancellation, and removes temporary files when sharing finishes. Still-image and FEN sharing remain available. GIF export uses Apple's ImageIO and awaits native Xcode tests; it cannot be executed in Linux.
+
+## Version 0.10 game history and personalized review
+
+Completed games in Play are archived automatically and open a post-game review. Use the **Game history** button at the top left of Play to replay past games and reopen saved reviews. Resignations and natural finishes are saved once; taking back a finished game creates a new game identity and preserves its archived result.
+
+For standard chess (including the blindfold modes), each of your positions is compared with all saved repertoire branches, including transpositions. Any saved continuation is accepted. A deviation shows the expected move(s), the actual move number and the repertoire line name, with a direct training link. It is labeled as repertoire recall rather than an objective engine mistake. Positions outside your repertoire use quick full-strength engine comparisons before and after your move. Variants always use their own rules; Chess960, Duck, 3-check, Crazyhouse and Antichess reviews have native workflow coverage.
+
+The **Areas for improvement** section groups the actual suggestions from that game into themes such as opening recall, king safety, mating patterns, tactics/material, pawn decisions, piece activity, endgame technique, calculation and variant goals. Each area names its example moves; each suggestion can jump to its replay position. Engine labels are provisional at the displayed search depth, with about 250ms spent on each before/after position. No official accuracy or rating claim is made.
+
+Reviews save progress, support pause/resume and reuse completed results. Changing repertoire moves or names refreshes the personalized review; training dates alone do not invalidate it. Existing puzzle progress, repertoire and active games migrate without resetting. History and reviews remain on this device; no external account or analysis service is used.

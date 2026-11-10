@@ -62,3 +62,11 @@ The existing portable core suite passed all 58 tests after adding the appearance
 68 portable tests passed. New tests cover pins/open files, independent pawn-structure findings, pawn forks, engine-plan wording, ordinary opening priorities, custom-start move numbers, branching and a recording reset after a manual turn edit. Existing recognition, legal move, puzzle and clock tests also pass. iOS tests now decode a generated GIF, check frame count, distinct frames, looping/timing, and exercise the notation toggle/GIF menu. Those Apple ImageIO/UIKit/UI tests remain unrun in Linux; only source syntax and project/resource checks can run here.
 
 After adding dead-material and 50-move-claim assessment, the focused 10-test insight suite also passed. GIF frame creation and rendering still require the prepared native test on a Mac.
+
+## Version 0.10 history and game review
+
+77 portable tests passed, including backward-compatible library decoding without history/game IDs, personalized seventh-move corrections, accepted alternate repertoire branches, Black-perspective evaluation losses, suppression of small/no-loss corrections, missed-mate and variant-goal labels, repertoire cache signatures and history/review serialization. The focused review suite also passed after the final count helper was added.
+
+Assertion-enabled Clang/native app-model tests passed all 13 game styles plus natural checkmate and resignation archival, duplicate protection, separate history identity after takeback, repertoire-first review, engine correction of a real Qxf7 mate oversight, review checkpoint/cancel/resume, and persistent replay/review data. Reviews were exercised under Chess960, 3-check, Duck, Crazyhouse and Antichess. Continuous-analysis controller cancellation/replacement/regression checks also passed with the new finite review requests.
+
+A prepared iOS UI test checks automatic review after resignation and the Game history entry point. It remains unrun here. SDK compilation, modal transitions, board replay layouts, app background/foreground behavior and accessibility still require Xcode/device verification. Engine feedback is a quick comparison, not an exhaustive proof of every mistake or concept.

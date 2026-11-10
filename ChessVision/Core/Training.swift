@@ -141,6 +141,7 @@ public enum GameMode: String, CaseIterable, Codable, Identifiable, Sendable {
     }
 }
 public struct SavedComputerGame: Codable, Sendable {
+    public var id: UUID? = UUID()
     public var mode: GameMode
     public var human: Side
     public var targetRating: Int
@@ -160,5 +161,15 @@ public struct LibraryState: Codable, Sendable {
     public var puzzle = PuzzleProgress()
     public var repertoire: [RepertoireLine] = []
     public var computer: SavedComputerGame?
+    public var history: [CompletedGame] = []
     public init() {}
+    private enum CodingKeys: String, CodingKey { case version, puzzle, repertoire, computer, history }
+    public init(from decoder: Decoder) throws {
+        let fields = try decoder.container(keyedBy: CodingKeys.self)
+        version = try fields.decode(Int.self, forKey: .version)
+        puzzle = try fields.decode(PuzzleProgress.self, forKey: .puzzle)
+        repertoire = try fields.decode([RepertoireLine].self, forKey: .repertoire)
+        computer = try fields.decodeIfPresent(SavedComputerGame.self, forKey: .computer)
+        history = try fields.decodeIfPresent([CompletedGame].self, forKey: .history) ?? []
+    }
 }

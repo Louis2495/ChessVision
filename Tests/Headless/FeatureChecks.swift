@@ -63,7 +63,15 @@ import Darwin
                 try require(model.error == nil, "Computer reply failed: \(model.error ?? "")")
                 try require(model.game?.moves.count == 2, "Computer did not reply in \(mode)")
                 try require(model.snapshot?.board.turn == .white, "Turn did not return to the user")
-                model.undo(); try await wait { !model.busy }
+                if [.threeCheck, .duck, .crazyhouse, .chess960, .antichess].contains(mode) {
+                    model.resign()
+                    let originalID = try (model.game?.id).unwrap("Variant game missing ID")
+                    let variantReview = GameReviewModel(); variantReview.start(id: originalID, library: store)
+                    try await wait { !variantReview.busy }
+                    try require(variantReview.error == nil && variantReview.review?.complete == true && variantReview.positions.count == 3, "Variant review failed: \(mode.title), \(variantReview.error ?? "")")
+                    model.undo(); try await wait { !model.busy }
+                    try require(model.game?.id != originalID && store.state.history.contains { $0.id == originalID }, "Takeback changed the archived result instead of creating a new game")
+                } else { model.undo(); try await wait { !model.busy } }
                 try require(model.game?.moves.isEmpty == true, "Takeback did not restore the start")
                 print("Checked model: \(mode.title)"); fflush(stdout)
             }
@@ -107,7 +115,38 @@ import Darwin
             try require(model.start(), "Opening game failed"); try await wait { !model.busy }
             model.enter("e4"); try await wait { !model.busy }
             try require(model.game?.moves.prefix(2) == ["e2e4", "e7e5"], "Requested opening was not followed")
+            model.resign()
+            let completedID = try (model.game?.id).unwrap("Completed game has no ID")
+            try require(store.state.history.contains { $0.id == completedID }, "Finished game was not archived")
+            model.activate(store); try await wait { !model.busy }
+            try require(store.state.history.filter { $0.id == completedID }.count == 1, "Finished game was archived twice")
+            let personalized = GameReviewModel(); personalized.start(id: completedID, library: store)
+            try await wait { !personalized.busy }
+            try require(personalized.error == nil && personalized.review?.complete == true, "Personalized review did not complete")
+            try require(personalized.review?.repertoireMatches == 1, "Saved repertoire was not checked first")
             model.pause()
+            var scholar = SavedComputerGame(mode: .normal, human: .black, targetRating: 1000, moves: "e2e4 e7e5 d1h5 b8c6 f1c4 g8f6 h5f7".split(separator: " ").map(String.init))
+            scholar.notation = ["e4", "e5", "Qh5", "Nc6", "Bc4", "Nf6", "Qxf7#"]
+            var matingGame = scholar; matingGame.id = UUID(); matingGame.human = .white
+            matingGame.moves = Array(scholar.moves.prefix(6)); matingGame.notation = Array(scholar.notation.prefix(6))
+            store.state.computer = matingGame
+            let finisher = ComputerGameModel(); finisher.activate(store); try await wait { !finisher.busy }
+            try require(finisher.enter("Qxf7#"), "Natural checkmate move was rejected"); try await wait { !finisher.busy }
+            try require(finisher.snapshot?.status == "white" && store.state.history.filter { $0.id == matingGame.id }.count == 1, "Natural checkmate was not saved exactly once")
+            finisher.pause()
+            let scholarID = try store.recordCompleted(scholar, result: "white").unwrap("History insertion failed")
+            let reviewer = GameReviewModel(); reviewer.start(id: scholarID, library: store)
+            try await wait { (reviewer.review?.assessedMoves ?? 0) >= 1 || !reviewer.busy }
+            reviewer.cancel()
+            let partial = try (store.state.history.first { $0.id == scholarID }?.review).unwrap("Partial review was not saved")
+            try require(partial.complete == false && partial.nextPly >= 2, "Review did not checkpoint before cancellation")
+            reviewer.start(id: scholarID, library: store); try await wait { !reviewer.busy }
+            try require(reviewer.error == nil && reviewer.review?.complete == true, "Engine review did not resume")
+            try require(reviewer.positions.count == 8, "History replay lost positions")
+            try require(reviewer.review?.suggestions.contains { $0.ply == 5 && $0.source == .engine } == true, "Engine missed the forced-mate blunder on Nf6")
+            let restoredHistory = LibraryStore(directory: directory, puzzles: puzzles, openings: openings)
+            try require(restoredHistory.state.history.contains { $0.id == scholarID && $0.review?.complete == true }, "Game/review history did not persist")
+            print("PASS: automatic history, duplicate protection, repertoire-first review, forced-mate engine correction, pause/resume and persistence."); fflush(stdout)
             EngineController.shared.analyze(.initial)
             try await wait { !EngineController.shared.lines.isEmpty }
             try require(EngineController.shared.selectedVariant == "chess", "Analysis did not restore standard chess")

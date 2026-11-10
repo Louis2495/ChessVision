@@ -45,5 +45,10 @@ import Combine
             #endif
         } catch { notice = "Your progress could not be saved: \(error.localizedDescription)" }
     }
+    @discardableResult func recordCompleted(_ game: SavedComputerGame, result: String) -> UUID? {
+        guard ["white", "black", "draw"].contains(result), let id = game.id else { return nil }
+        if !state.history.contains(where: { $0.id == id }) { state.history.insert(CompletedGame(game: game, result: result), at: 0) }
+        return id
+    }
     func openingName(at position: Position) -> String? { openings.first { $0.key == position.openingKey }?.name }
 }

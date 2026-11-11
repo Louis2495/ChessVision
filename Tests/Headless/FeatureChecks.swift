@@ -144,6 +144,24 @@ import Darwin
             try require(model.game?.moves.count == 2 && model.premoves.moves.isEmpty && model.error == nil, "Illegal premove was played or dependent queue survived")
             model.requestedOpening = nil
             print("PASS: consecutive legal premoves execute automatically; illegal intents cancel their dependent queue."); fflush(stdout)
+            model.mode = .normal; model.human = .white; model.rated = true; model.adaptive = false; model.ratingText = "1000"
+            try require(model.start(), "Rated game did not start"); try await wait { !model.busy }
+            model.enter("e4"); try await wait { !model.busy }
+            model.resign()
+            let ratedGames = store.state.playProgress.rating(for: .normal).games
+            try require(ratedGames == 1, "Rated result was not recorded")
+            model.activate(store); try await wait { !model.busy }
+            try require(store.state.playProgress.rating(for: .normal).games == ratedGames, "Rated result was recorded twice")
+            let ratedMoves = model.game!.moves
+            model.undo(); try require(model.game!.moves == ratedMoves, "Takeback changed a rated result")
+            model.rated = false; model.adaptive = true
+            try require(model.start(), "Adaptive game did not start"); try await wait { !model.busy }
+            model.enter("e4"); try await wait { !model.busy }
+            try require(model.error == nil && model.game?.lastAdaptedPly == 1 && model.game?.adaptiveRating != nil, "Adaptive move-quality assessment failed")
+            model.pause()
+            try require(store.state.computer?.adaptiveRating == model.game?.adaptiveRating, "Adaptive strength was not saved")
+            model.adaptive = false; model.activate(store)
+            print("PASS: persistent rated games, duplicate protection, rated takeback guard and adaptive strength updates."); fflush(stdout)
             model.mode = .duck; model.human = .black; model.ratingText = "1000"
             try require(model.start(), "Duck cancellation setup failed")
             try await wait { model.computerPiecePreview != nil }
@@ -212,6 +230,8 @@ import Darwin
             reviewer.start(id: scholarID, library: store); try await wait { !reviewer.busy }
             try require(reviewer.error == nil && reviewer.review?.complete == true, "Engine review did not resume")
             try require(reviewer.positions.count == 8, "History replay lost positions")
+            try require(reviewer.review?.assessments?.count == 7, "Review did not grade both sides")
+            try require(reviewer.review?.assessments?.first(where: { $0.ply == 5 })?.quality == .blunder, "Review badge missed the mating blunder")
             try require(reviewer.review?.suggestions.contains { $0.ply == 5 && $0.source == .engine } == true, "Engine missed the forced-mate blunder on Nf6")
             let restoredHistory = LibraryStore(directory: directory, puzzles: puzzles, openings: openings)
             try require(restoredHistory.state.history.contains { $0.id == scholarID && $0.review?.complete == true }, "Game/review history did not persist")

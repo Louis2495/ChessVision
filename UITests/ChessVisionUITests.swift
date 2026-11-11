@@ -126,7 +126,7 @@ extension ChessVisionUITests {
         let share = app.buttons["Share position"]
         for _ in 0..<5 { if share.isHittable { break }; app.swipeUp() }
         share.tap()
-        XCTAssertTrue(app.buttons["Share game GIF"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Share GIF"].waitForExistence(timeout: 5))
     }
 }
 
@@ -186,5 +186,19 @@ extension ChessVisionUITests {
         XCTAssertTrue(app.staticTexts["No saved photos"].exists || app.staticTexts["Analyze"].firstMatch.exists)
         app.buttons["Done"].tap()
         XCTAssertTrue(app.buttons["Scan board"].exists)
+    }
+}
+
+
+extension ChessVisionUITests {
+    func testClockFacesOnlyShowTimesAndCenterControlOpensSetup() {
+        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Clock"].tap()
+        let white = app.buttons["clock-w"], black = app.buttons["clock-b"]
+        XCTAssertTrue(white.waitForExistence(timeout: 5))
+        XCTAssertFalse(white.staticTexts["White"].exists)
+        XCTAssertFalse(black.staticTexts["Black"].exists)
+        app.buttons["Time control"].tap()
+        XCTAssertTrue(app.navigationBars["Time control"].waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(app.buttons["Start"].frame.width, 200)
     }
 }

@@ -32,7 +32,6 @@ struct SettingsView: View {
     @AppStorage("background") private var background = "Default"
     @AppStorage("boardStyle") private var board = "Classic"
     @AppStorage("pieceStyle") private var pieces = "Illustrated"
-    @AppStorage("analysisCandidates") private var analysisCandidates = 1
     @AppStorage("premoves") private var premoves = true
     @AppStorage("autoQueen") private var autoQueen = false
     @AppStorage("classicalMusic") private var music = false
@@ -50,11 +49,7 @@ struct SettingsView: View {
             }.listRowBackground(ThemeCardBackground())
             Section("Analysis") {
                 Text("Stockfish 19 · NNUE").font(.headline)
-                Picker("Candidate lines", selection: $analysisCandidates) {
-                    Text("1 · Deepest search").tag(1)
-                    Text("3 · Compare alternatives").tag(3)
-                }
-                Text("Analysis always uses full strength and keeps searching. One line gives the best move more search time.").font(.caption).foregroundStyle(.secondary)
+                Text("Analysis always uses full strength and keeps refining three candidate lines.").font(.caption).foregroundStyle(.secondary)
             }.listRowBackground(ThemeCardBackground())
             Section("Moves") {
                 Toggle("Premoves", isOn: $premoves)

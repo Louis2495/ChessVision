@@ -64,34 +64,39 @@ import Combine
                 let worker = Task.detached(priority: .userInitiated) { try ReviewRepertoireIndex(lines: standard ? repertoire : []) }
                 let book = try await withTaskCancellationHandler(operation: { try await worker.value }, onCancel: { worker.cancel() })
                 try Task.checkCancellation()
+                var evaluationCache: [Int: EngineLine] = [:]
                 for ply in result.nextPly..<game.moves.count {
                     try Task.checkCancellation()
                     let prefix = Array(game.moves.prefix(ply))
-                    if let bughouse = entry.bughouse, bughouse.events[ply].board != 0 || bughouse.events[ply].side != game.human {
+                    if let bughouse = entry.bughouse, bughouse.events[ply].board != 0 {
                         result.nextPly = ply + 1; continue
                     }
                     let before = try entry.bughouse == nil ? VariantRules.snapshot(variant: game.variant, history: prefix) : BughouseRules.snapshot(fen: positions[ply])
                     guard let played = before.moves.first(where: { $0.uci == game.moves[ply] }) else { throw ChessError.invalid("A saved move could not be replayed.") }
+                    progress = "Reviewing move \(before.board.fullmove) · \(ply + 1)/\(game.moves.count) plies"
+                    let match = standard && before.board.turn == game.human ? GameReviewLogic.repertoireSuggestion(at: before.board, played: played.uci, san: played.san, ply: ply, choices: book.positions[before.board.openingKey] ?? []) : (matched: false, suggestion: nil as GameSuggestion?)
+                    let baseline: EngineLine
+                    if let cached = evaluationCache[ply] { baseline = cached }
+                    else if entry.bughouse != nil { baseline = try await EngineController.shared.reviewBughouse(fen: positions[ply], side: before.board.turn) }
+                    else { baseline = try await EngineController.shared.reviewPosition(variant: game.variant, history: prefix, side: before.board.turn) }
+                    try Task.checkCancellation()
+                    let afterHistory = prefix + [played.uci]
+                    let after = try entry.bughouse == nil ? VariantRules.snapshot(variant: game.variant, history: afterHistory) : BughouseRules.snapshot(fen: positions[ply + 1])
+                    let outcome: EngineLine?
+                    if after.finished { outcome = nil }
+                    else if entry.bughouse != nil { outcome = try await EngineController.shared.reviewBughouse(fen: positions[ply + 1], side: after.board.turn) }
+                    else { outcome = try await EngineController.shared.reviewPosition(variant: game.variant, history: afterHistory, side: after.board.turn) }
+                    try Task.checkCancellation()
+                    // The next ordinary ply starts at this exact position, so reuse its search.
+                    if entry.bughouse == nil { evaluationCache = [:]; evaluationCache[ply + 1] = outcome }
+                    let assessment = MoveAssessment.make(ply: ply, move: played, before: before, after: after, baseline: baseline, outcome: outcome, inBook: match.matched && match.suggestion == nil)
+                    if result.assessments == nil { result.assessments = [] }
+                    result.assessments?.append(assessment)
                     if before.board.turn == game.human {
-                        progress = "Reviewing your move \(before.board.fullmove) · \(ply + 1)/\(game.moves.count) plies"
-                        let match = standard ? GameReviewLogic.repertoireSuggestion(at: before.board, played: played.uci, san: played.san, ply: ply, choices: book.positions[before.board.openingKey] ?? []) : (matched: false, suggestion: nil as GameSuggestion?)
                         if match.matched {
                             result.repertoireMatches += 1
                             if let suggestion = match.suggestion { result.suggestions.append(suggestion) }
-                        } else {
-                            let baseline: EngineLine
-                            if entry.bughouse != nil { baseline = try await EngineController.shared.reviewBughouse(fen: positions[ply], side: before.board.turn) }
-                            else { baseline = try await EngineController.shared.reviewPosition(variant: game.variant, history: prefix, side: before.board.turn) }
-                            try Task.checkCancellation()
-                            let afterHistory = prefix + [played.uci]
-                            let after = try entry.bughouse == nil ? VariantRules.snapshot(variant: game.variant, history: afterHistory) : BughouseRules.snapshot(fen: positions[ply + 1])
-                            let outcome: EngineLine?
-                            if after.finished { outcome = nil }
-                            else if entry.bughouse != nil { outcome = try await EngineController.shared.reviewBughouse(fen: positions[ply + 1], side: after.board.turn) }
-                            else { outcome = try await EngineController.shared.reviewPosition(variant: game.variant, history: afterHistory, side: after.board.turn) }
-                            try Task.checkCancellation()
-                            if let suggestion = GameReviewLogic.engineSuggestion(ply: ply, side: game.human, number: before.board.fullmove, played: played, before: before, after: after, baseline: baseline, outcome: outcome, standard: ordinaryMate, variant: game.variant) { result.suggestions.append(suggestion) }
-                        }
+                        } else if let suggestion = GameReviewLogic.engineSuggestion(ply: ply, side: game.human, number: before.board.fullmove, played: played, before: before, after: after, baseline: baseline, outcome: outcome, standard: ordinaryMate, variant: game.variant) { result.suggestions.append(suggestion) }
                         result.assessedMoves += 1
                     }
                     result.nextPly = ply + 1; review = result

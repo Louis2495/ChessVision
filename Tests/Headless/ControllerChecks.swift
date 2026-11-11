@@ -56,11 +56,7 @@ import Darwin
             try await wait { engine.lines.count == 3 && engine.lines.allSatisfy { $0.depth >= 6 } }
             try require(engine.searchEngine == "Stockfish 19 NNUE", "Full-strength analysis did not recover after rated play")
             engine.stop(); try await wait { !engine.running }
-            UserDefaults.standard.set(1, forKey: "analysisCandidates")
-            engine.analyze(.initial)
-            try await wait { engine.lines.count == 1 && (engine.lines.first?.depth ?? 0) >= 6 }
-            engine.stop(); try await wait { !engine.running }
-            print("PASS: SF19 NNUE routing, full-strength reset after rated play and 1/3-line analysis modes.")
+            print("PASS: SF19 NNUE routing, full-strength reset after rated play and three-line analysis mode.")
             print("PASS: actual Swift controller + Stockfish: continuous depth, board changes, latest request wins, cancellation, mate/stalemate, restart.")
             fflush(stdout)
             // Match the app's process-lifetime engine; bypass global iostream teardown in this CLI harness.

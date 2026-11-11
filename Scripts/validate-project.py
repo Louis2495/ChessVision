@@ -99,3 +99,8 @@ for wrapper in wrappers:
  target=re.search(r'#include "([^"]+)"',wrapper.read_text())[1]
  assert (wrapper.parent/target).resolve() in [p.resolve() for p in upstream]
 print('PASS: unique engine object basenames and all 25 unmodified modern translation units.')
+
+assert plistlib.loads((ROOT/'ChessVision/ChessVision.entitlements').read_bytes())['com.apple.developer.game-center'] is True
+assert 'CODE_SIGN_ENTITLEMENTS = "ChessVision/ChessVision.entitlements"' in pbx
+assert 'CorrespondenceService.swift' in pbx and 'CorrespondenceView.swift' in pbx
+print('PASS: Game Center entitlement and correspondence source membership.')

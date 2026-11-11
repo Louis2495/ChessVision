@@ -43,7 +43,7 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
     private var modernReady = false
     private var modernFailure: String?
     var analysisEngineName: String { "Stockfish 19 · NNUE" }
-    var analysisCandidates: Int { UserDefaults.standard.integer(forKey: "analysisCandidates") == 3 ? 3 : 1 }
+    var analysisCandidates: Int { 3 }
     private var reviewResults: [UUID: EngineLine] = [:]
     private var pending: Request?
     private var active: Request?

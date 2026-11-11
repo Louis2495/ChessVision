@@ -15,10 +15,9 @@ struct SharePositionButton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Menu {
-                if game.count > 1 { Button("Share game GIF", systemImage: "film") { shareGIF() } }
+                if game.count > 1 { Button("Share GIF", systemImage: "film") { shareGIF() } }
                 Button("Share FEN", systemImage: "text.alignleft") { share(image: false, fen: true) }
                 Button("Share board image", systemImage: "photo") { share(image: true, fen: false) }
-                Button("Share image & FEN", systemImage: "square.and.arrow.up") { share(image: true, fen: true) }
             } label: { Label("Share position", systemImage: "square.and.arrow.up") }
             .disabled(exporting)
             if exporting {

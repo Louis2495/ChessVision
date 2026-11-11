@@ -5,6 +5,9 @@ import SwiftUI
     @Published var human = Side.white
     @Published var pawnWarsKings = true
     @Published var ratingText = "1000"
+    @Published var rated = false
+    @Published var adaptive = false
+    @Published private(set) var recognizedOpening: String?
     @Published var requestedOpening: OpeningLine?
     @Published private(set) var game: SavedComputerGame?
     @Published private(set) var snapshot: VariantSnapshot?
@@ -31,8 +34,11 @@ import SwiftUI
     func start() -> Bool {
         guard mode != .bughouse else { error = "Open Bughouse setup to start a two-board match."; return false }
         guard let target = Int(ratingText), (1...10000).contains(target) else { error = "Enter a target rating from 1 to 10000. Ratings above the supported range use full strength."; return false }
+        guard !(rated && adaptive) else { error = "Adaptive games are unrated. Choose one game type."; return false }
+        if game?.rated == true && snapshot?.finished == false { resign() }
         premoves.clear()
         game = SavedComputerGame(mode: mode, human: human, targetRating: target, openingID: mode == .normal ? requestedOpening?.id : nil)
+        game?.rated = rated; game?.adaptive = adaptive; game?.adaptiveRating = adaptive ? target : nil
         game?.pawnWarsKings = pawnWarsKings
         if mode == .chess960 { game?.chess960Index = Int.random(in: 0..<960) }
         computerPiecePreview = nil; snapshot = nil; error = nil; library?.state.computer = game
@@ -49,11 +55,33 @@ import SwiftUI
                 var state = try VariantRules.snapshot(variant: game.variant, history: game.moves)
                 if let resigned = game.resigned { state.status = resigned == .white ? "black" : "white" }
                 snapshot = state
+                recognizedOpening = nil
+                if game.mode == .normal {
+                    var board = Position.initial
+                    for uci in game.moves {
+                        do { try board.apply(uci: uci) } catch { break }
+                        if let name = library?.openingName(at: board) { recognizedOpening = name }
+                    }
+                }
                 archiveIfFinished()
                 if !state.finished && state.board.turn != game.human {
+                    if game.adaptive == true, game.moves.count > 0, game.lastAdaptedPly != game.moves.count {
+                        let prefix = Array(game.moves.dropLast())
+                        let before = try VariantRules.snapshot(variant: game.variant, history: prefix)
+                        let baseline = try await EngineController.shared.reviewPosition(variant: game.variant, history: prefix, side: game.human, milliseconds: 400)
+                        let outcome = try await EngineController.shared.reviewPosition(variant: game.variant, history: game.moves, side: state.board.turn, milliseconds: 400)
+                        try Task.checkCancellation(); guard token == generation else { return }
+                        if let played = before.moves.first(where: { $0.uci == game.moves.last }) {
+                            let assessment = MoveAssessment.make(ply: game.moves.count - 1, move: played, before: before, after: state, baseline: baseline, outcome: outcome)
+                            var updated = self.game ?? game
+                            updated.adaptiveRating = AdaptiveStrength.adjusted(updated.adaptiveRating ?? updated.targetRating, loss: assessment.loss)
+                            updated.lastAdaptedPly = game.moves.count
+                            self.game = updated; library?.state.computer = updated
+                        }
+                    }
                     let move: String
                     if let opening, bookMatches, game.moves.count < opening.moves.count { move = opening.moves[game.moves.count] }
-                    else { move = try await EngineController.shared.computerMove(variant: game.variant, history: game.moves, rating: game.targetRating, side: state.board.turn) }
+                    else { move = try await EngineController.shared.computerMove(variant: game.variant, history: game.moves, rating: self.game?.adaptiveRating ?? game.targetRating, side: state.board.turn) }
                     try Task.checkCancellation(); guard token == generation else { return }
                     if game.mode == .duck, let legal = state.moves.first(where: { $0.uci == move }), legal.duckDestination != nil {
                         computerPiecePreview = legal.piecePosition(from: state.board)
@@ -99,7 +127,7 @@ import SwiftUI
     }
     func undo() {
         premoves.clear()
-        guard var game, game.moves.count >= 2 else { return }
+        guard var game, game.rated != true, game.moves.count >= 2 else { return }
         if snapshot?.finished == true { game.id = UUID() }
         task?.cancel(); game.moves.removeLast(2)
         game.notation = Array(game.notation.prefix(game.moves.count)); game.resigned = nil
@@ -128,6 +156,8 @@ struct ComputerPlayView: View {
     @StateObject private var model = ComputerGameModel()
     @State private var settingUp = false
     @State private var dismissedResult: UUID?
+    @State private var rematching = false
+    @State private var rematchSide = Side.white
     @State private var historyPresented = false
     @State private var reviewRoute: CompletedReviewRoute?
     @State private var lastReviewedGame: UUID?
@@ -165,6 +195,24 @@ struct ComputerPlayView: View {
                 if showing { reviewPresentationTask?.cancel(); model.pause() }
                 else { if visible && scenePhase == .active { model.activate(library) }; scheduleReview() }
             }
+            .onChange(of: rematching) { _, showing in
+                if showing { reviewPresentationTask?.cancel() } else { scheduleReview() }
+            }
+            .sheet(isPresented: $rematching) {
+                NavigationStack {
+                    Form {
+                        Picker("Your color", selection: $rematchSide) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
+                        Button("Start rematch") {
+                            if let previous = model.game {
+                                model.mode = previous.mode; model.human = rematchSide
+                                model.ratingText = String(previous.rated == true ? Int(library.state.playProgress.rating(for: previous.mode).value.rounded()) : previous.targetRating); model.rated = previous.rated == true; model.adaptive = previous.adaptive == true
+                                model.pawnWarsKings = previous.pawnWarsKings ?? true
+                                if model.start() { rematching = false }
+                            }
+                        }.buttonStyle(.borderedProminent)
+                    }.navigationTitle("Rematch").toolbar { Button("Cancel") { rematching = false } }
+                }
+            }
             .navigationDestination(isPresented: $settingUp) {
                 ScrollView {
                     GameSetupForm(model: model, resumeOnBughouseDismiss: false) {
@@ -199,8 +247,9 @@ struct ComputerPlayView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if let game = model.game, let snapshot = model.snapshot {
-                    HStack { Text(game.mode.title).font(.headline); Spacer(); Text("Target ≈ \(game.targetRating)").font(.subheadline).foregroundStyle(.secondary) }
+                    HStack { Text(game.mode.title).font(.headline); Spacer(); Text("\(game.adaptive == true ? "Adaptive" : game.rated == true ? "Rated" : "Bot") ≈ \(game.adaptiveRating ?? game.targetRating)").font(.subheadline).foregroundStyle(.secondary) }
                     HStack { Text("You play \(game.human.title)"); Spacer(); TurnBadge(side: snapshot.board.turn) }
+                    if game.mode == .normal, let name = model.recognizedOpening { Text(name).font(.subheadline).foregroundStyle(.secondary) }
                     gameBoard(snapshot, game: game)
                     if !model.premoves.moves.isEmpty {
                         HStack {
@@ -225,6 +274,7 @@ struct ComputerPlayView: View {
                         }
                     }
                     if let opening = model.opening { Text("Requested: \(opening.name)\(model.bookMatches ? "" : " · game has left this line")").font(.caption).foregroundStyle(.secondary) }
+                    if snapshot.finished { Button("Rematch", systemImage: "arrow.triangle.2.circlepath") { rematchSide = game.human; rematching = true }.buttonStyle(.borderedProminent) }
                     if snapshot.finished, let id = game.id {
                         Button("Review game", systemImage: "list.bullet.clipboard") { lastReviewedGame = id; reviewRoute = CompletedReviewRoute(id: id) }.buttonStyle(.borderedProminent)
                     }
@@ -234,9 +284,13 @@ struct ComputerPlayView: View {
                     } else if game.mode != .fogOfWar && !game.notation.isEmpty {
                         AppCard { DisclosureGroup("Game moves · \(game.notation.count)") { GameMoveTable(moves: game.notation).padding(.top, 8) } }
                     }
-                    HStack { Button("Take back", systemImage: "arrow.uturn.backward") { model.undo() }.accessibilityHint("Undo your last move and the computer’s reply").disabled(game.moves.count < 2); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished) }.buttonStyle(.bordered).controlSize(.large)
+                    HStack { Button("Take back", systemImage: "arrow.uturn.backward") { model.undo() }.accessibilityHint("Undo your last move and the computer’s reply").disabled(game.moves.count < 2 || game.rated == true); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished) }.buttonStyle(.bordered).controlSize(.large)
                 } else if model.busy { ProgressView("Preparing the game…").frame(maxWidth: .infinity).padding(.vertical, 40) }
                 else { GameSetupForm(model: model, onStart: { _ = model.start() }) }
+                AppCard {
+                    NavigationLink { CorrespondenceView() } label: { Label("Play with friends · Correspondence", systemImage: "person.2") }
+                    NavigationLink { AchievementsView() } label: { Label("Achievements & ratings", systemImage: "medal") }
+                }
             }.padding()
         }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").navigationBarTitleDisplayMode(.inline).toolbar { SettingsButton() }
     }
@@ -250,7 +304,7 @@ struct ComputerPlayView: View {
         }
     }
     private func presentReviewIfNeeded() {
-        guard visible, scenePhase == .active, !settingUp, !historyPresented, promotions.isEmpty, reviewRoute == nil,
+        guard visible, scenePhase == .active, !settingUp, !rematching, !historyPresented, promotions.isEmpty, reviewRoute == nil,
               model.snapshot?.finished == true, let id = model.game?.id,
               lastReviewedGame != id, library.state.history.contains(where: { $0.id == id }) else { return }
         lastReviewedGame = id; reviewRoute = CompletedReviewRoute(id: id)
@@ -368,6 +422,13 @@ private struct GameSetupForm: View {
             } else {
             if model.mode == .pawnWars { Toggle("Include kings", isOn: $model.pawnWarsKings) }
             Picker("Your color", selection: $model.human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
+            Toggle("Rated game", isOn: $model.rated).onChange(of: model.rated) { _, value in
+                if value { model.adaptive = false; model.ratingText = String(Int(library.state.playProgress.rating(for: model.mode).value.rounded())) }
+            }
+            Toggle("Adaptive difficulty", isOn: $model.adaptive).onChange(of: model.adaptive) { _, value in if value { model.rated = false } }
+            if model.adaptive { Text("The bot adjusts after your moves. Adaptive games are unrated.").font(.caption).foregroundStyle(.secondary) }
+            Button("Use my rating (\(Int(library.state.playProgress.rating(for: model.mode).value.rounded())))") { model.ratingText = String(Int(library.state.playProgress.rating(for: model.mode).value.rounded())) }
+            if model.game?.rated == true && model.snapshot?.finished == false { Text("Starting another game resigns your current rated game.").font(.caption).foregroundStyle(.secondary) }
             Text("Computer strength · estimated Elo").font(.caption).foregroundStyle(.secondary)
             TextField("Requested rating", text: $model.ratingText).keyboardType(.numberPad).textFieldStyle(.roundedBorder)
             Slider(value: Binding(get: { min(3500, max(100, Double(model.ratingText) ?? 1000)) }, set: { model.ratingText = String(Int($0)) }), in: 100...3500, step: 50)
@@ -383,6 +444,7 @@ private struct GameSetupForm: View {
             }
             if let error = model.error { Text(error).foregroundStyle(.red) }
         }
+        .onChange(of: model.mode) { _, mode in if model.rated { model.ratingText = String(Int(library.state.playProgress.rating(for: mode).value.rounded())) } }
         .fullScreenCover(isPresented: $bughousePresented, onDismiss: { if resumeOnBughouseDismiss { model.activate(library) } }) { BughousePlayView() }
         .sheet(isPresented: $choosingOpening) { OpeningPicker { model.requestedOpening = $0 } }
     }

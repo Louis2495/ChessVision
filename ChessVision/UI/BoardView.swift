@@ -22,6 +22,7 @@ struct BoardView: View {
     var hidePieces = false
     var obscured: Set<Int> = []
     var duckSquare: Int? = nil
+    var moveAssessment: MoveAssessment? = nil
     var onTap: ((Int) -> Void)? = nil
     var body: some View {
         GeometryReader { geometry in
@@ -56,7 +57,8 @@ struct BoardView: View {
         else if duckSquare == index { contents = "Duck" }
         else { contents = position.squares[index]?.name ?? "empty" }
         let warning = uncertain.contains(index) ? ", uncertain recognition" : ""
-        return "\(Position.name(index)), \(contents)\(warning)"
+        let grade = moveAssessment?.destination == index ? ", " + (moveAssessment?.quality.title ?? "") : ""
+        return "\(Position.name(index)), \(contents)\(warning)\(grade)"
     }
     private func square(index: Int, row: Int, col: Int, cell: CGFloat) -> some View {
         let light = (index / 8 + index % 8).isMultiple(of: 2)
@@ -73,6 +75,12 @@ struct BoardView: View {
                 }
                 if uncertain.contains(index) { Rectangle().strokeBorder(Color.orange, lineWidth: 3) }
                 if selected == index { Rectangle().strokeBorder(Color.accentColor, lineWidth: 3) }
+            }
+            .overlay(alignment: .topTrailing) {
+                if let moveAssessment, moveAssessment.destination == index, !hidePieces && !obscured.contains(index) {
+                    Image(systemName: moveAssessment.quality.symbol).font(.system(size: max(12, cell * 0.32), weight: .bold))
+                        .foregroundStyle(moveAssessment.quality.color).padding(2).background(.regularMaterial, in: Circle()).padding(1)
+                }
             }
             .overlay(alignment: .topLeading) {
                 if col == 0 { Text(String(8 - index / 8)).padding(2).coordinateStyle(cell: cell, foreground: coordinateColor(light: light)) }

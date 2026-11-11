@@ -187,3 +187,21 @@ Settings now includes two more conventional piece sets, **Chessnut** and **Celti
 ## Version 0.15.1 SwiftUI build correction
 
 The shared card and game-review suggestion backgrounds now use SwiftUI's view-builder background overload, with rounded clipping. This fixes the compiler error requiring ThemeCardBackground to conform to ShapeStyle. The remaining custom-background usages were audited; list row backgrounds accept views, and the remaining background-in-shape calls use colors or materials. GitHub's macOS workflow now compiles the iOS app before its longer native checks.
+
+## Version 0.16 play progression, reviews and friends
+
+Clock faces display only the times. Tap the centered time-control button to change controls; setup has a larger Start button. Puzzles now say simply “White to move” / “Black to move.” Research says “Explore games on a chess.com or lichess account.” Sharing offers separate FEN/image actions and **Share GIF**; the combined image+FEN action is removed. Candidate lines always has three tabs again; hiding the Candidate lines section does not reduce the engine search to one line.
+
+**Rated bot games** save a separate local rating per game mode, starting at 1000, using an Elo update (K64 for the first ten games, K32 afterward). Use my rating sets the bot target to your current rating. Results settle once; rated takebacks are disabled, and starting another game forfeits an unfinished rated game. These ratings are local bot ratings, not Chess.com/Lichess ratings. Adaptive difficulty is a separate unrated option: a short engine comparison after each human move raises/lowers the bot's target. Its target and last assessed turn are saved so pause/resume does not apply the same adjustment twice.
+
+Normal games keep the most recently identified opening name visible as play continues. **Rematch** lets you select White or Black before starting; rated rematches use your updated rating. Multiple premoves remain queued in order, with one unrelated-square tap canceling the most recent entry; a three-entry cancellation regression covers this explicitly.
+
+**Game reviews** grade both players' moves as Best, Excellent, Good, Inaccuracy, Mistake, Blunder or Book. The replay shows an icon at the last moved piece and a text grade. Game summary shows counts, rated-game changes and a rough move-quality rating estimate after at least eight assessed non-book moves. This estimate is not a calibrated platform Elo. Engine comparisons are cached across adjacent positions to avoid searching the same position twice; reviews remain incremental and can pause/resume. Old reviews refresh under the new assessment version.
+
+**Achievements & ratings** in Play shows unlocked/locked goals, including a genuine unpromoted-pawn checkmate, knight mate, promotion, castling, milestones and variant exploration. Bot results and completed correspondence games contribute; online matches remain unrated.
+
+**Play with friends · Correspondence** uses Apple's Game Center turn-based service, including its native invitation picker, invitation acceptance, reply syncing, multiple simultaneous games and a 259,200-second timeout for each handed-over turn. Refresh or return to the app to sync; turn events are listened for while connected. Opening an invitation accepts it. Every received move history is replayed and validated before use. Completed games are archived locally and can be reviewed. The initial invitation/first-move phase follows Game Center's matchmaking lifecycle; three-day reply deadlines start when a turn is handed over. No app-owned server or player-message access is needed.
+
+### Enable Game Center before testing invitations
+
+Game Center requires an Apple Developer app ID with Game Center enabled, matching bundle ID/signing team, and Game Center enabled for the app in App Store Connect. In Xcode, select your team in Signing & Capabilities and ensure the Game Center capability is active; the entitlement is included. Sign into Game Center on two supported devices/accounts to test an invitation and a reply. A Personal Team may not support this capability; bot-only builds can omit the entitlement, but online matches will then be unavailable. Cloud Linux checks cannot authenticate Apple accounts or exercise the live service.

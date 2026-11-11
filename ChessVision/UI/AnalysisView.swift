@@ -18,7 +18,6 @@ struct AnalysisView: View {
     @State private var history: [Position]
     @State private var cursor = 0
     @State private var rank = 1
-    @AppStorage("analysisCandidates") private var analysisCandidates = 1
     @AppStorage("positionInsights") private var insights = false
     @AppStorage("showCandidateLines") private var showCandidateLines = true
     @AppStorage("showGameNotation") private var showGameNotation = false
@@ -104,10 +103,6 @@ struct AnalysisView: View {
             visible = true
             if scenePhase == .active { engine.analyze(position) }
         }
-        .onChange(of: analysisCandidates) { _, _ in
-            rank = 1
-            if visible && scenePhase == .active { engine.analyze(position) }
-        }
         .onChange(of: position.fen) { _, _ in
             selected = nil; promotions = []; message = nil
             if visible && scenePhase == .active { engine.analyze(position) }
@@ -175,16 +170,12 @@ struct AnalysisView: View {
             if let move = moves.first {
                 Text("\(rank == 1 ? "Best move" : "Candidate move"): \(move.san)").font(.headline)
             }
-            Group {
-                if analysisCandidates == 3 {
-                    Picker("Variation", selection: $rank) {
-                        ForEach(1...3, id: \.self) { number in
-                            Text("\(number) · \(liveLines.first { $0.rank == number }?.evaluation ?? "—")").tag(number)
-                        }
-                    }.pickerStyle(.segmented)
+            Picker("Variation", selection: $rank) {
+                ForEach(1...3, id: \.self) { number in
+                    Text("\(number) · \(liveLines.first { $0.rank == number }?.evaluation ?? "—")").tag(number)
                 }
-                VariationTable(moves: moves, rootFEN: position.fen, onSelect: playThrough)
-            }
+            }.pickerStyle(.segmented)
+            VariationTable(moves: moves, rootFEN: position.fen, onSelect: playThrough)
         }
     }
     @ViewBuilder private var recordedGame: some View {

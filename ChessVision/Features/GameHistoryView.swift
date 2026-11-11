@@ -12,7 +12,7 @@ struct GameHistoryView: View {
                 NavigationLink { GameReviewView(id: entry.id) } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack { Text(entry.resultTitle).font(.headline); Spacer(); Text(entry.game.mode.title).font(.caption).foregroundStyle(.secondary) }
-                        Text("You: \(entry.game.human.title) · Computer ≈ \(entry.game.targetRating) · \(entry.game.moves.count) plies").font(.caption).foregroundStyle(.secondary)
+                        Text("You: \(entry.game.human.title) · \(entry.game.opponentName ?? "Computer ≈ \(entry.game.targetRating)") · \(entry.game.moves.count) plies").font(.caption).foregroundStyle(.secondary)
                         Text(entry.finishedAt, style: .date).font(.caption2).foregroundStyle(.secondary)
                         if entry.review?.complete == true { Text("Review saved").font(.caption).foregroundStyle(.tint) }
                     }.padding(.vertical, 6)
@@ -49,6 +49,7 @@ struct GameReviewView: View {
                     if let error = model.error { Text(error).font(.footnote).foregroundStyle(.red) }
                     if let review = model.review {
                         Text("\(review.assessedMoves)/\(entry.humanMoveCount) of your moves reviewed · \(review.repertoireMatches) repertoire positions").font(.caption).foregroundStyle(.secondary)
+                        gameSummary(entry, review: review)
                         improvementAreas(review)
                         suggestions(review)
                     }
@@ -69,8 +70,11 @@ struct GameReviewView: View {
     @ViewBuilder private func replay(_ entry: CompletedGame) -> some View {
         if let position = model.position(at: cursor) {
             HStack {
-                BoardView(position: position.board, flipped: entry.game.human == .black, duckSquare: position.duckSquare)
+                BoardView(position: position.board, flipped: entry.game.human == .black, duckSquare: position.duckSquare, moveAssessment: model.review?.assessments?.first(where: { $0.ply == cursor - 1 }))
                 if entry.bughouse != nil, let partner = model.position(at: cursor, partner: true) { BoardView(position: partner.board, flipped: entry.game.human == .white) }
+            }
+            if let assessment = model.review?.assessments?.first(where: { $0.ply == cursor - 1 }) {
+                Label("\(assessment.san) · \(assessment.quality.title)", systemImage: assessment.quality.symbol).foregroundStyle(assessment.quality.color).font(.headline)
             }
             HStack {
                 Button("Previous", systemImage: "chevron.left") { cursor = max(0, cursor - 1) }.disabled(cursor == 0)
@@ -86,6 +90,35 @@ struct GameReviewView: View {
                 NavigationLink("Analyze this position") { AnalysisView(original: position.board) }
             }
         } else { ProgressView("Preparing replay…").frame(maxWidth: .infinity, minHeight: 180) }
+    }
+    private func gameSummary(_ entry: CompletedGame, review: GameReview) -> some View {
+        AppCard {
+            Text("Game summary").font(.title2.bold())
+            if let change = entry.ratingChange {
+                Text("Rated game · \(change >= 0 ? "+" : "")\(change) rating points").font(.headline)
+            }
+            ForEach(Side.allCases, id: \.rawValue) { side in
+                let summary = ReviewSummary(review.assessments ?? [], side: side)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(side.title).font(.headline)
+                    Text("\(summary.count(.blunder)) blunders · \(summary.count(.mistake)) mistakes · \(summary.count(.inaccuracy)) inaccuracies").font(.subheadline)
+                    Text("\(summary.count(.best)) best · \(summary.count(.excellent)) excellent · \(summary.count(.good)) good · \(summary.count(.book)) book").font(.caption).foregroundStyle(.secondary)
+                    if let estimate = summary.estimatedRating { Text("Move-quality estimate ≈ \(estimate)").font(.subheadline) }
+                    else { Text("Rating estimate needs eight assessed moves.").font(.caption).foregroundStyle(.secondary) }
+                }
+            }
+            Text("Move-quality estimates describe this game only; they are not calibrated platform ratings. Counts update as review completes.").font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup("All assessed moves") {
+                ForEach(review.assessments ?? []) { assessment in
+                    Button { cursor = assessment.ply + 1 } label: {
+                        HStack {
+                            Label("\(assessment.ply / 2 + 1)\(assessment.side == .white ? "." : "…") \(assessment.san)", systemImage: assessment.quality.symbol)
+                            Spacer(); Text(assessment.quality.title)
+                        }.font(.caption).foregroundStyle(assessment.quality.color).padding(.vertical, 4)
+                    }
+                }
+            }
+        }
     }
     @ViewBuilder private func improvementAreas(_ review: GameReview) -> some View {
         VStack(alignment: .leading, spacing: 12) {

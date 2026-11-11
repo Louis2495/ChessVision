@@ -153,6 +153,11 @@ public struct SavedComputerGame: Codable, Sendable {
     public var resigned: Side?
     public var chess960Index: Int?
     public var pawnWarsKings: Bool?
+    public var opponentName: String?
+    public var rated: Bool?
+    public var adaptive: Bool?
+    public var adaptiveRating: Int?
+    public var lastAdaptedPly: Int?
     public var variant: String { if mode == .chess960 { return "cv960\(chess960Index ?? 0)" }; return mode == .pawnWars && pawnWarsKings == false ? "cvpawnrace" : mode.variant }
     public init(mode: GameMode, human: Side, targetRating: Int, moves: [String] = [], openingID: String? = nil) {
         self.mode = mode; self.human = human; self.targetRating = targetRating; self.moves = moves; self.openingID = openingID
@@ -164,9 +169,10 @@ public struct LibraryState: Codable, Sendable {
     public var repertoire: [RepertoireLine] = []
     public var computer: SavedComputerGame?
     public var history: [CompletedGame] = []
+    public var playProgress = PlayProgress()
     public var bughouse: BughouseMatch?
     public init() {}
-    private enum CodingKeys: String, CodingKey { case version, puzzle, repertoire, computer, history, bughouse }
+    private enum CodingKeys: String, CodingKey { case version, puzzle, repertoire, computer, history, bughouse, playProgress }
     public init(from decoder: Decoder) throws {
         let fields = try decoder.container(keyedBy: CodingKeys.self)
         version = try fields.decode(Int.self, forKey: .version)
@@ -174,6 +180,7 @@ public struct LibraryState: Codable, Sendable {
         repertoire = try fields.decode([RepertoireLine].self, forKey: .repertoire)
         computer = try fields.decodeIfPresent(SavedComputerGame.self, forKey: .computer)
         bughouse = try fields.decodeIfPresent(BughouseMatch.self, forKey: .bughouse)
+        playProgress = try fields.decodeIfPresent(PlayProgress.self, forKey: .playProgress) ?? PlayProgress()
         history = try fields.decodeIfPresent([CompletedGame].self, forKey: .history) ?? []
     }
 }

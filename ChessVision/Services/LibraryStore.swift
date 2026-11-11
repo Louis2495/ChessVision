@@ -8,6 +8,7 @@ import Combine
     let openings: [OpeningLine]
     private let file: URL
     private var maySave = true
+    private var openingNames: [String: String] = [:]
     init(directory override: URL? = nil, puzzles injectedPuzzles: [ChessPuzzle]? = nil, openings injectedOpenings: [OpeningLine]? = nil) {
         let directory = override ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("ChessVision", isDirectory: true)
         file = directory.appendingPathComponent("library.json")
@@ -32,6 +33,7 @@ import Combine
         }
         catch { assets = ([], []); warning = error.localizedDescription }
         puzzles = assets.0; openings = assets.1; notice = warning; maySave = !unsafeToSave
+        for line in openings where openingNames[line.key] == nil { openingNames[line.key] = line.name }
     }
     private func save() {
         guard maySave else { return }
@@ -47,7 +49,13 @@ import Combine
     }
     @discardableResult func recordCompleted(_ game: SavedComputerGame, result: String) -> UUID? {
         guard ["white", "black", "draw"].contains(result), let id = game.id else { return nil }
-        if !state.history.contains(where: { $0.id == id }) { state.history.insert(CompletedGame(game: game, result: result), at: 0) }
+        if !state.history.contains(where: { $0.id == id }) {
+            var entry = CompletedGame(game: game, result: result)
+            var progress = state.playProgress
+            entry.ratingChange = progress.finish(game, result: result)
+            state.playProgress = progress
+            state.history.insert(entry, at: 0)
+        }
         return id
     }
     func recordBughouse(_ match: BughouseMatch) {
@@ -55,7 +63,9 @@ import Combine
         var proxy = SavedComputerGame(mode: .bughouse, human: match.config.human, targetRating: match.config.ratings[BughouseConfig.seat(0, match.config.human.opposite)], moves: match.events.map(\.uci))
         proxy.id = match.id; proxy.notation = match.events.map { "\($0.board == 0 ? "A" : "B"): \($0.san)" }
         var entry = CompletedGame(game: proxy, result: winner == 2 ? "draw" : winner == 0 ? "white" : "black")
-        entry.bughouse = match; state.history.insert(entry, at: 0)
+        entry.bughouse = match
+        var progress = state.playProgress; _ = progress.finish(proxy, result: entry.result)
+        state.playProgress = progress; state.history.insert(entry, at: 0)
     }
-    func openingName(at position: Position) -> String? { openings.first { $0.key == position.openingKey }?.name }
+    func openingName(at position: Position) -> String? { openingNames[position.openingKey] }
 }

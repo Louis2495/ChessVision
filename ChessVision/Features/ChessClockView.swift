@@ -19,10 +19,6 @@ import SwiftUI
             }
             .modifier(AppSurface()).navigationTitle("Clock").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Time control") {
-                    resumeAfterSetup = clock.phase == .running
-                    clock.pause(at: ProcessInfo.processInfo.systemUptime); setup = true
-                } }
                 ToolbarItem(placement: .topBarTrailing) { SettingsButton() }
             }
             .onAppear { visible = true; updateScreenAwake() }
@@ -43,6 +39,10 @@ import SwiftUI
             }
         }
     }
+    private func changeTimeControl() {
+        resumeAfterSetup = clock.phase == .running
+        clock.pause(at: ProcessInfo.processInfo.systemUptime); setup = true
+    }
     private func updateScreenAwake() {
         UIApplication.shared.isIdleTimerDisabled = visible && scenePhase == .active && clock.phase == .running && clock.flagged(at: ProcessInfo.processInfo.systemUptime) == nil
     }
@@ -51,9 +51,7 @@ import SwiftUI
         let active = clock.phase == .running && clock.active == side && flagged == nil
         return Button { clock.press(side, at: ProcessInfo.processInfo.systemUptime) } label: {
             VStack(spacing: 12) {
-                Text(side.title).font(.headline)
                 Text(time(clock.remaining(for: side, at: now))).font(.system(size: 74, weight: .bold, design: .rounded)).monospacedDigit().minimumScaleFactor(0.45).lineLimit(1)
-                Text(flagged == side ? "Time expired" : active ? "Your clock is running · tap after your move" : " ").font(.caption)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity).padding(20)
             .foregroundStyle(side == .white ? Color.black : Color.white)
@@ -74,8 +72,8 @@ import SwiftUI
     }
     private func controlTitle(now: Double) -> some View {
         VStack(spacing: 4) {
-            Text(clock.control.title).font(.headline.monospacedDigit())
-            if let loser = clock.flagged(at: now) { Text("\(loser.opposite.title) wins on time").font(.caption.bold()) }
+            Button(action: changeTimeControl) { Label(clock.control.title, systemImage: "slider.horizontal.3").font(.headline.monospacedDigit()).frame(minHeight: 44) }.accessibilityLabel("Time control")
+            if clock.flagged(at: now) != nil { Text("Time expired").font(.caption.bold()) }
         }
     }
     private func controls(now: Double) -> some View {
@@ -118,12 +116,12 @@ private struct ClockSetupView: View {
                 }.listRowBackground(ThemeCardBackground())
                 Section {
                     HStack {
-                        Spacer()
-                        Button("Start") {
+                        Button {
                             let control = custom ? ClockTimeControl(seconds: minutes * 60 + seconds, increment: increment) : ClockTimeControl.presets[selected]
                             apply(control); dismiss()
-                        }.buttonStyle(.borderedProminent).controlSize(.small).disabled(custom && minutes * 60 + seconds == 0)
-                        Spacer()
+                        } label: {
+                            Text("Start").font(.headline).frame(maxWidth: .infinity, minHeight: 44)
+                        }.buttonStyle(.borderedProminent).controlSize(.large).disabled(custom && minutes * 60 + seconds == 0)
                     }
                 }.listRowBackground(ThemeCardBackground())
             }.modifier(AppSurface()).navigationTitle("Time control").toolbar { Button("Cancel") { dismiss() } }

@@ -70,8 +70,11 @@ import Combine
                     thinkingBoard = board
                     let rating = match.config.ratings[BughouseConfig.seat(board, state.board.turn)]
                     let remaining = clocks[board].remaining(for: state.board.turn, at: ProcessInfo.processInfo.systemUptime)
-                    let budget = Int(min(rating >= 2000 ? 1300.0 : 650.0, max(100, remaining * 20 + Double(match.config.increment * 100))))
-                    let uci = try await EngineController.shared.computerMove(fen: state.fen, rating: rating, side: state.board.turn, milliseconds: budget)
+                    let plan = BughouseThinkingPlan(state: state, rating: rating, remaining: remaining)
+                    let started = ProcessInfo.processInfo.systemUptime
+                    let uci = try await EngineController.shared.computerMove(fen: state.fen, rating: rating, side: state.board.turn, milliseconds: plan.searchMilliseconds)
+                    let delay = Double(plan.minimumMilliseconds) / 1000 - (ProcessInfo.processInfo.systemUptime - started)
+                    if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
                     try Task.checkCancellation(); guard generation == token && running else { break }
                     checkFlags(); guard running else { break }
                     if revisions[board] == revision { try apply(uci, board: board); lastBoard = board }

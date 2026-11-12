@@ -224,3 +224,6 @@ Analysis → camera menu → **Record game notation** watches a physical board f
 Use **Save game** in Analysis, **Save** in the recorder, or swipe a History game to save it. **Saved games** contains local replayable games. Create custom folders and long-press a game to move it. Deleting a folder keeps its games under Unfiled. Saved-game data is included in the existing atomic local library file; older libraries load with empty folders.
 
 Spectating no longer uses consent switches or records. CloudKit/Game Center still require the Apple account and schema setup in Documentation/PLAYERS_AND_SPECTATING.md.
+
+
+Bughouse 0.18.1 uses full-height landscape boards with compact clocks/pockets alongside them. Empty pocket types are omitted on both sides, and move/premove target dots are hidden. Bots spend at least 1.4 seconds on routine moves and 2.8 seconds when in check, facing promotions or multiple tactical options, with a smaller allowance under time pressure. Real engine search also gets a larger budget in critical positions; pause, flagging and transferred-piece revision checks still interrupt or invalidate pending decisions.

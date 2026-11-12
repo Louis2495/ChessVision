@@ -47,3 +47,19 @@ public struct BughouseMatch: Codable, Identifiable, Sendable {
         return fields.joined(separator: " ")
     }
 }
+
+
+/// Minimum visible deliberation and real search time, bounded by the player's remaining clock.
+public struct BughouseThinkingPlan: Equatable, Sendable {
+    public var minimumMilliseconds: Int
+    public var searchMilliseconds: Int
+    public init(state: VariantSnapshot, rating: Int, remaining: Double) {
+        let tacticalMoves = state.moves.filter { $0.san.contains("x") || $0.san.contains("+") || $0.san.contains("#") || $0.promotion != nil }.count
+        let critical = state.inCheck || tacticalMoves >= 3 || state.moves.contains { $0.promotion != nil }
+        let desired = critical ? 2800.0 : 1400.0
+        let safeRemaining = remaining.isFinite ? max(0, remaining) : 0
+        let allowance = safeRemaining * (safeRemaining < 10 ? 60 : 120)
+        minimumMilliseconds = Int(min(desired, allowance))
+        searchMilliseconds = max(1, Int(min(critical ? 2200.0 : rating >= 2000 ? 1400.0 : 900.0, allowance)))
+    }
+}

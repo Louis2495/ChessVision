@@ -81,55 +81,76 @@ import SwiftUI
     }
     private func table(size: CGSize) -> some View {
         TimelineView(.periodic(from: .now, by: 0.1)) { _ in
-            let side = max(80, min((size.width - 36) / 2, size.height - (model.match?.winner == nil ? 125 : 160)))
-            VStack(spacing: 4) {
+            // Put clocks and pockets beside the squares so neither board loses vertical space.
+            let side = max(1, min((size.width - 8) / 2 - 72, size.height))
+            HStack(alignment: .center, spacing: 8) {
+                board(0, side: side)
+                board(1, side: side)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .top) {
                 if let match = model.match, match.winner != nil {
                     Button(match.resultTitle + " · Review match") { reviewing = true }.font(.headline).buttonStyle(.borderedProminent)
-                } else if let error = model.error { Text(error).font(.caption).foregroundStyle(.red) }
-                HStack(alignment: .top, spacing: 20) {
-                    board(0, side: side)
-                    board(1, side: side)
-                }.frame(maxWidth: .infinity)
-            }.frame(maxHeight: .infinity)
+                } else if let error = model.error {
+                    Text(error).font(.caption).foregroundStyle(.red).padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                }
+            }
         }
     }
     private func board(_ index: Int, side: CGFloat) -> some View {
         let state = model.states[index]
         let human = model.match?.config.human ?? .white
         let bottom = index == 0 ? human : human.opposite
-        return VStack(spacing: 4) {
-            HStack {
-                Text(index == 0 ? (model.premoves.moves.isEmpty ? "A · Your board" : "A · \(model.premoves.moves.count) premoves") : "B · Partner board").font(.caption.bold())
-                Spacer()
-                if model.thinkingBoard == index { ProgressView().controlSize(.mini) }
-            }
-            clockRow(index, side: bottom.opposite)
-            BoardView(position: index == 0 && isPremoving ? model.premoves.projected(state.board, side: human) : state.board, selected: index == 0 ? (isPremoving ? composer.selected : selected) : nil, legalTargets: index == 0 ? (isPremoving ? Set(model.premoves.moves.compactMap { VariantMove(uci: $0, san: "").to }) : targets()) : [], flipped: bottom == .black) { square in if index == 0 { tap(square) } }.frame(width: side, height: side).accessibilityElement(children: .contain).accessibilityIdentifier(index == 0 ? "bughouse-board-A" : "bughouse-board-B")
-            clockRow(index, side: bottom)
-            HStack(spacing: 4) {
-                ForEach(Array("PNBRQ"), id: \.self) { kind in
-                    let symbol = bottom == .white ? kind : Character(kind.lowercased())
-                    let count = state.pockets.filter { $0.symbol == symbol }.count
-                    Button { if isPremoving { composer.selected = nil; composer.drop = kind } else { selected = nil; drop = kind } } label: {
-                        HStack(spacing: 0) { PieceView(piece: Piece(symbol)).frame(width: 22, height: 22); Text("\(count)").font(.caption2) }
-                    }.disabled(index != 0 || count == 0 || (!premovesEnabled && state.board.turn != human) || !model.running)
+        return HStack(spacing: 4) {
+            BoardView(position: index == 0 && isPremoving ? model.premoves.projected(state.board, side: human) : state.board,
+                      selected: index == 0 ? (isPremoving ? composer.selected : selected) : nil,
+                      flipped: bottom == .black) { square in if index == 0 { tap(square) } }
+                .frame(width: side, height: side)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(index == 0 ? "bughouse-board-A" : "bughouse-board-B")
+            VStack(spacing: 2) {
+                clockRow(index, side: bottom.opposite)
+                pocket(index, side: bottom.opposite)
+                Spacer(minLength: 0)
+                Text(index == 0 ? "Your board" : "Partner").font(.caption2.bold())
+                if index == 0 && !model.premoves.moves.isEmpty { Text("\(model.premoves.moves.count) premoves").font(.caption2) }
+                if model.thinkingBoard == index { ProgressView().controlSize(.mini).accessibilityLabel("Computer thinking") }
+                Spacer(minLength: 0)
+                pocket(index, side: bottom)
+                clockRow(index, side: bottom)
+            }.frame(width: 68, height: side)
+        }.frame(width: side + 72)
+    }
+    private func pocket(_ index: Int, side: Side) -> some View {
+        let state = model.states[index]
+        return LazyVGrid(columns: [GridItem(.flexible(), spacing: 0), GridItem(.flexible(), spacing: 0)], spacing: 0) {
+            ForEach(Array("PNBRQ").filter { kind in state.pockets.contains { $0.symbol == (side == .white ? kind : Character(kind.lowercased())) } }, id: \.self) { kind in
+                let symbol = side == .white ? kind : Character(kind.lowercased())
+                let count = state.pockets.filter { $0.symbol == symbol }.count
+                if count > 0 {
+                    Button {
+                        if isPremoving { composer.selected = nil; composer.drop = kind }
+                        else { selected = nil; drop = kind }
+                    } label: {
+                        HStack(spacing: 2) {
+                            PieceView(piece: Piece(symbol)).frame(width: 22, height: 22)
+                            if count > 1 { Text("\(count)").font(.system(size: 9).monospacedDigit()) }
+                        }.frame(maxWidth: .infinity, minHeight: 24)
+                        .background((drop == kind || composer.drop == kind) && index == 0 && side == model.match?.config.human ? Color.accentColor.opacity(0.2) : Color.clear, in: RoundedRectangle(cornerRadius: 5))
+                    }.buttonStyle(.plain)
+                    .accessibilityLabel("\(count) \(Piece(symbol).name) in hand")
+                    .disabled(index != 0 || side != model.match?.config.human || (!premovesEnabled && state.board.turn != side) || !model.running)
                 }
             }
-        }.frame(width: side)
+        }
     }
     private func clockRow(_ board: Int, side: Side) -> some View {
         let rating = model.match?.config.ratings[BughouseConfig.seat(board, side)] ?? 1000
         let seconds = model.clocks.indices.contains(board) ? model.clocks[board].remaining(for: side, at: ProcessInfo.processInfo.systemUptime) : 0
         let rounded = Int(ceil(seconds))
-        return HStack {
-            Text("\(side.title) ≈\(rating)").font(.caption2)
-            Spacer()
+        return VStack(spacing: 0) {
+            Text("\(side.title) \(rating)").font(.system(size: 9)).lineLimit(1).minimumScaleFactor(0.7)
             Text(String(format: "%d:%02d", rounded / 60, rounded % 60)).font(.caption.bold().monospacedDigit())
         }.foregroundStyle(BughouseConfig.team(board, side) == model.match?.config.humanTeam ? Color.accentColor : Color.primary)
-    }
-    private func targets() -> Set<Int> {
-        guard model.states.count == 2 else { return [] }
-        return Set(model.states[0].moves.filter { drop != nil ? $0.drop == drop : $0.from == selected }.compactMap(\.to))
     }
     private var isPremoving: Bool { premovesEnabled && (model.states.first?.board.turn != model.match?.config.human || !model.premoves.moves.isEmpty || composer.selected != nil || composer.drop != nil) }
     private func tap(_ square: Int) {

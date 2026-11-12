@@ -35,7 +35,7 @@ import GameKit
                 guard let self else { return }
                 self.busy = false
                 if let error { self.error = error.localizedDescription; return }
-                self.matches = (matches ?? []).sorted { ($0.creationDate ?? .distantPast) > ($1.creationDate ?? .distantPast) }
+                self.matches = (matches ?? []).sorted { $0.novaCreationDate > $1.novaCreationDate }
             }
         }
     }
@@ -70,7 +70,7 @@ import GameKit
         let data = try JSONEncoder().encode(game)
         guard data.count <= match.matchDataMaximumSize else { throw ChessError.invalid("The game is too long to send.") }
         if let result {
-            for participant in match.participants ?? [] {
+            for participant in match.novaParticipants {
                 if result == "draw" { participant.matchOutcome = .tied }
                 else {
                     let white = participant.player?.gamePlayerID == game.whitePlayerID
@@ -83,7 +83,7 @@ import GameKit
                 }
             }
         } else {
-            let others = (match.participants ?? []).filter { $0 !== match.currentParticipant && $0.status != .done }
+            let others = match.novaParticipants.filter { $0 !== match.currentParticipant && $0.status != .done }
             guard !others.isEmpty else { throw ChessError.invalid("The other player is no longer in this game.") }
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 match.endTurn(withNextParticipants: others, turnTimeout: CorrespondenceGame.turnSeconds, match: data) { error in
@@ -94,7 +94,7 @@ import GameKit
         refresh()
     }
     nonisolated func player(_ player: GKPlayer, receivedTurnEventFor match: GKTurnBasedMatch, didBecomeActive: Bool) {
-        let id = match.matchID
+        let id = match.novaMatchID
         Task { @MainActor in if didBecomeActive { incomingMatchID = id }; refresh() }
     }
     nonisolated func player(_ player: GKPlayer, matchEnded match: GKTurnBasedMatch) { Task { @MainActor in refresh() } }
@@ -120,7 +120,7 @@ import GameKit
             defer { if generation == token { busy = false } }
             do {
                 var fresh = try await CorrespondenceService.shared.load(id)
-                if (fresh.participants ?? []).contains(where: { $0.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID && $0.status == .invited }) {
+                if fresh.novaParticipants.contains(where: { $0.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID && $0.status == .invited }) {
                     fresh = try await CorrespondenceService.shared.accept(fresh)
                 }
                 let data = try await CorrespondenceService.shared.data(for: fresh)
@@ -135,7 +135,7 @@ import GameKit
                 guard generation == token else { return }
                 match = fresh; game = payload; board = state.board; notation = state.notation; result = state.result
                 if fresh.status == .ended && result == nil {
-                    let local = (fresh.participants ?? []).first { $0.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID }
+                    let local = fresh.novaParticipants.first { $0.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID }
                     switch local?.matchOutcome {
                     case .won: result = human == .white ? "white" : "black"
                     case .lost, .quit, .timeExpired: result = human == .white ? "black" : "white"
@@ -157,16 +157,16 @@ import GameKit
                 let state = try updated.validated()
                 try await CorrespondenceService.shared.submit(updated, match: match, result: state.result)
                 game = updated; board = state.board; notation = state.notation; result = state.result; archiveIfFinished()
-                busy = false; if let id = match.matchID { refresh(id) }
+                busy = false; if let id = match.novaMatchID { refresh(id) }
             } catch { self.error = error.localizedDescription; busy = false }
         }
     }
     private func publishIfAllowed() async {
-        guard let game, let match, let matchID = match.matchID else { return }
+        guard let game, let match, let matchID = match.novaMatchID else { return }
         if SocialStore.shared.profile == nil { await SocialStore.shared.connect() }
         guard SocialStore.shared.profile != nil else { return }
         let id = CorrespondenceGame.archiveID(matchID).uuidString
-        let players = (match.participants ?? []).compactMap { $0.player?.gamePlayerID }
+        let players = match.novaParticipants.compactMap { $0.player?.gamePlayerID }
         do {
             guard players.count == 2 else { return }
             let profiles = (try? await SocialStore.shared.profiles(forGameCenterIDs: players)) ?? []
@@ -182,15 +182,15 @@ import GameKit
             do {
                 let state = try updated.validated()
                 try await CorrespondenceService.shared.submit(updated, match: match, result: state.result)
-                game = updated; result = state.result; archiveIfFinished(); busy = false; if let id = match.matchID { refresh(id) }
+                game = updated; result = state.result; archiveIfFinished(); busy = false; if let id = match.novaMatchID { refresh(id) }
             } catch { self.error = error.localizedDescription; busy = false }
         }
     }
     private func archiveIfFinished() {
-        guard let result, ["white", "black", "draw"].contains(result), let game, let id = match?.matchID else { return }
+        guard let result, ["white", "black", "draw"].contains(result), let game, let id = match?.novaMatchID else { return }
         var saved = SavedComputerGame(mode: .normal, human: human, targetRating: 1000, moves: game.moves)
         saved.id = CorrespondenceGame.archiveID(id); saved.notation = notation; saved.resigned = game.resigned
-        saved.opponentName = (match?.participants ?? []).compactMap(\.player).first { $0.gamePlayerID != GKLocalPlayer.local.gamePlayerID }?.displayName ?? "Game Center player"
+        saved.opponentName = (match?.novaParticipants ?? []).compactMap(\.player).first { $0.gamePlayerID != GKLocalPlayer.local.gamePlayerID }?.displayName ?? "Game Center player"
         library?.recordCompleted(saved, result: result)
     }
 

@@ -22,8 +22,8 @@ import GameKit
             }.listRowBackground(ThemeCardBackground())
             Section("Your games") {
                 if service.matches.isEmpty { Text(service.authenticated ? "Send an invitation to start your first game." : "Connect to see invitations and ongoing games.").foregroundStyle(.secondary) }
-                ForEach(service.matches.filter { $0.matchID != nil }, id: \.matchID) { match in
-                    Button { selectedID = match.matchID } label: {
+                ForEach(service.matches.filter { $0.novaMatchID != nil }, id: \.novaMatchID) { match in
+                    Button { selectedID = match.novaMatchID } label: {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(opponent(match)).font(.headline).foregroundStyle(.primary)
                             Text(status(match)).font(.caption).foregroundStyle(.secondary)
@@ -42,17 +42,17 @@ import GameKit
             if let controller = service.authenticationController { GameCenterControllerHost(controller: controller).ignoresSafeArea() }
         }
         .sheet(isPresented: $inviting) {
-            CorrespondenceMatchmaker { match in inviting = false; service.refresh(); selectedID = match.matchID } cancel: { inviting = false } failure: { error in inviting = false; service.error = error.localizedDescription }
+            CorrespondenceMatchmaker { match in inviting = false; service.refresh(); selectedID = match.novaMatchID } cancel: { inviting = false } failure: { error in inviting = false; service.error = error.localizedDescription }
         }
         .navigationDestination(isPresented: Binding(get: { selectedID != nil && !inviting }, set: { if !$0 { selectedID = nil } })) {
             if let id = selectedID { CorrespondenceBoardView(id: id).id(id) }
         }
     }
     private func opponent(_ match: GKTurnBasedMatch) -> String {
-        (match.participants ?? []).compactMap(\.player).first { $0.gamePlayerID != GKLocalPlayer.local.gamePlayerID }?.displayName ?? "Invitation pending"
+        match.novaParticipants.compactMap(\.player).first { $0.gamePlayerID != GKLocalPlayer.local.gamePlayerID }?.displayName ?? "Invitation pending"
     }
     private func status(_ match: GKTurnBasedMatch) -> String {
-        if (match.participants ?? []).contains(where: { $0.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID && $0.status == .invited }) { return "Invitation · tap to accept" }
+        if match.novaParticipants.contains(where: { $0.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID && $0.status == .invited }) { return "Invitation · tap to accept" }
         if match.status == .ended { return "Completed" }
         if match.status == .matching { return "Waiting for another player" }
         return match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID ? "Your turn · 3 days per move" : "Their turn · 3 days per move"

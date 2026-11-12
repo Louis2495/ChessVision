@@ -87,7 +87,7 @@ import GameKit
         }.modifier(AppSurface()).navigationTitle("Player")
         .sheet(isPresented: $inviting) {
             if let recipient {
-                CorrespondenceMatchmaker(found: { match in inviting = false; matchID = match.matchID }, cancel: { inviting = false }, failure: { failure in inviting = false; error = failure.localizedDescription }, recipients: [recipient])
+                CorrespondenceMatchmaker(found: { match in inviting = false; matchID = match.novaMatchID }, cancel: { inviting = false }, failure: { failure in inviting = false; error = failure.localizedDescription }, recipients: [recipient])
             }
         }
         .navigationDestination(isPresented: Binding(get: { matchID != nil && !inviting }, set: { if !$0 { matchID = nil } })) {

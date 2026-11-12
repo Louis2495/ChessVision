@@ -137,3 +137,10 @@ All 120 portable tests passed, including new first-turn/later-turn delay, increm
 The shared interactive BoardView maps drag points through the current board orientation and uses the same legal-move/premove handlers as taps. Editor dragging relocates pieces directly. Pocket drag payloads are validated and then passed through existing drop legality. These SwiftUI gestures, visual contrast, clock toolbar layout and final-position evaluation UI still require Xcode/simulator and signed-device verification; Linux has no Apple SDK. The app cannot be certified free of every potential error from these checks.
 
 A dedicated native draw workflow passed early rejection, engine-based balanced-position acceptance, archive result, duplicate protection and persisted restoration. Run it with `bash Scripts/test-draws.sh`; CI includes it after the normal feature checks.
+
+
+## GameKit SDK nullability fix (0.19.1)
+
+CorrespondenceService, its screens and friend invitations now use explicit match-property accessors. Match ID is explicitly promoted to String?, participant arrays to [GKTurnBasedParticipant]? before applying a fallback, and creation dates to Date? before applying a fallback. This handles SDK imports with either nullable or nonnullable declarations without conditional-binding errors, redundant nil-coalescing warnings, or force unwraps. Actual optional containers (selected match, current participant, player, callback data/errors) retain their checks.
+
+Four correspondence core tests passed. The production accessor file type-checked with warnings treated as errors against two small synthetic GameKit interface modules, one declaring these properties nullable and the other nonnullable. This verifies the compatibility contract, not the entire Apple SDK. All Swift sources parsed, project membership and asset/hash validation passed, and git diff checks were clean. A full Xcode SDK build remains unverified in this Linux environment; the macOS CI workflow builds the iOS target before running other checks.

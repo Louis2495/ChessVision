@@ -54,6 +54,7 @@ public struct GameSuggestion: Codable, Identifiable, Sendable {
     public var moveLabel: String { "\(number)\(side == .white ? "." : "…") \(played)" }
 }
 public struct GameReview: Codable, Sendable {
+    public var ungradedBughouseMoves: [Int]?
     public var repertoireSignature: String
     public var suggestions: [GameSuggestion] = []
     public var assessments: [MoveAssessment]?

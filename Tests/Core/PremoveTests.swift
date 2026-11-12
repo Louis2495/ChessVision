@@ -6,6 +6,32 @@ import XCTest
 #endif
 
 final class PremoveTests: XCTestCase {
+    func testRecaptureCanBeQueuedOntoFriendlyPieceAndExecutesAfterCapture() throws {
+        var board = try Position(fen: "4k3/8/8/4p3/3P4/8/8/3QK3 b - - 0 1")
+        var queue = PremoveQueue(), composer = PremoveComposer()
+        composer.tap(Position.index("d1")!, board: board, side: .white, duck: false, queue: &queue)
+        composer.tap(Position.index("d4")!, board: board, side: .white, duck: false, queue: &queue)
+        XCTAssertEqual(queue.moves, ["d1d4"])
+        try board.apply(uci: "e5d4")
+        let legal = board.legalMoves().map { VariantMove(uci: $0.uci, san: "") }
+        XCTAssertEqual(queue.take(legal: legal)?.uci, "d1d4")
+    }
+    func testPawnCanPremoveRecaptureOntoFriendlyKnight() throws {
+        var board = try Position(fen: "4k3/8/4b3/3N4/4P3/8/8/4K3 b - - 0 1")
+        var queue = PremoveQueue(), composer = PremoveComposer()
+        composer.tap(Position.index("e4")!, board: board, side: .white, duck: false, queue: &queue)
+        composer.tap(Position.index("d5")!, board: board, side: .white, duck: false, queue: &queue)
+        XCTAssertEqual(queue.moves, ["e4d5"])
+        try board.apply(uci: "e6d5")
+        XCTAssertEqual(queue.take(legal: board.legalMoves().map { VariantMove(uci: $0.uci, san: "") })?.uci, "e4d5")
+    }
+    func testFriendlyDestinationIsNotCapturedIfOpponentDoesSomethingElse() throws {
+        var board = try Position(fen: "4k3/8/8/4p3/3P4/8/8/3QK3 b - - 0 1")
+        var queue = PremoveQueue(); queue.append("d1d4")
+        try board.apply(uci: "e8f8")
+        XCTAssertNil(queue.take(legal: board.legalMoves().map { VariantMove(uci: $0.uci, san: "") }))
+        XCTAssertTrue(queue.moves.isEmpty)
+    }
     func testQueueExecutesInOrderAndCancelsOneAtATime() {
         var queue = PremoveQueue()
         for move in ["e2e4", "g1f3", "f1c4"] { queue.append(move) }

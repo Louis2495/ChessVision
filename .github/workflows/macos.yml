@@ -29,6 +29,7 @@ jobs:
           bash Scripts/test-controller.sh
           bash Scripts/test-features.sh
           bash Scripts/test-draws.sh
+          bash Scripts/test-bughouse.sh
       - name: Independent variant rules
         run: |
           python3 -m venv .build/variant-tools

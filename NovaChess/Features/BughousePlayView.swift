@@ -125,7 +125,7 @@ import SwiftUI
                 clockRow(index, side: bottom.opposite)
                 pocket(index, side: bottom.opposite)
                 Spacer(minLength: 0)
-                Text(index == 0 ? "Your board" : "Partner").font(.caption2.bold())
+                Text(state.inCheck && state.moves.isEmpty && !state.finished ? "Waiting for a piece" : index == 0 ? "Your board" : "Partner").font(.caption2.bold()).multilineTextAlignment(.center)
                 if index == 0 && !model.premoves.moves.isEmpty { Text("\(model.premoves.moves.count) premoves").font(.caption2) }
                 if model.thinkingBoard == index { ProgressView().controlSize(.mini).accessibilityLabel("Computer thinking") }
                 Spacer(minLength: 0)

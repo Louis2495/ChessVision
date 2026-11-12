@@ -31,9 +31,10 @@ public struct PremoveQueue: Sendable {
     public static func canPlan(from: Int, to: Int, on board: Position) -> Bool {
         guard let piece = board.squares[from], from != to else { return false }
         let row = to / 8 - from / 8, column = to % 8 - from % 8
-        if board.squares[to]?.side == piece.side {
-            return piece.kind == "k" && board.squares[to]?.kind == "r" && row == 0
-        }
+        // The opponent may capture this friendly piece before the queued move.
+        // Validate occupancy only when the premove actually executes.
+        if piece.kind == "k", board.squares[to]?.side == piece.side, board.squares[to]?.kind == "r", row == 0 { return true }
+
         switch piece.kind {
         case "p":
             let step = piece.side == .white ? -1 : 1

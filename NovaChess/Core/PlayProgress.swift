@@ -13,9 +13,16 @@ public struct PlayerRating: Codable, Sendable {
     }
 }
 public enum Achievement: String, Codable, CaseIterable, Sendable {
+    case hundredGames, fiveHundredGames, thousandGames, tenThousandGames, hundredWins, thousandWins
     case firstGame, firstWin, tenGames, fiftyGames, pawnMate, knightMate, promotion, castling, explorer
     public var title: String {
         switch self {
+        case .hundredGames: return "Century club"
+        case .fiveHundredGames: return "Dedicated player"
+        case .thousandGames: return "A thousand battles"
+        case .tenThousandGames: return "Ten thousand battles"
+        case .hundredWins: return "Proven competitor"
+        case .thousandWins: return "Relentless winner"
         case .firstGame: return "First game"
         case .firstWin: return "First victory"
         case .tenGames: return "Getting into rhythm"
@@ -29,6 +36,12 @@ public enum Achievement: String, Codable, CaseIterable, Sendable {
     }
     public var detail: String {
         switch self {
+        case .hundredGames: return "Finish 100 games."
+        case .fiveHundredGames: return "Finish 500 games."
+        case .thousandGames: return "Finish 1000 games."
+        case .tenThousandGames: return "Finish 10000 games."
+        case .hundredWins: return "Win 100 games."
+        case .thousandWins: return "Win 1000 games."
         case .firstGame: return "Finish your first game."
         case .firstWin: return "Win a game against the computer."
         case .tenGames: return "Finish 10 games."
@@ -37,7 +50,7 @@ public enum Achievement: String, Codable, CaseIterable, Sendable {
         case .knightMate: return "Deliver checkmate with a knight."
         case .promotion: return "Promote one of your pawns."
         case .castling: return "Castle in a game."
-        case .explorer: return "Complete games in three different variants."
+        case .explorer: return "Complete games in eight different variants."
         }
     }
 }
@@ -55,6 +68,20 @@ public struct PlayProgress: Codable, Sendable {
         if before.squares[move.from]?.kind == "n" { return .knightMate }
         return nil
     }
+    public mutating func refreshMilestones(now: Date = Date()) {
+        func unlock(_ achievement: Achievement) { if achievements[achievement.rawValue] == nil { achievements[achievement.rawValue] = now } }
+        if completed > 0 { unlock(.firstGame) }
+        if wins > 0 { unlock(.firstWin) }
+        if completed >= 10 { unlock(.tenGames) }
+        if completed >= 50 { unlock(.fiftyGames) }
+        if completed >= 100 { unlock(.hundredGames) }
+        if completed >= 500 { unlock(.fiveHundredGames) }
+        if completed >= 1000 { unlock(.thousandGames) }
+        if completed >= 10000 { unlock(.tenThousandGames) }
+        if wins >= 100 { unlock(.hundredWins) }
+        if wins >= 1000 { unlock(.thousandWins) }
+        if variants.count >= 8 { unlock(.explorer) }
+    }
     public func rating(for mode: GameMode) -> PlayerRating { ratings[mode.rawValue] ?? PlayerRating() }
     @discardableResult public mutating func finish(_ game: SavedComputerGame, result: String, now: Date = Date()) -> Int? {
         guard let id = game.id, ["white","black","draw"].contains(result), settled.insert(id).inserted else { return nil }
@@ -62,11 +89,7 @@ public struct PlayProgress: Codable, Sendable {
         let win = result == (game.human == .white ? "white" : "black")
         if win { wins += 1 }
         func unlock(_ achievement: Achievement) { if achievements[achievement.rawValue] == nil { achievements[achievement.rawValue] = now } }
-        unlock(.firstGame)
-        if win { unlock(.firstWin) }
-        if completed >= 10 { unlock(.tenGames) }
-        if completed >= 50 { unlock(.fiftyGames) }
-        if variants.count >= 3 { unlock(.explorer) }
+        refreshMilestones(now: now)
         for (ply, text) in game.moves.enumerated() where game.mode != .bughouse && (ply.isMultiple(of: 2) ? Side.white : .black) == game.human {
             let move = VariantMove(uci: text, san: "")
             if move.promotion != nil { unlock(.promotion) }

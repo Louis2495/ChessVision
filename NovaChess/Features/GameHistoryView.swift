@@ -81,6 +81,9 @@ struct GameReviewView: View {
                         improvementAreas(review)
                         suggestions(review)
                     }
+                    if let ungraded = model.review?.ungradedBughouseMoves, !ungraded.isEmpty {
+                        Text("\(String(ungraded.count)) moves awaiting partner material were left ungraded.").font(.caption).foregroundStyle(.secondary)
+                    }
                     if entry.bughouse != nil { Text("Bughouse comparisons assess board A. Partner-board consequences are not fully evaluated by the engine.").font(.caption).foregroundStyle(.secondary) }
                     DisclosureGroup("About this review") {
                         Text("Repertoire suggestions reflect your saved choices. Standard-chess suggestions use Stockfish 19 with its NNUE model and up to three seconds per position, ending stable searches sooner. Variants use Fairy-Stockfish. Classifications can change with deeper analysis.").font(.caption).foregroundStyle(.secondary).padding(.top, 6)

@@ -188,6 +188,22 @@ extern "C" char* cv_rules_query(const char *variantName, const char *history) {
 }
 extern "C" void cv_rules_free(char *text) { std::free(text); }
 
+// A sliding check is not mate while a future partner delivery could block it.
+// A hypothetical knight is sufficient: unlike pawns, it can be dropped on any
+// interposition square. Native legality also rules out adjacent and double checks.
+static bool bughouse_can_wait_for_block(const Position& position, const Variant* variant) {
+    if (!position.checkers()) return false;
+    std::string fen = position.fen(false, true);
+    const auto close = fen.find(']');
+    if (close == std::string::npos) return false;
+    fen.insert(close, 1, position.side_to_move() == WHITE ? 'N' : 'n');
+    Position supplied; StateInfo state;
+    supplied.set(variant, fen, false, &state, Threads.main());
+    for (const auto& entry : MoveList<LEGAL>(supplied))
+        if (type_of(Move(entry)) == DROP) return true;
+    return false;
+}
+
 // Full FENs here come only from the engine or validated pocket delivery, never photo input.
 extern "C" char* cv_bughouse_query(const char* fen, const char* uci) {
     std::ostringstream out;
@@ -207,14 +223,22 @@ extern "C" char* cv_bughouse_query(const char* fen, const char* uci) {
             out << "fen\t" << position.fen(false, true) << "\ncheck\t" << (position.checkers() ? "1" : "0") << "\n";
             Value value = VALUE_ZERO; const bool end = position.is_game_end(value);
             const auto legal = MoveList<LEGAL>(position); std::string status = "ongoing";
-            if (end || legal.size() == 0) {
+            const bool waiting = legal.size() == 0 && bughouse_can_wait_for_block(position, variant);
+            if (!waiting && (end || legal.size() == 0)) {
                 if (!end) value = position.checkers() ? position.checkmate_value() : position.stalemate_value();
                 status = value == VALUE_DRAW ? "draw" : ((value > 0 ? position.side_to_move() : ~position.side_to_move()) == WHITE ? "white" : "black");
             }
-            out << "status\t" << status << "\n";
+            out << "status\t" << status << "\nwaiting\t" << (waiting ? "1" : "0") << "\n";
             if (status == "ongoing") for (const auto& entry : legal) {
                 const Move move = entry;
                 std::string san = SAN::move_to_san(position, move, NOTATION_SAN);
+                if (!san.empty() && san.back() == '#') {
+                    StateInfo probe;
+                    position.do_move(move, probe);
+                    const bool canBlockLater = bughouse_can_wait_for_block(position, variant);
+                    position.undo_move(move);
+                    if (canBlockLater) san.back() = '+';
+                }
                 if (san.rfind("P@", 0) == 0) san.erase(0, 1);
                 out << "move\t" << UCI::move(position, move) << "\t" << san << "\n";
             }

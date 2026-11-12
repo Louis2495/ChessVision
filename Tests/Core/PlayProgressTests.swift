@@ -5,6 +5,36 @@ import XCTest
 @testable import NovaChess
 #endif
 final class PlayProgressTests: XCTestCase {
+    func testExistingProgressUnlocksNewMilestonesWithoutRevokingOldOnes() {
+        var progress = PlayProgress(); progress.completed = 10000; progress.wins = 1000
+        let earned = Date(timeIntervalSince1970: 123)
+        progress.achievements[Achievement.explorer.rawValue] = earned
+        progress.refreshMilestones()
+        XCTAssertNotNil(progress.achievements[Achievement.tenThousandGames.rawValue])
+        XCTAssertNotNil(progress.achievements[Achievement.thousandWins.rawValue])
+        XCTAssertEqual(progress.achievements[Achievement.explorer.rawValue], earned)
+    }
+    func testTenThousandGamesUnlocksOnlyAtThresholdAndCountsOnce() {
+        var progress = PlayProgress(); progress.completed = 9998
+        let first = SavedComputerGame(mode: .normal, human: .white, targetRating: 1000)
+        progress.finish(first, result: "draw")
+        XCTAssertNil(progress.achievements[Achievement.tenThousandGames.rawValue])
+        progress.finish(first, result: "draw")
+        XCTAssertEqual(progress.completed, 9999)
+        let next = SavedComputerGame(mode: .normal, human: .white, targetRating: 1000)
+        progress.finish(next, result: "draw")
+        XCTAssertNotNil(progress.achievements[Achievement.tenThousandGames.rawValue])
+        XCTAssertNotNil(progress.achievements[Achievement.thousandGames.rawValue])
+        XCTAssertEqual(progress.completed, 10000)
+    }
+    func testHarderWinMilestoneAndEightVariantRequirement() {
+        var progress = PlayProgress(); progress.wins = 99
+        progress.variants = Set(GameMode.allCases.prefix(7).map(\.rawValue))
+        let game = SavedComputerGame(mode: .blindText, human: .white, targetRating: 1000)
+        progress.finish(game, result: "white")
+        XCTAssertNotNil(progress.achievements[Achievement.hundredWins.rawValue])
+        XCTAssertNotNil(progress.achievements[Achievement.explorer.rawValue])
+    }
     func testRatedResultsPersistAndSettleExactlyOnce() throws {
         var progress = PlayProgress(), game = SavedComputerGame(mode: .normal, human: .white, targetRating: 1000)
         game.rated = true

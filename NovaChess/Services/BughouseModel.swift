@@ -64,8 +64,8 @@ import Combine
                 try await EngineController.shared.prepareVariant("bughouse")
                 while running && generation == token {
                     try Task.checkCancellation(); checkFlags(); guard running else { break }
-                    let eligible = [0,1].filter { $0 == 1 || states[0].board.turn != match.config.human }
-                    guard let board = eligible.first(where: { $0 != lastBoard }) ?? eligible.first else { try await Task.sleep(for: .milliseconds(50)); continue }
+                    let eligible = [0,1].filter { !states[$0].moves.isEmpty && ($0 == 1 || states[0].board.turn != match.config.human) }
+                    guard let board = eligible.first(where: { $0 != lastBoard }) ?? eligible.first else { thinkingBoard = nil; try await Task.sleep(for: .milliseconds(50)); continue }
                     let revision = revisions[board], state = states[board]
                     thinkingBoard = board
                     let rating = match.config.ratings[BughouseConfig.seat(board, state.board.turn)]
@@ -88,7 +88,7 @@ import Combine
     }
     func flushPremoves() {
         guard MovePreferences.premoves else { premoves.clear(); return }
-        guard running, states.count == 2, states[0].board.turn == match?.config.human else { return }
+        guard running, states.count == 2, !states[0].moves.isEmpty, states[0].board.turn == match?.config.human else { return }
         checkFlags(); guard running else { return }
         if let next = premoves.take(legal: states[0].moves) {
             do { try apply(next.uci, board: 0) } catch { self.error = error.localizedDescription }
@@ -105,7 +105,7 @@ import Combine
         var updated = states
         try BughouseRules.play(uci, on: board, states: &updated)
         clocks[board].press(before.turn, at: now)
-        current.events.append(BughouseEvent(board: board, side: before.turn, number: before.fullmove, uci: uci, san: move.san))
+        current.events.append(BughouseEvent(board: board, side: before.turn, number: before.fullmove, uci: uci, san: updated[board].inCheck && !updated[board].finished ? move.san.replacingOccurrences(of: "#", with: "+") : move.san))
         states = updated; match = current; revisions[board] += 1
         if updated[board].transferred != nil { revisions[1 - board] += 1 }
         if updated[board].finished {
@@ -114,7 +114,7 @@ import Combine
         } else {
             persist(at: now)
             if !MovePreferences.premoves { premoves.clear() }
-            if states[0].board.turn == current.config.human,
+            if !states[0].moves.isEmpty, states[0].board.turn == current.config.human,
                let next = premoves.take(legal: states[0].moves) { try apply(next.uci, board: 0) }
         }
     }

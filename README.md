@@ -251,3 +251,14 @@ Completed review evaluations are memoized for up to 256 exact variant/history/bu
 The original piano soundtrack now lasts approximately 190 seconds, with four contrasting sections, varied melody/accompaniment, dynamics and a resolved cadence. Foreground playback resumes from its previous time rather than restarting the opening phrase.
 
 Clock uses a top-left Pause control and resumes from either face without switching sides or adding increment. The time-control button is hidden during active play and available before starting, while paused, or after flagging. Increment and delay use singular “second” for a value of 1.
+
+
+## Version 0.20.1 achievements, recaptures and Bughouse waiting
+
+New game milestones cover 100, 500, 1000 and **10000 completed games**; win milestones cover 100 and 1000 wins. Variant explorer now requires eight different game modes. Previously earned achievements are retained, and existing saved totals unlock newly qualifying milestones when the library loads. Finished-game IDs still prevent duplicate counting.
+
+Premoves can target a square occupied by a friendly piece, allowing the opponent to capture it before the queued recapture. Movement geometry is checked when planning; the real rules engine checks legality when execution is due. If the opponent does something else and the friendly piece remains, the premove is canceled rather than capturing it.
+
+In Bughouse, having no legal move in check does not end the match if a future piece drop could interpose. The bridge tests a hypothetical non-pawn drop using native legality; it does not add that piece to the actual pocket. The board waits, its clock keeps running, and the partner board can supply a real piece. Bots skip waiting boards rather than requesting an impossible move. Adjacent attacks, knight attacks and unblockable double checks still produce genuine mate. Blockable checks use '+' rather than '#'. Queued responses are retained while a board has no legal move.
+
+Single-board reviews cannot evaluate future partner deliveries. Checking moves that leave a board waiting for material are explicitly left ungraded rather than labeled mate; the review explains any such omissions. Run `bash Scripts/test-bughouse.sh` for the linked-delivery and review workflow.

@@ -75,13 +75,21 @@ import Combine
                     guard let played = before.moves.first(where: { $0.uci == game.moves[ply] }) else { throw ChessError.invalid("A saved move could not be replayed.") }
                     progress = "Reviewing move \(before.board.fullmove) · \(ply + 1)/\(game.moves.count) plies"
                     let match = standard && before.board.turn == game.human ? GameReviewLogic.repertoireSuggestion(at: before.board, played: played.uci, san: played.san, ply: ply, choices: book.positions[before.board.openingKey] ?? []) : (matched: false, suggestion: nil as GameSuggestion?)
+                    let afterHistory = prefix + [played.uci]
+                    let after = try entry.bughouse == nil ? VariantRules.snapshot(variant: game.variant, history: afterHistory) : BughouseRules.snapshot(fen: positions[ply + 1])
+                    // A single-board engine cannot evaluate material that has not arrived.
+                    // Do not request a search with no legal moves, or label this a mate.
+                    if entry.bughouse != nil && after.inCheck && after.moves.isEmpty && !after.finished {
+                        if result.ungradedBughouseMoves == nil { result.ungradedBughouseMoves = [] }
+                        result.ungradedBughouseMoves?.append(ply)
+                        result.nextPly = ply + 1; evaluationCache = [:]; review = result
+                        continue
+                    }
                     let baseline: EngineLine
                     if let cached = evaluationCache[ply] { baseline = cached }
                     else if entry.bughouse != nil { baseline = try await EngineController.shared.reviewBughouse(fen: positions[ply], side: before.board.turn) }
                     else { baseline = try await EngineController.shared.reviewPosition(variant: game.variant, history: prefix, side: before.board.turn) }
                     try Task.checkCancellation()
-                    let afterHistory = prefix + [played.uci]
-                    let after = try entry.bughouse == nil ? VariantRules.snapshot(variant: game.variant, history: afterHistory) : BughouseRules.snapshot(fen: positions[ply + 1])
                     let outcome: EngineLine?
                     if after.finished { outcome = nil }
                     else if entry.bughouse != nil { outcome = try await EngineController.shared.reviewBughouse(fen: positions[ply + 1], side: after.board.turn) }

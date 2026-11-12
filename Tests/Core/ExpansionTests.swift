@@ -17,12 +17,12 @@ final class ExpansionTests: XCTestCase {
                 let move = try XCTUnwrap(board.legalMoves().first { $0.uci == uci }, puzzle.id + ": " + uci)
                 board = try board.playing(move)
             }
-            XCTAssertEqual(puzzle.estimatedRating, max(200, Int((Double(puzzle.sourceRating) * 0.8 / 50).rounded()) * 50))
+            XCTAssertEqual(puzzle.difficultyRating, puzzle.sourceRating)
             _ = try puzzle.startingPosition()
         }
     }
     func testPuzzleProgressStartsAt1000AndAdaptsBothWays() throws {
-        let puzzle = try XCTUnwrap(TrainingAssets.puzzles().min { abs($0.estimatedRating - 1000) < abs($1.estimatedRating - 1000) })
+        let puzzle = try XCTUnwrap(TrainingAssets.puzzles().min { abs($0.difficultyRating - 1000) < abs($1.difficultyRating - 1000) })
         var progress = PuzzleProgress(); XCTAssertEqual(progress.rating, 1000)
         progress.record(puzzle, correct: true); XCTAssertGreaterThan(progress.rating, 1000)
         let raised = progress.rating; progress.record(puzzle, correct: false)
@@ -31,17 +31,17 @@ final class ExpansionTests: XCTestCase {
     }
     func testNextPuzzleTracksRatingAndAvoidsCompletedItems() throws {
         let puzzles = try TrainingAssets.puzzles(); var progress = PuzzleProgress()
-        let first = try XCTUnwrap(progress.next(in: puzzles)); XCTAssertLessThanOrEqual(abs(first.estimatedRating - 1000), 50)
+        let first = try XCTUnwrap(progress.next(in: puzzles)); XCTAssertLessThanOrEqual(abs(first.difficultyRating - 1000), 50)
         progress.record(first, correct: true)
         XCTAssertNotEqual(progress.next(in: puzzles)?.id, first.id)
-        progress.rating = 2000; XCTAssertLessThanOrEqual(abs(try XCTUnwrap(progress.next(in: puzzles)).estimatedRating - 2000), 100)
+        progress.rating = 2000; XCTAssertLessThanOrEqual(abs(try XCTUnwrap(progress.next(in: puzzles)).difficultyRating - 2000), 100)
     }
     func testStrongPlayerPlacementReaches2000WithinSixPuzzles() throws {
         let puzzles = try TrainingAssets.puzzles()
         var progress = PuzzleProgress()
         for _ in 0..<6 { progress.record(try XCTUnwrap(progress.next(in: puzzles)), correct: true) }
         XCTAssertGreaterThanOrEqual(progress.rating, 2000)
-        XCTAssertGreaterThanOrEqual(try XCTUnwrap(progress.next(in: puzzles)).estimatedRating, 1950)
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(progress.next(in: puzzles)).difficultyRating, 1950)
         let before = progress.rating
         progress.record(try XCTUnwrap(progress.next(in: puzzles)), correct: false)
         XCTAssertLessThan(progress.rating, before)
@@ -69,6 +69,8 @@ final class ExpansionTests: XCTestCase {
     func testOldPuzzleProgressKeepsHistoryAndGetsFreshPlacement() throws {
         let data = Data(#"{"rating":1100,"attempts":80,"solved":70,"completed":["old"]}"#.utf8)
         var progress = try JSONDecoder().decode(PuzzleProgress.self, from: data)
+        XCTAssertEqual(progress.rating, 1375)
+        XCTAssertEqual(progress.scaleVersion, 1)
         XCTAssertEqual(progress.attempts, 80); XCTAssertEqual(progress.completed, ["old"])
         XCTAssertEqual(progress.placementAttempts, 0)
         let puzzles = try TrainingAssets.puzzles()

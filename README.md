@@ -33,7 +33,7 @@ Endpoints are `api.chess.com/pub/player/.../games/...` and `lichess.org/api/game
 
 Exactly **4,000 distinct, legally validated puzzles** are available offline, with source themes and estimated difficulty. Your training estimate starts at **1000**, rises for unassisted solutions and falls for mistakes, hints or skips. Selection follows your estimate and favors unseen puzzles. A multi-ply puzzle is graded once per attempt; opponent replies play automatically. A legal alternate checkmate is also accepted.
 
-The estimated Chess.com-style difficulty is a heuristic: 0.8 × source Lichess puzzle rating, rounded to 50. It has not been calibrated against Chess.com users and is not an official Chess.com rating. This distinction is shown in the app. IDs, source rating, FEN, solution and original game URL remain available in the bundled data; see `Vendor/ChessData/PROVENANCE.json`.
+Puzzle difficulty uses the original source Lichess puzzle rating without a cross-platform multiplier. The personal puzzle estimate is a separate local training score on that scale, not a USCF or Chess.com rating. IDs, source rating, FEN, solution and original game URL remain available in the bundled data; see `Vendor/ChessData/PROVENANCE.json`.
 
 ### My Repertoire
 
@@ -54,7 +54,7 @@ Choose your color and requested rating, then choose one of:
 - Crazyhouse: captured-piece pockets and legal drops, including promoted-piece reversion to pawns.
 - Duck, Atomic, Fog of War, Pawn Wars (kings on by default, optional pawn race), and Antichess.
 
-Official **Stockfish 19 with its exact default NNUE network** handles standard-chess analysis, review and computer opponents rated 1320 or higher. **Fairy-Stockfish** handles variant rules/searches and weaker standard opponents. Targets from 1 to 10,000 may be entered, but they are approximate rather than measured Chess.com Elo. The official engine's calibrated range is 1320–3190; higher requests use full strength. All analysis and review use full strength regardless of the selected playing rating. The 98.5 MB neural network is bundled for offline use; no model download or external analysis service is needed.
+Official **Stockfish 19 with its exact default NNUE network** handles standard-chess analysis, review and computer opponents rated 1320 or higher. **Fairy-Stockfish** handles variant rules/searches and weaker standard opponents. Targets from 1 to 10000 may be entered for unrated play. Stockfish's 1320–3190 strength setting is calibrated approximately to CCRL Blitz computer ratings, not USCF or Chess.com. Lower standard targets use Fairy-Stockfish (UCI range 500–2850); requests outside the supported engine ranges use minimum/full strength and cannot earn local rating points. All analysis and review use full strength regardless of the selected playing rating. The 98.5 MB neural network is bundled for offline use; no model download or external analysis service is needed.
 
 For **Normal** only, **Request an opening** searches 3,865 named lines. The computer follows that book line while your moves match it, then returns to normal play when you deviate or leave the line. You are not forced to play the requested moves. Games persist, can be resumed, taken back or resigned. Switching tabs pauses their engine work.
 
@@ -299,3 +299,9 @@ Openings adds **Learn** with guided move-by-move explanations, a practice mode, 
 Clock presses now award increment to either pressed side from the very first tap, including Black. A tap while paused is treated as a clock press and starts the opponent with a fresh delay. Pressing an inactive clock during active play is still ignored, and a flag cannot be reversed by tapping. 3+2 remains a real preset; no new Standard-game time-control feature was inferred from this request.
 
 Pink is available as both a theme and a background, with a soft default pink gradient. Music is now a gentle newly synthesized piano medley of public-domain Bach BWV 846, Beethoven WoO 59 and Satie Gymnopedie No. 1 themes, approximately 210 seconds. It uses no modern recording or soundfont. The composition/performance notes and generator are bundled with the source.
+
+## Version 0.24 rating accuracy
+
+Standard local ratings now use the published US Chess approximation, including provisional performance and the rating-dependent effective-games factor, instead of fixed K=64/32. Complete legacy rated histories are recalculated once; incomplete histories remain labeled legacy seeds. Unsupported bot-strength targets and adaptive games cannot earn rating points. These are **local estimates, not official or calibrated USCF ratings**: engine targets are not a USCF human pool. A new About ratings page explains each scale.
+
+Puzzles now use their original Lichess difficulty without the arbitrary 0.8 multiplier. Existing personal training estimates migrate once while retaining solved puzzles. Review reports average centipawn loss instead of the uncalibrated single-game human-rating estimate. See [rating methodology and limitations](Documentation/RATINGS.md).

@@ -55,6 +55,7 @@ struct SettingsView: View {
             Section("Analysis") {
                 Text("Stockfish 19 · NNUE").font(.headline)
             }.listRowBackground(ThemeCardBackground())
+            Section { NavigationLink("About ratings") { RatingsInfoView() } }.listRowBackground(ThemeCardBackground())
             Section("Moves") {
                 Toggle("Premoves", isOn: $premoves)
                 Text("Tap an unrelated square to cancel the last premove; tap again to cancel another.").font(.caption).foregroundStyle(.secondary)

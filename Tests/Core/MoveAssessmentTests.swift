@@ -14,11 +14,11 @@ final class MoveAssessmentTests: XCTestCase {
         XCTAssertEqual(assessment.loss, 300); XCTAssertEqual(assessment.quality, .blunder)
         XCTAssertEqual(assessment.destination, Position.index("e5"))
     }
-    func testSummaryCountsAndMinimumSampleForRating() {
+    func testSummaryReportsMeasuredLossRatherThanHumanRating() {
         let move = MoveAssessment(ply: 0, side: .white, uci: "e2e4", san: "e4", quality: .good, loss: 30, depth: 14)
-        XCTAssertNil(ReviewSummary([move], side: .white).estimatedRating)
+        XCTAssertNil(ReviewSummary([], side: .white).averageCentipawnLoss)
         XCTAssertEqual(ReviewSummary([move], side: .white).count(.good), 1)
-        XCTAssertNotNil(ReviewSummary(Array(repeating: move, count: 8), side: .white).estimatedRating)
+        XCTAssertEqual(ReviewSummary([move], side: .white).averageCentipawnLoss, 30)
         XCTAssertEqual(ReviewSummary([move], side: .black).count(.good), 0)
     }
 }

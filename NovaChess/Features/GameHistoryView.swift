@@ -126,7 +126,7 @@ struct GameReviewView: View {
         AppCard {
             Text("Game summary").font(.title2.bold())
             if let change = entry.ratingChange {
-                Text("Rated game · \(change >= 0 ? "+" : "")\(String(change)) rating points").font(.headline)
+                Text("Local rated game · \(change >= 0 ? "+" : "")\(String(change)) rating points").font(.headline)
             }
             ForEach(Side.allCases, id: \.rawValue) { side in
                 let summary = ReviewSummary(review.assessments ?? [], side: side)
@@ -134,11 +134,11 @@ struct GameReviewView: View {
                     Text(side.title).font(.headline)
                     Text("\(summary.count(.blunder)) blunders · \(summary.count(.mistake)) mistakes · \(summary.count(.inaccuracy)) inaccuracies").font(.subheadline)
                     Text("\(summary.count(.best)) best · \(summary.count(.excellent)) excellent · \(summary.count(.good)) good · \(summary.count(.book)) book").font(.caption).foregroundStyle(.secondary)
-                    if let estimate = summary.estimatedRating { Text("Move-quality estimate ≈ \(String(estimate))").font(.subheadline) }
-                    else { Text("Rating estimate needs eight assessed moves.").font(.caption).foregroundStyle(.secondary) }
+                    if let loss = summary.averageCentipawnLoss { Text("Average loss · \(String(Int(loss.rounded()))) cp").font(.subheadline) }
+                    else { Text("No non-book moves assessed yet.").font(.caption).foregroundStyle(.secondary) }
                 }
             }
-            Text("Move-quality estimates describe this game only; they are not calibrated platform ratings. Counts update as review completes.").font(.caption).foregroundStyle(.secondary)
+            Text("Average loss measures this game against the engine. It does not estimate a USCF rating. Counts update as review completes.").font(.caption).foregroundStyle(.secondary)
             DisclosureGroup("All assessed moves") {
                 ForEach(review.assessments ?? []) { assessment in
                     Button { cursor = assessment.ply + 1 } label: {

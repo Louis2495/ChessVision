@@ -24,6 +24,7 @@ import Combine
                 catch { unsafeToSave = true; warning = "Your library could not be read. Changes will not be saved until the original file can be backed up." }
             }
         }
+        let updatedRatings = loaded.updateStandardRatings()
         let priorAchievements = loaded.playProgress.achievements
         loaded.playProgress.refreshMilestones()
         let addedMilestones = priorAchievements != loaded.playProgress.achievements
@@ -37,7 +38,7 @@ import Combine
         catch { assets = ([], []); warning = error.localizedDescription }
         puzzles = assets.0; openings = assets.1; notice = warning; maySave = !unsafeToSave
         for line in openings where openingNames[line.key] == nil { openingNames[line.key] = line.name }
-        if addedMilestones { save() }
+        if addedMilestones || updatedRatings { save() }
     }
     private func save() {
         guard maySave else { return }

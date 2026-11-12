@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rebuild the bundled CC0 facts from pinned upstream inputs; requires chess==1.11.2."""
 from pathlib import Path
-import argparse,csv,hashlib,json,math
+import argparse,csv,hashlib,json
 import chess,chess.pgn,io
 ROOT=Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser();p.add_argument('puzzles',type=Path);p.add_argument('openings',type=Path);a=p.parse_args()
@@ -22,10 +22,10 @@ for row in csv.DictReader(a.puzzles.open()):
   key=(row['FEN'],tuple(moves))
   if key in seen:continue
   seen.add(key)
-  rating=int(row['Rating']);estimate=max(200,int(math.floor((rating*.8)/50+.5))*50)
-  valid.append(dict(id=row['PuzzleId'],fen=row['FEN'],moves=moves,sourceRating=rating,estimatedRating=estimate,themes=row['Themes'].split(),gameURL=row['GameUrl']))
+  rating=int(row['Rating'])
+  valid.append(dict(id=row['PuzzleId'],fen=row['FEN'],moves=moves,sourceRating=rating,themes=row['Themes'].split(),gameURL=row['GameUrl']))
  except (ValueError,KeyError):continue
-valid.sort(key=lambda x:(x['estimatedRating'],x['id']))
+valid.sort(key=lambda x:(x['sourceRating'],x['id']))
 target=provenance["puzzles"]["bundled_count"]
 assert len(valid)>=target
 existing=json.loads((ROOT/'NovaChess/Core/Resources/Puzzles.json').read_text())

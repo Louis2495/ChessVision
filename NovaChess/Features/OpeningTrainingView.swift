@@ -22,7 +22,7 @@ struct OpeningTrainingView: View {
                 } else {
                     Button { choosing = true } label: { Label(model.requestedOpening?.name ?? "Choose an opening", systemImage: "books.vertical") }.buttonStyle(.bordered)
                     Picker("Your color", selection: $model.human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
-                    TextField("Computer rating", text: $model.ratingText).keyboardType(.numberPad).textFieldStyle(.roundedBorder)
+                    TextField("Engine strength estimate", text: $model.ratingText).keyboardType(.numberPad).textFieldStyle(.roundedBorder)
                     Button("Train", systemImage: "play.fill") { model.activate(library); active = model.start() }.buttonStyle(.borderedProminent).disabled(model.requestedOpening == nil)
                 }
                 if let error = model.error { Text(error).foregroundStyle(.red) }

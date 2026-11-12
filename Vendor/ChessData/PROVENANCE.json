@@ -8,7 +8,7 @@
     "source_sha256": "9216f3af0f56b5f8b9e6a0a4a0fbb6c0dd63c6762aa9f7f3e78db10fc93c2564",
     "bundled_count": 4000,
     "selection": "Retain all existing 2000 records and IDs; append 2000 distinct quantiles across difficulty from remaining legally validated puzzles with popularity >=75, plays >=100, rating deviation <=100. Exclude duplicate normalized solving positions (after the setup move).",
-    "difficulty": "max(200, round-half-up(source Lichess rating * 0.8 / 50) * 50); uncalibrated Chess.com-style estimate, not official Chess.com Elo."
+    "difficulty": "Original source Lichess puzzle rating, without cross-platform conversion. Personal puzzle progress is a separate local training estimate on this difficulty scale; neither is a USCF rating."
   },
   "openings": {
     "upstream": "https://github.com/lichess-org/chess-openings",

@@ -17,13 +17,13 @@ struct PuzzleTrainingView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     AppCard {
                     HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading) { Text("Your training estimate").font(.caption).foregroundStyle(.secondary); Text(String(Int(library.state.puzzle.rating.rounded()))).font(.largeTitle.bold().monospacedDigit()) }
+                        VStack(alignment: .leading) { Text("Your puzzle estimate").font(.caption).foregroundStyle(.secondary); Text(String(Int(library.state.puzzle.rating.rounded()))).font(.largeTitle.bold().monospacedDigit()) }
                         Spacer()
                         VStack(alignment: .trailing) { Text("\(library.state.puzzle.solved) solved").font(.headline); Text("\(library.puzzles.count.formatted()) offline puzzles").font(.caption).foregroundStyle(.secondary) }
                     }
                     }
                     if let puzzle {
-                        HStack { Text("Difficulty ≈ \(String(puzzle.estimatedRating))").font(.headline); Spacer(); TurnBadge(side: board.turn) }
+                        HStack { Text("Lichess difficulty · \(String(puzzle.difficultyRating))").font(.headline); Spacer(); TurnBadge(side: board.turn) }
                         MoveBoard(position: board, enabled: !finished && board.turn == learner, flipped: learner == .black, premoveSide: finished ? nil : learner, onMove: attempt).id(generation)
                         Text(finished ? "Position completed" : board.turn == learner ? "\(learner.title) to move" : "Playing the reply…").font(.headline)
                         if !message.isEmpty { Text(message).foregroundStyle(finished ? Color.green : Color.secondary) }

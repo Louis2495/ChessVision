@@ -205,7 +205,7 @@ private struct BughouseSetupView: View {
                 ForEach(0..<4, id: \.self) { seat in
                     let color: Side = seat.isMultiple(of: 2) ? .white : .black
                     let role = seat == BughouseConfig.seat(0, human) ? "You" : BughouseConfig.team(seat / 2, color) == (human == .white ? 0 : 1) ? "Partner" : "Opponent"
-                    HStack { Text("\(seat < 2 ? "A" : "B") \(color.title) · \(role)").font(.caption); Spacer(); TextField("Rating", text: $ratings[seat]).keyboardType(.numberPad).frame(width: 75).textFieldStyle(.roundedBorder) }
+                    HStack { Text("\(seat < 2 ? "A" : "B") \(color.title) · \(role)").font(.caption); Spacer(); TextField("Strength", text: $ratings[seat]).keyboardType(.numberPad).frame(width: 75).textFieldStyle(.roundedBorder) }
                 }
             }.listRowBackground(ThemeCardBackground())
             Section("Time control") {

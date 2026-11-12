@@ -6,7 +6,7 @@ public struct ChessPuzzle: Codable, Identifiable, Sendable {
     /// Lichess format: first ply is the opponent's setup move, followed by the solution.
     public var moves: [String]
     public var sourceRating: Int
-    public var estimatedRating: Int
+    public var difficultyRating: Int { sourceRating }
     public var themes: [String]
     public var gameURL: String
     public func startingPosition() throws -> Position {
@@ -23,8 +23,9 @@ public struct PuzzleProgress: Codable, Sendable {
     public var solved = 0
     public var completed: [String] = []
     public var placementAttempts = 0
+    public var scaleVersion = 1
     public init() {}
-    private enum CodingKeys: CodingKey { case rating, attempts, solved, completed, placementAttempts }
+    private enum CodingKeys: CodingKey { case rating, attempts, solved, completed, placementAttempts, scaleVersion }
     public init(from decoder: Decoder) throws {
         let fields = try decoder.container(keyedBy: CodingKeys.self)
         rating = try fields.decode(Double.self, forKey: .rating)
@@ -32,9 +33,13 @@ public struct PuzzleProgress: Codable, Sendable {
         solved = try fields.decode(Int.self, forKey: .solved)
         completed = try fields.decode([String].self, forKey: .completed)
         placementAttempts = try fields.decodeIfPresent(Int.self, forKey: .placementAttempts) ?? 0
+        if try fields.decodeIfPresent(Int.self, forKey: .scaleVersion) != 1 {
+            // Undo the former 0.8 multiplier; retain solved history and re-place quickly.
+            rating = max(200, min(3500, rating / 0.8)); placementAttempts = 0
+        }
     }
     public mutating func record(_ puzzle: ChessPuzzle, correct: Bool) {
-        let expected = 1 / (1 + pow(10, Double(puzzle.estimatedRating - Int(rating)) / 400))
+        let expected = 1 / (1 + pow(10, Double(puzzle.difficultyRating - Int(rating)) / 400))
         rating = max(200, min(3500, rating + (placementAttempts < 10 ? 400.0 : placementAttempts < 25 ? 120.0 : 40.0) * ((correct ? 1 : 0) - expected)))
         placementAttempts += 1
         attempts += 1; if correct { solved += 1 }
@@ -45,7 +50,7 @@ public struct PuzzleProgress: Codable, Sendable {
         let candidates = fresh.isEmpty ? puzzles.filter { $0.id != current } : fresh
         // Small deterministic diversity prevents returning the same tied puzzle every session.
         return candidates.min { a, b in
-            let da = abs(Double(a.estimatedRating) - rating), db = abs(Double(b.estimatedRating) - rating)
+            let da = abs(Double(a.difficultyRating) - rating), db = abs(Double(b.difficultyRating) - rating)
             return da == db ? a.id < b.id : da < db
         }
     }

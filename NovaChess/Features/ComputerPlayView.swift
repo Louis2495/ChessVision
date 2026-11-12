@@ -38,6 +38,8 @@ import SwiftUI
         guard mode != .bughouse else { error = "Open Bughouse setup to start a two-board match."; return false }
         guard let target = (developerOpponent && mode == .normal ? DeveloperOpeningBook.rating : Int(ratingText)), (1...10000).contains(target) else { error = "Enter a target rating from 1 to 10000. Ratings above the supported range use full strength."; return false }
         guard !(rated && adaptive) else { error = "Adaptive games are unrated. Choose one game type."; return false }
+        let range = RatingPolicy.ratedBotRange(for: mode)
+        guard !rated || range.contains(target) else { error = "For rated games, choose a bot strength from \(range.lowerBound) to \(range.upperBound). Other strengths are available unrated."; return false }
         if game?.rated == true && snapshot?.finished == false { resign() }
         premoves.clear()
         game = SavedComputerGame(mode: mode, human: human, targetRating: target, openingID: mode == .normal ? requestedOpening?.id : nil)
@@ -514,6 +516,10 @@ private struct GameSetupForm: View {
     @ObservedObject var model: ComputerGameModel
     var resumeOnBughouseDismiss = true
     var onStart: () -> Void
+    private var matchedRating: Int {
+        let range = RatingPolicy.ratedBotRange(for: model.mode)
+        return min(range.upperBound, max(range.lowerBound, Int(library.state.playProgress.rating(for: model.mode).value.rounded())))
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             AppCard {
@@ -528,14 +534,15 @@ private struct GameSetupForm: View {
             if model.mode == .pawnWars { Toggle("Include kings", isOn: $model.pawnWarsKings) }
             Picker("Your color", selection: $model.human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
             if model.mode == .normal { Toggle("Developer · 2407", isOn: $model.developerOpponent).onChange(of: model.developerOpponent) { _, enabled in if enabled { model.ratingText = "2407"; model.adaptive = false } } }
-            Toggle("Rated game", isOn: $model.rated).onChange(of: model.rated) { _, value in
-                if value { model.adaptive = false; model.ratingText = model.developerOpponent && model.mode == .normal ? "2407" : String(Int(library.state.playProgress.rating(for: model.mode).value.rounded())) }
+            Toggle("Rated game · local estimate", isOn: $model.rated).onChange(of: model.rated) { _, value in
+                if value { model.adaptive = false; model.ratingText = model.developerOpponent && model.mode == .normal ? "2407" : String(matchedRating) }
             }
             Toggle("Adaptive difficulty", isOn: $model.adaptive).disabled(model.developerOpponent && model.mode == .normal).onChange(of: model.adaptive) { _, value in if value { model.rated = false } }
             if model.adaptive { Text("The bot adjusts after your moves. Adaptive games are unrated.").font(.caption).foregroundStyle(.secondary) }
-            Button("Use my rating (\(String(Int(library.state.playProgress.rating(for: model.mode).value.rounded()))))") { model.ratingText = String(Int(library.state.playProgress.rating(for: model.mode).value.rounded())) }.disabled(model.developerOpponent && model.mode == .normal)
+            Button("Match my level (\(String(matchedRating)))") { model.ratingText = String(matchedRating) }.disabled(model.developerOpponent && model.mode == .normal)
             if model.game?.rated == true && model.snapshot?.finished == false { Text("Starting another game resigns your current rated game.").font(.caption).foregroundStyle(.secondary) }
-            Text("Computer strength · estimated Elo").font(.caption).foregroundStyle(.secondary)
+            Text("Computer strength · engine estimate").font(.caption).foregroundStyle(.secondary)
+            NavigationLink("About ratings") { RatingsInfoView() }.font(.caption)
             TextField("Requested rating", text: $model.ratingText).keyboardType(.numberPad).textFieldStyle(.roundedBorder).disabled(model.developerOpponent && model.mode == .normal)
             Slider(value: Binding(get: { min(3500, max(100, Double(model.ratingText) ?? 1000)) }, set: { model.ratingText = String(Int($0)) }), in: 100...3500, step: 50).disabled(model.developerOpponent && model.mode == .normal)
                 .accessibilityLabel("Computer rating")
@@ -554,7 +561,7 @@ private struct GameSetupForm: View {
         .onChange(of: model.mode) { _, mode in
             model.error = nil
             if model.developerOpponent && mode == .normal { model.ratingText = "2407"; model.adaptive = false }
-            else if model.rated { model.ratingText = String(Int(library.state.playProgress.rating(for: mode).value.rounded())) }
+            else if model.rated { model.ratingText = String(matchedRating) }
         }
         .fullScreenCover(isPresented: $bughousePresented, onDismiss: { if resumeOnBughouseDismiss { model.activate(library) } }) { BughousePlayView() }
     }

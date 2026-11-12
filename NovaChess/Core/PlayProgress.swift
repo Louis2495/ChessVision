@@ -3,11 +3,20 @@ import Foundation
 public struct PlayerRating: Codable, Sendable {
     public var value = 1000.0
     public var games = 0
+    public var standardFormulaVersion: Int?
+    public var legacySeed: Bool?
+    public var provisional: Bool { games <= 25 }
     public init() {}
-    @discardableResult public mutating func record(score: Double, opponent: Int) -> Int {
+    @discardableResult public mutating func record(score: Double, opponent: Int, standard: Bool = false) -> Int {
+        guard value.isFinite, [0.0, 0.5, 1.0].contains(score), (1...10000).contains(opponent), games >= 0 else { return 0 }
         let old = Int(value.rounded())
-        let expected = 1 / (1 + pow(10, (Double(opponent) - value) / 400))
-        value = min(4000, max(100, value + (games < 10 ? 64 : 32) * (score - expected)))
+        if standard {
+            value = RatingPolicy.standardEstimate(rating: value, games: games, score: score, opponent: opponent)
+            standardFormulaVersion = RatingPolicy.version
+        } else {
+            let expected = RatingPolicy.expectedScore(rating: value, opponent: Double(opponent))
+            value = min(4000, max(100, value + (games < 10 ? 64 : 32) * (score - expected)))
+        }
         games += 1
         return Int(value.rounded()) - old
     }
@@ -98,9 +107,9 @@ public struct PlayProgress: Codable, Sendable {
             for move in game.moves.dropLast() { if (try? board.apply(uci: move)) == nil { break } }
             if board.turn == game.human, let achievement = Self.matingAchievement(before: board, uci: last) { unlock(achievement) }
         }
-        guard game.rated == true else { return nil }
+        guard RatingPolicy.canRate(game) else { return nil }
         var rating = self.rating(for: game.mode)
-        let change = rating.record(score: result == "draw" ? 0.5 : win ? 1 : 0, opponent: game.targetRating)
+        let change = rating.record(score: result == "draw" ? 0.5 : win ? 1 : 0, opponent: game.targetRating, standard: game.mode == .normal)
         ratings[game.mode.rawValue] = rating
         return change
     }

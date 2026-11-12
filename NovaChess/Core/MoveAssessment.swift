@@ -49,11 +49,10 @@ public struct ReviewSummary: Sendable {
     public var moves: [MoveAssessment]
     public init(_ moves: [MoveAssessment], side: Side) { self.moves = moves.filter { $0.side == side } }
     public func count(_ quality: MoveQuality) -> Int { moves.filter { $0.quality == quality }.count }
-    /// A rough single-game move-quality estimate; not a calibrated platform Elo.
-    public var estimatedRating: Int? {
+    /// Measured engine loss, not a conversion to a human rating pool.
+    public var averageCentipawnLoss: Double? {
         let assessed = moves.filter { $0.quality != .book }
-        guard assessed.count >= 8 else { return nil }
-        let loss = Double(assessed.reduce(0) { $0 + min(500, $1.loss) }) / Double(assessed.count)
-        return Int(min(2800, max(400, 2800 - loss * 8)).rounded() / 50) * 50
+        guard !assessed.isEmpty else { return nil }
+        return assessed.reduce(0.0) { $0 + Double($1.loss) } / Double(assessed.count)
     }
 }

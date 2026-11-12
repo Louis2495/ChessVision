@@ -2,7 +2,7 @@
 
 ## Bundled assets
 
-`NovaChess/Core/Resources/Puzzles.json` has exactly 4,000 puzzle records. Each has its original Lichess ID, FEN, full solution, source rating, estimated difficulty, themes and game URL. The first solution ply is the opponent's setup move; the app applies it before asking the learner to solve. Every source FEN and every solution ply was checked with python-chess and the Swift legal-move engine. Popularity, play-count and deviation filters exclude poorly established examples. Difficulty sampling spans the available source distribution rather than duplicating positions.
+`NovaChess/Core/Resources/Puzzles.json` has exactly 4,000 puzzle records. Each has its original Lichess ID, FEN, full solution, source rating, themes and game URL. The first solution ply is the opponent's setup move; the app applies it before asking the learner to solve. Every source FEN and every solution ply was checked with python-chess and the Swift legal-move engine. Popularity, play-count and deviation filters exclude poorly established examples. Difficulty sampling spans the available source distribution rather than duplicating positions.
 
 The primary database domain was blocked in this cloud task, so public facts were read from a pinned GitHub mirror, not from its Flask application/API. No mirror application code is bundled. The exact commit, source-file SHA-256 and sampling recipe are in `Vendor/ChessData/PROVENANCE.json`. Original Lichess puzzle data is released under CC0; source reference: https://database.lichess.org/#puzzles.
 
@@ -22,7 +22,7 @@ Verify the source hash in provenance before regenerating. These commands are for
 
 ## Difficulty and adaptive selection
 
-Estimated difficulty = max(200, round-half-up(source Lichess rating × 0.8 / 50) × 50). This is an explicitly uncalibrated Chess.com-style proxy. There is no evidence that it equals a player's Chess.com game or puzzle rating. Learner estimate starts at 1000 and updates with a provisional K=400/120, then K=40 Elo-style expected-score rule. First mistake/hint/skip grades the attempt incorrect; an entirely unassisted multi-ply solve grades it correct. Retries within the same attempt do not multiply rating changes. Selection chooses nearby unseen difficulties, then repeats the library once exhausted. Progress stores attempt/solve counts and used IDs locally.
+Difficulty uses the original source Lichess puzzle rating, without the former arbitrary 0.8 multiplier. This is not a USCF or Chess.com rating. Legacy personal estimates are divided by 0.8 once, bounded to the training range, with completed IDs and counts retained and placement restarted; this only changes the local training scale, not a claimed USCF conversion. Learner estimate starts at 1000 and updates with a provisional K=400/120, then K=40 Elo-style expected-score rule. First mistake/hint/skip grades the attempt incorrect; an entirely unassisted multi-ply solve grades it correct. Retries within the same attempt do not multiply rating changes. Selection chooses nearby unseen difficulties, then repeats the library once exhausted. Progress stores attempt/solve counts and used IDs locally.
 
 ## Personal repertoire
 

@@ -38,12 +38,12 @@ final class PlayProgressTests: XCTestCase {
     func testRatedResultsPersistAndSettleExactlyOnce() throws {
         var progress = PlayProgress(), game = SavedComputerGame(mode: .normal, human: .white, targetRating: 1000)
         game.rated = true
-        XCTAssertEqual(progress.finish(game, result: "white"), 32)
+        XCTAssertEqual(progress.finish(game, result: "white"), 400)
         XCTAssertNil(progress.finish(game, result: "white"))
         XCTAssertEqual(progress.rating(for: .normal).games, 1)
         XCTAssertEqual(progress.completed, 1)
         let restored = try JSONDecoder().decode(PlayProgress.self, from: JSONEncoder().encode(progress))
-        XCTAssertEqual(restored.rating(for: .normal).value, 1032)
+        XCTAssertEqual(restored.rating(for: .normal).value, 1400)
         XCTAssertEqual(restored.achievements[Achievement.firstWin.rawValue] != nil, true)
     }
     func testUnratedAndAdaptiveGamesDoNotChangeRating() {

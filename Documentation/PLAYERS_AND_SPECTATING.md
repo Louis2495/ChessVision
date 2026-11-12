@@ -18,8 +18,7 @@ The player directory, friend requests and spectator boards use Apple's CloudKit 
 | NCAccount (private) | username (String) | fetched by fixed record ID `myProfile`; no query needed |
 | NCFriendRequest | sender, recipient, recipientOwner (String) | sender + recipient queryable |
 | NCFriendResponse | request, sender, recipient (String), accepted (Int64) | sender + recipient queryable |
-| NCConsent | username, gameID (String), allowed (Int64) | fetched by deterministic record ID; no query needed |
-| NCGame | publisher, gameID, white, black, mode, fen, result (String); notation, consents (String lists); listed (Int64); updated (Date/Time) | publisher + listed queryable; updated sortable |
+| NCGame | publisher, gameID, white, black, mode, fen, result (String); notation (String list); listed (Int64); updated (Date/Time) | publisher + listed queryable; updated sortable |
 
 Usernames are lowercase ASCII, 3–20 letters/numbers/underscores. The canonical username determines the public profile record ID, so competing creates cannot silently overwrite an existing name. A private account pointer restores the selected username on the same iCloud account. Game Center's app-scoped player ID is linked only from the currently authenticated local Game Center account. It is used for native invitations, not as a password or a claim of server-verified competitive identity.
 
@@ -27,11 +26,10 @@ Friend requests bind the recipient’s creator ID as well as their username, so 
 
 ## Spectating
 
-- Single-board bot games are private by default. In Play, expand **Spectators** and enable **Public board** after creating a username. The current board and up to 400 SAN moves are published. Disable it to remove your public record.
-- Correspondence games require **both players** to have linked NovaChess profiles and enable **Allow spectators** on their own turns. Permission metadata is saved without consuming a move. Each participant has a creator-owned CloudKit consent record, and both are checked before publishing or displaying a board. Revoking a consent stops the in-app public view even if the other device has an older snapshot.
-- Players → Watch public games lists opt-in boards. A player profile filters to that publisher. Spectator views are read-only and refresh every five seconds while visible. They never gain access to private Game Center match data or control the game.
-- Public snapshots are intentionally public; stopping publication cannot remove copies someone already viewed. This is a casual social feature, not an anti-cheat or competitive game-verification service.
+- Games publish automatically for players with a NovaChess username; there are no spectator consent controls or consent records. Correspondence publication uses linked player profiles for display names.
+- Players → Watch public games shows read-only board snapshots and up to 400 SAN moves. Views refresh every five seconds while visible. Boards update when the playing device is active and connected; this is not a background broadcast service.
+- Camera recordings and saved-game folders remain local and are not automatically published.
 
 ## Verification still required on Apple services
 
-Create two profiles; race the same username and check only one succeeds; send/accept/decline a friend request; invite the accepted friend through Game Center; publish a bot game and observe another account's read-only updates; enable only one correspondence consent and verify it stays hidden, then enable both and revoke one; check profile ownership prevents another account from updating records. Repeat against the Production environment after schema deployment.
+Create two profiles; race the same username and check only one succeeds; send/accept/decline a friend request; invite the accepted friend through Game Center; publish a bot game and observe another account's read-only updates; verify correspondence boards appear without approval; check profile ownership prevents another account from updating records. Repeat against the Production environment after schema deployment.

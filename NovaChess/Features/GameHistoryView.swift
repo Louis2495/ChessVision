@@ -2,9 +2,12 @@ import SwiftUI
 
 struct GameHistoryView: View {
     @EnvironmentObject private var library: LibraryStore
+    @State private var saveError: String?
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         List {
+            NavigationLink("Saved games & folders") { SavedGamesView() }
+            if let saveError { Text(saveError).foregroundStyle(.red) }
             if library.state.history.isEmpty {
                 ContentUnavailableView("No completed games yet", systemImage: "clock.arrow.circlepath", description: Text("Finished computer games are saved here automatically."))
             }
@@ -16,10 +19,35 @@ struct GameHistoryView: View {
                         Text(entry.finishedAt, style: .date).font(.caption2).foregroundStyle(.secondary)
                         if entry.review?.complete == true { Text("Review saved").font(.caption).foregroundStyle(.tint) }
                     }.padding(.vertical, 6)
+                }.swipeActions(edge: .leading) {
+                    Button("Save", systemImage: "folder.badge.plus") {
+                        save(entry)
+                    }.tint(.blue)
                 }.listRowBackground(ThemeCardBackground())
             }
         }.modifier(AppSurface()).navigationTitle("Game history")
             .toolbar { Button("Done") { dismiss() } }
+    }
+    private func save(_ entry: CompletedGame) {
+                        Task { @MainActor in
+                            do {
+                                if library.state.savedGames.contains(where: { $0.id == entry.id }) { return }
+                                var frames = entry.positions
+                                if frames.isEmpty {
+                                    if let bughouse = entry.bughouse { frames = try await BughouseRules.replay(bughouse.events)[0] }
+                                    else {
+                                        try await EngineController.shared.prepareVariant(entry.game.variant)
+                                        for ply in 0...entry.game.moves.count {
+                                            frames.append(try VariantRules.snapshot(variant: entry.game.variant, history: Array(entry.game.moves.prefix(ply))).fen)
+                                            if ply.isMultiple(of: 8) { await Task.yield() }
+                                        }
+                                    }
+                                }
+                                var saved = SavedBoardGame(title: entry.game.mode.title + " game", positions: frames, notation: entry.game.notation)
+                                saved.id = entry.id
+                                if !library.state.savedGames.contains(where: { $0.id == entry.id }) { library.state.savedGames.insert(saved, at: 0) }
+                            } catch { saveError = error.localizedDescription }
+                        }
     }
 }
 

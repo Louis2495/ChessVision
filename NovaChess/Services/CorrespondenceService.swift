@@ -171,33 +171,18 @@ import GameKit
             } catch { self.error = error.localizedDescription; busy = false }
         }
     }
-    func allowSpectators(_ allowed: Bool) {
-        guard !busy, myTurn, var updated = game, let match, let matchID = match.matchID else { return }
-        busy = true; error = nil
-        Task {
-            defer { busy = false }
-            do {
-                let id = CorrespondenceGame.archiveID(matchID).uuidString
-                guard await SocialStore.shared.profile != nil else { throw ChessError.invalid("Create a NovaChess username in Players first.") }
-                try await SocialStore.shared.consent(gameID: id, allowed: allowed)
-                var ids = Set(updated.spectatorConsents ?? [])
-                if allowed { ids.insert(GKLocalPlayer.local.gamePlayerID) } else { ids.remove(GKLocalPlayer.local.gamePlayerID) }
-                updated.spectatorConsents = Array(ids)
-                try await CorrespondenceService.shared.saveMetadata(updated, match: match)
-                game = updated; await publishIfAllowed()
-            } catch { self.error = error.localizedDescription }
-        }
-    }
     private func publishIfAllowed() async {
-        guard let game, let match, let matchID = match.matchID, await SocialStore.shared.profile != nil else { return }
+        guard let game, let match, let matchID = match.matchID else { return }
+        if SocialStore.shared.profile == nil { await SocialStore.shared.connect() }
+        guard SocialStore.shared.profile != nil else { return }
         let id = CorrespondenceGame.archiveID(matchID).uuidString
         let players = (match.participants ?? []).compactMap { $0.player?.gamePlayerID }
         do {
-            guard players.count == 2, Set(game.spectatorConsents ?? []).isSuperset(of: players) else { try await SocialStore.shared.unpublish(gameID: id); return }
-            let profiles = try await SocialStore.shared.profiles(forGameCenterIDs: players)
+            guard players.count == 2 else { return }
+            let profiles = (try? await SocialStore.shared.profiles(forGameCenterIDs: players)) ?? []
             let white = profiles.first { $0.gameCenterID == game.whitePlayerID }?.username ?? "White"
             let black = profiles.first { $0.gameCenterID != game.whitePlayerID }?.username ?? "Black"
-            try await SocialStore.shared.publish(gameID: id, fen: board.fen, notation: notation, mode: "Correspondence", white: "@" + white, black: "@" + black, result: result, consentUsers: profiles.map(\.username))
+            try await SocialStore.shared.publish(gameID: id, fen: board.fen, notation: notation, mode: "Correspondence", white: "@" + white, black: "@" + black, result: result)
         } catch { self.error = error.localizedDescription }
     }
     func resign() {

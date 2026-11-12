@@ -6,7 +6,6 @@ public struct CorrespondenceGame: Codable, Sendable {
     public var whitePlayerID: String
     public var moves: [String] = []
     public var resigned: Side?
-    public var spectatorConsents: [String]?
     public static let turnSeconds: TimeInterval = 3 * 24 * 60 * 60
     public static func archiveID(_ matchID: String) -> UUID {
         if let uuid = UUID(uuidString: matchID) { return uuid }

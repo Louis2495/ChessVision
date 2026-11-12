@@ -145,37 +145,21 @@ import GameKit
     func profiles(forGameCenterIDs ids: [String]) async throws -> [PlayerProfile] {
         var profiles: [PlayerProfile] = []
         for id in ids {
-            guard let record = try await query("NCProfile", NSPredicate(format: "gameCenterID == %@", id), limit: 1).first else { throw ChessError.invalid("Both players need linked NovaChess usernames before enabling spectators.") }
+            guard let record = try await query("NCProfile", NSPredicate(format: "gameCenterID == %@", id), limit: 1).first else { continue }
             profiles.append(try decodeProfile(record))
         }
         return profiles
     }
-    func consent(gameID: String, allowed: Bool) async throws {
-        guard let profile else { throw ChessError.invalid("Create a NovaChess username in Players first.") }
-        let key = "consent_" + gameID + "_" + profile.username
-        let record = try await optional(key) ?? CKRecord(recordType: "NCConsent", recordID: CKRecord.ID(recordName: key))
-        record["username"] = profile.username as CKRecordValue; record["gameID"] = gameID as CKRecordValue; record["allowed"] = NSNumber(value: allowed)
-        _ = try await database.save(record)
-    }
-    private func canSpectate(_ game: PublicGame) async throws -> Bool {
-        for name in game.consentUsers {
-            let profile = try await player(name)
-            guard let record = try await optional("consent_" + game.gameID + "_" + name), record.creatorUserRecordID?.recordName == profile.ownerID,
-                  (record["allowed"] as? NSNumber)?.boolValue == true else { return false }
-        }
-        return true
-    }
-    func publish(gameID: String, fen: String, notation: [String], mode: String, white: String, black: String, result: String?, consentUsers: [String] = []) async throws {
+    func publish(gameID: String, fen: String, notation: [String], mode: String, white: String, black: String, result: String?) async throws {
         guard let profile else { throw ChessError.invalid("Create a username in Players before sharing a public board.") }
         let key = "game_" + gameID + "_" + profile.username
-        let value = PublicGame(id: key, gameID: gameID, publisher: profile.username, white: white, black: black, mode: mode, fen: fen, notation: notation, updated: Date(), result: result, consentUsers: consentUsers)
-        guard try await canSpectate(value) else { try await unpublish(gameID: gameID); return }
         let record = try await optional(key) ?? CKRecord(recordType: "NCGame", recordID: CKRecord.ID(recordName: key))
         record["publisher"] = profile.username as CKRecordValue; record["gameID"] = gameID as CKRecordValue
         record["white"] = white as CKRecordValue; record["black"] = black as CKRecordValue; record["mode"] = mode as CKRecordValue
         record["fen"] = fen as CKRecordValue; record["notation"] = Array(notation.suffix(400)) as CKRecordValue
-        record["result"] = (result ?? "") as CKRecordValue; record["consents"] = consentUsers as CKRecordValue
+        record["result"] = (result ?? "") as CKRecordValue
         record["listed"] = NSNumber(value: true); record["updated"] = Date() as CKRecordValue
+        try Task.checkCancellation()
         _ = try await database.save(record)
     }
     func unpublish(gameID: String) async throws {
@@ -186,9 +170,8 @@ import GameKit
     private func decodeGame(_ record: CKRecord) async throws -> PublicGame {
         guard let publisher = record["publisher"] as? String, let id = record["gameID"] as? String, let fen = record["fen"] as? String,
               record.creatorUserRecordID?.recordName == (try await player(publisher)).ownerID else { throw ChessError.invalid("Invalid public board.") }
-        let game = PublicGame(id: record.recordID.recordName, gameID: id, publisher: publisher, white: record["white"] as? String ?? "White", black: record["black"] as? String ?? "Black", mode: record["mode"] as? String ?? "Chess", fen: fen, notation: record["notation"] as? [String] ?? [], updated: record.modificationDate ?? .distantPast, result: (record["result"] as? String).flatMap { $0.isEmpty ? nil : $0 }, consentUsers: record["consents"] as? [String] ?? [])
+        let game = PublicGame(id: record.recordID.recordName, gameID: id, publisher: publisher, white: record["white"] as? String ?? "White", black: record["black"] as? String ?? "Black", mode: record["mode"] as? String ?? "Chess", fen: fen, notation: record["notation"] as? [String] ?? [], updated: record.modificationDate ?? .distantPast, result: (record["result"] as? String).flatMap { $0.isEmpty ? nil : $0 })
         _ = try game.board()
-        guard try await canSpectate(game) else { throw ChessError.invalid("Spectating is no longer enabled for this game.") }
         return game
     }
     func browseGames(publisher: String? = nil) async {

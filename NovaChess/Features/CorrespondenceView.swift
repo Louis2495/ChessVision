@@ -72,8 +72,6 @@ import GameKit
                 HStack { Text(model.myTurn ? "Your turn" : "Waiting for your opponent").font(.headline); Spacer(); TurnBadge(side: model.board.turn) }
                 MoveBoard(position: model.board, enabled: model.myTurn && !model.busy, flipped: model.human == .black, onMove: model.play)
                 if let result = model.result { Text(result == "white" ? "White wins" : result == "black" ? "Black wins" : result == "draw" ? "Draw" : result).font(.title2.bold()) }
-                Toggle("Allow spectators", isOn: Binding(get: { model.game?.spectatorConsents?.contains(GKLocalPlayer.local.gamePlayerID) == true }, set: { model.allowSpectators($0) })).disabled(!model.myTurn || model.busy)
-                Text("Both players must opt in using linked NovaChess usernames. Permission changes are saved on your turn.").font(.caption).foregroundStyle(.secondary)
                 if let deadline = model.match?.currentParticipant?.timeoutDate, model.result == nil {
                     HStack { Text("Turn deadline"); Spacer(); Text(deadline, style: .date); Text(deadline, style: .time) }.font(.caption).foregroundStyle(.secondary)
                 }

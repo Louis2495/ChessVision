@@ -42,7 +42,7 @@ final class SocialAndScreenTests: XCTestCase {
         XCTAssertNil(DigitalPieceMatcher.recognize(gray: [], size: size, templates: templates))
     }
     func testPublicBoardDataIsReadOnlyAndRejectsMalformedFen() throws {
-        var game = PublicGame(id: "record", gameID: "game", publisher: "player", white: "player", black: "Bot", mode: "Normal", fen: Position.initial.fen, notation: [], updated: Date(), result: nil, consentUsers: [])
+        var game = PublicGame(id: "record", gameID: "game", publisher: "player", white: "player", black: "Bot", mode: "Normal", fen: Position.initial.fen, notation: [], updated: Date(), result: nil)
         XCTAssertEqual(try game.board().board, .initial)
         game.fen = "invalid"
         XCTAssertThrowsError(try game.board())

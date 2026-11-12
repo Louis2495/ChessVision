@@ -111,7 +111,7 @@ import GameKit
     var body: some View {
         List {
             Section {
-                Text("Only boards their players explicitly make public appear here.").font(.caption).foregroundStyle(.secondary)
+                Text("Watch live games from NovaChess players.").font(.caption).foregroundStyle(.secondary)
                 Button("Refresh games", systemImage: "arrow.clockwise") { Task { await store.browseGames(publisher: publisher) } }
                 if store.busy { ProgressView() }
                 if let error = store.error { Text(error).foregroundStyle(.red).font(.caption) }

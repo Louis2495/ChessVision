@@ -36,7 +36,6 @@ public struct PublicGame: Identifiable, Sendable {
     public var notation: [String]
     public var updated: Date
     public var result: String?
-    public var consentUsers: [String]
     public func board() throws -> VariantSnapshot {
         guard fen.utf8.count <= 4096, notation.count <= 400 else { throw ChessError.invalid("This public board is too large.") }
         return try VariantSnapshot.parse("fen\t\(fen)\nstatus\tongoing")

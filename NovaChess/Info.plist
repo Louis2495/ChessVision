@@ -23,7 +23,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Photograph a physical or on-screen chessboard to reconstruct its position. Photos stay on this device.</string>
+	<string>Photograph or watch a chessboard to reconstruct positions and record game notation. Camera images stay on this device.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Save a shared board image or game animation to Photos when you choose Save Image.</string>
 	<key>UIApplicationSceneManifest</key>

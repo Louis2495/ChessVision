@@ -7,7 +7,6 @@ import SwiftUI
     @Published var ratingText = "1000"
     @Published var rated = false
     @Published var adaptive = false
-    @Published var publicGame = false
     @Published private(set) var recognizedOpening: String?
     @Published var requestedOpening: OpeningLine?
     @Published private(set) var game: SavedComputerGame?
@@ -39,7 +38,6 @@ import SwiftUI
         if game?.rated == true && snapshot?.finished == false { resign() }
         premoves.clear()
         game = SavedComputerGame(mode: mode, human: human, targetRating: target, openingID: mode == .normal ? requestedOpening?.id : nil)
-        game?.publicSpectating = publicGame
         game?.rated = rated; game?.adaptive = adaptive; game?.adaptiveRating = adaptive ? target : nil
         game?.pawnWarsKings = pawnWarsKings
         if mode == .chess960 { game?.chess960Index = Int.random(in: 0..<960) }
@@ -127,7 +125,6 @@ import SwiftUI
         game = current; snapshot = next; library?.state.computer = current
         archiveIfFinished()
     }
-    func setSpectating(_ enabled: Bool) { game?.publicSpectating = enabled; library?.state.computer = game }
     func undo() {
         premoves.clear()
         guard var game, game.rated != true, game.moves.count >= 2 else { return }
@@ -194,11 +191,12 @@ struct ComputerPlayView: View {
                     GameReviewView(id: route.id).toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { reviewRoute = nil } } }
                 }
             }
-            .task(id: "\(model.game?.id?.uuidString ?? "")|\(model.snapshot?.fen ?? "")|\(model.game?.publicSpectating == true)") {
+            .task(id: "\(model.game?.id?.uuidString ?? "")|\(model.snapshot?.fen ?? "")") {
                 guard let game = model.game, let id = game.id else { return }
+                if SocialStore.shared.profile == nil { await SocialStore.shared.connect() }
                 do {
-                    if game.publicSpectating == true, let snapshot = model.snapshot {
-                        guard let profile = await SocialStore.shared.profile else { broadcastError = "Create a username in Players before sharing your board."; return }
+                    if let snapshot = model.snapshot {
+                        guard let profile = await SocialStore.shared.profile else { return }
                         try await SocialStore.shared.publish(gameID: id.uuidString, fen: snapshot.fen, notation: game.notation, mode: game.mode.title,
                             white: game.human == .white ? "@" + profile.username : "Computer", black: game.human == .black ? "@" + profile.username : "Computer", result: snapshot.finished ? snapshot.status : nil)
                     } else { try await SocialStore.shared.unpublish(gameID: id.uuidString) }
@@ -266,11 +264,6 @@ struct ComputerPlayView: View {
                     HStack { Text("You play \(game.human.title)"); Spacer(); TurnBadge(side: snapshot.board.turn) }
                     if game.mode == .normal, let name = model.recognizedOpening { Text(name).font(.subheadline).foregroundStyle(.secondary) }
                     gameBoard(snapshot, game: game)
-                    DisclosureGroup("Spectators") {
-                        Toggle("Public board", isOn: Binding(get: { model.game?.publicSpectating == true }, set: { model.setSpectating($0) }))
-                        Text("Publishes this board and its moves for other NovaChess users to watch. Off by default.").font(.caption).foregroundStyle(.secondary)
-                        if let broadcastError { Text(broadcastError).font(.caption).foregroundStyle(.red) }
-                    }
                     if !model.premoves.moves.isEmpty {
                         HStack {
                             Text("Premoves: " + model.premoves.moves.joined(separator: " → ")).font(.caption).foregroundStyle(.tint)
@@ -310,6 +303,7 @@ struct ComputerPlayView: View {
                 AppCard {
                     NavigationLink { PlayersView() } label: { Label("Players & friends", systemImage: "person.crop.circle.badge.plus") }
                     NavigationLink { CorrespondenceView() } label: { Label("Play with friends · Correspondence", systemImage: "person.2") }
+                    NavigationLink { SavedGamesView() } label: { Label("Saved games", systemImage: "folder") }
                     NavigationLink { AchievementsView() } label: { Label("Achievements & ratings", systemImage: "medal") }
                 }
             }.padding()

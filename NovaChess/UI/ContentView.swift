@@ -37,6 +37,8 @@ import PhotosUI
                                 Toggle("Black at bottom", isOn: $blackAtBottom)
                                 Button("Import screenshot", systemImage: "photo") { importPhoto = true }
 
+                                NavigationLink { LiveGameCameraView() } label: { Label("Record game notation", systemImage: "video") }
+                                NavigationLink { SavedGamesView() } label: { Label("Saved games", systemImage: "folder") }
                                 Button("Take photo", systemImage: "camera") { saveForLater = false; takePhoto() }
                                 Button("Take photos for later", systemImage: "clock") { saveForLater = true; takePhoto() }
                                 if position != nil { Button("Start over", systemImage: "arrow.counterclockwise", action: startOver) }

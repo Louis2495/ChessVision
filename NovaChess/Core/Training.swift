@@ -154,7 +154,6 @@ public struct SavedComputerGame: Codable, Sendable {
     public var chess960Index: Int?
     public var pawnWarsKings: Bool?
     public var opponentName: String?
-    public var publicSpectating: Bool?
     public var rated: Bool?
     public var adaptive: Bool?
     public var adaptiveRating: Int?
@@ -165,6 +164,8 @@ public struct SavedComputerGame: Codable, Sendable {
     }
 }
 public struct LibraryState: Codable, Sendable {
+    public var savedGames: [SavedBoardGame] = []
+    public var folders: [GameFolder] = []
     public var version = 1
     public var puzzle = PuzzleProgress()
     public var repertoire: [RepertoireLine] = []
@@ -173,9 +174,11 @@ public struct LibraryState: Codable, Sendable {
     public var playProgress = PlayProgress()
     public var bughouse: BughouseMatch?
     public init() {}
-    private enum CodingKeys: String, CodingKey { case version, puzzle, repertoire, computer, history, bughouse, playProgress }
+    private enum CodingKeys: String, CodingKey { case savedGames, folders, version, puzzle, repertoire, computer, history, bughouse, playProgress }
     public init(from decoder: Decoder) throws {
         let fields = try decoder.container(keyedBy: CodingKeys.self)
+        savedGames = try fields.decodeIfPresent([SavedBoardGame].self, forKey: .savedGames) ?? []
+        folders = try fields.decodeIfPresent([GameFolder].self, forKey: .folders) ?? []
         version = try fields.decode(Int.self, forKey: .version)
         puzzle = try fields.decode(PuzzleProgress.self, forKey: .puzzle)
         repertoire = try fields.decode([RepertoireLine].self, forKey: .repertoire)

@@ -11,6 +11,9 @@ private struct NotationRequest: Hashable {
 }
 
 struct AnalysisView: View {
+    @EnvironmentObject private var library: LibraryStore
+    @State private var saveTitle = "Analysis game"
+    @State private var savingGame = false
     let original: Position
     let showsSettings: Bool
     @ObservedObject private var engine = EngineController.shared
@@ -92,11 +95,24 @@ struct AnalysisView: View {
                 if showCandidateLines { AppCard { candidateLines } }
                 Button("Return to original position", systemImage: "arrow.counterclockwise") { history = [original]; cursor = 0; selected = nil }
                     .disabled(cursor == 0 && position == original)
+                Button("Save game", systemImage: "folder.badge.plus") { savingGame = true }
                 SharePositionButton(position: position, game: gameHistory).buttonStyle(.bordered).controlSize(.large)
                 if let message { Text(message).font(.footnote).foregroundStyle(.red) }
             }.padding()
         }
         .modifier(AppSurface()).navigationTitle("Analysis")
+        .alert("Save game", isPresented: $savingGame) {
+            TextField("Game name", text: $saveTitle)
+            Button("Save") {
+                do {
+                    let recording = try GameRecording.build(from: gameHistory)
+                    let frames = Array(gameHistory.dropFirst(recording.startIndex))
+                    let title = saveTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                    library.state.savedGames.insert(SavedBoardGame(title: title.isEmpty ? "Analysis game" : String(title.prefix(100)), positions: frames.map(\.fen), notation: recording.moves.map(\.san)), at: 0)
+                } catch { message = error.localizedDescription }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
         .toolbar { if showsSettings { SettingsButton() } }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {

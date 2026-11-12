@@ -5,7 +5,7 @@ import hashlib,json,os,re,shlex,subprocess
 root=Path(__file__).resolve().parents[1]
 os.chdir(root)
 reference=json.loads((root/'Tests/modern-engine-reference.json').read_text())
-network=root/'ChessVision/Resources/Engine/nn-1a298aa575a0.nnue'
+network=root/'NovaChess/Resources/Engine/nn-1a298aa575a0.nnue'
 assert hashlib.sha256(network.read_bytes()).hexdigest()==reference['network_sha256']
 library=subprocess.check_output(['python3','Scripts/build-modern-engine.py'],text=True).strip()
 compiler=shlex.split(os.environ.get('CXX','c++'))

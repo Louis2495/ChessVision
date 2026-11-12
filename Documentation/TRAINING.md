@@ -2,7 +2,7 @@
 
 ## Bundled assets
 
-`ChessVision/Core/Resources/Puzzles.json` has exactly 2,000 puzzle records. Each has its original Lichess ID, FEN, full solution, source rating, estimated difficulty, themes and game URL. The first solution ply is the opponent's setup move; the app applies it before asking the learner to solve. Every source FEN and every solution ply was checked with python-chess and the Swift legal-move engine. Popularity, play-count and deviation filters exclude poorly established examples. Difficulty sampling spans the available source distribution rather than duplicating positions.
+`NovaChess/Core/Resources/Puzzles.json` has exactly 2,000 puzzle records. Each has its original Lichess ID, FEN, full solution, source rating, estimated difficulty, themes and game URL. The first solution ply is the opponent's setup move; the app applies it before asking the learner to solve. Every source FEN and every solution ply was checked with python-chess and the Swift legal-move engine. Popularity, play-count and deviation filters exclude poorly established examples. Difficulty sampling spans the available source distribution rather than duplicating positions.
 
 The primary database domain was blocked in this cloud task, so public facts were read from a pinned GitHub mirror, not from its Flask application/API. No mirror application code is bundled. The exact commit, source-file SHA-256 and sampling recipe are in `Vendor/ChessData/PROVENANCE.json`. Original Lichess puzzle data is released under CC0; source reference: https://database.lichess.org/#puzzles.
 
@@ -11,11 +11,11 @@ The primary database domain was blocked in this cloud task, so public facts were
 To reproduce optionally (Python 3.12, chess==1.11.2):
 
 ```sh
-git clone https://github.com/Ali-Raza764/chess_puzzles_api.git /tmp/chessvision-puzzles
-git -C /tmp/chessvision-puzzles checkout 94e65c36af8358a04d3c835984435845fc638fe3
-git clone https://github.com/lichess-org/chess-openings.git /tmp/chessvision-openings
-git -C /tmp/chessvision-openings checkout 3ba6b20d31b2e6125cb0e6a2e792f400717d9d39
-python Scripts/build-training-data.py /tmp/chessvision-puzzles/puzzles_10000.csv /tmp/chessvision-openings
+git clone https://github.com/Ali-Raza764/chess_puzzles_api.git /tmp/novachess-puzzles
+git -C /tmp/novachess-puzzles checkout 94e65c36af8358a04d3c835984435845fc638fe3
+git clone https://github.com/lichess-org/chess-openings.git /tmp/novachess-openings
+git -C /tmp/novachess-openings checkout 3ba6b20d31b2e6125cb0e6a2e792f400717d9d39
+python Scripts/build-training-data.py /tmp/novachess-puzzles/puzzles_10000.csv /tmp/novachess-openings
 ```
 
 Verify the source hash in provenance before regenerating. These commands are for data maintenance, not required to build/open the Xcode project.

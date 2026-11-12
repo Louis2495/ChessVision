@@ -66,7 +66,7 @@ extern "C" void cv_engine_start(CVEngineCallback callback) {
         output.callback = callback;
         std::cin.rdbuf(&input); std::cout.rdbuf(&output);
         std::thread([] {
-            char name[] = "ChessVision"; char *args[] = {name};
+            char name[] = "NovaChess"; char *args[] = {name};
             pieceMap.init(); variants.init();
             // App variants use the same rules/search engine as the built-in games.
             std::istringstream custom(R"ini(

@@ -27,7 +27,7 @@ for row in csv.DictReader(a.puzzles.open()):
  except (ValueError,KeyError):continue
 valid.sort(key=lambda x:(x['estimatedRating'],x['id']))
 assert len(valid)>=2000
-existing=json.loads((ROOT/'ChessVision/Core/Resources/Puzzles.json').read_text())
+existing=json.loads((ROOT/'NovaChess/Core/Resources/Puzzles.json').read_text())
 by_id={p['id']:p for p in valid}
 puzzles=[by_id[p['id']] for p in existing]
 selected={p['id'] for p in puzzles}
@@ -36,7 +36,7 @@ needed=2000-len(puzzles)
 if needed:
  puzzles.extend(remaining[round(i*(len(remaining)-1)/(needed-1))] for i in range(needed))
 assert len({p['id'] for p in puzzles})==2000
-out=ROOT/'ChessVision/Core/Resources';out.mkdir(exist_ok=True)
+out=ROOT/'NovaChess/Core/Resources';out.mkdir(exist_ok=True)
 (out/'Puzzles.json').write_text(json.dumps(puzzles,separators=(',',':'))+'\n')
 openings=[]
 for file in sorted(a.openings.glob('[abcde].tsv')):

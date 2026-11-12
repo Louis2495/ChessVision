@@ -35,9 +35,9 @@ with torch.no_grad():
 np.testing.assert_allclose(prediction, reference, atol=1e-4, rtol=1e-3)
 print('DenseNet ONNX/traced Torch parity passed; max error:', float(np.max(np.abs(prediction-reference))))
 model = ct.convert(trace, inputs=[ct.ImageType(name='image', shape=(1, 3, 224, 224), scale=1/255, color_layout=ct.colorlayout.RGB)], classifier_config=ct.ClassifierConfig(['B','K','N','P','Q','R','empty','b','k','n','p','q','r']), minimum_deployment_target=ct.target.iOS17, convert_to='mlprogram')
-model.author = 'David Mallasén Quintana et al. (LiveChess2FEN); conversion by ChessVision'
+model.author = 'David Mallasén Quintana et al. (LiveChess2FEN); conversion by NovaChess'
 model.license = 'AGPL-3.0-or-later; see Vendor/LiveChess2FEN/LICENSE'
 model.short_description = 'Second opinion for ambiguous or apparently empty physical chessboard squares.'
 model.user_defined_metadata['sourceSHA256'] = EXPECTED_SHA256
 model.user_defined_metadata['inference'] = 'DenseNet201, four quarter-turn views, RGB/255 normalized by ImageNet mean/std.'
-model.save(str(ROOT / 'ChessVision/Resources/ChessPiecesDetail.mlpackage'))
+model.save(str(ROOT / 'NovaChess/Resources/ChessPiecesDetail.mlpackage'))

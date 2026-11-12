@@ -2,7 +2,7 @@ import XCTest
 #if canImport(ChessCore)
 @testable import ChessCore
 #else
-@testable import ChessVision
+@testable import NovaChess
 #endif
 final class CorrespondenceTests: XCTestCase {
     func testPayloadReplaysAndRejectsIllegalOrOutOfTurnMoves() throws {

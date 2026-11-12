@@ -16,7 +16,7 @@ for repeat in range(2):
    t=np.arange(int(rate*2.3))/rate; freq=440*2**((chord[index]-69)/12)
    tone=sum(np.sin(2*np.pi*freq*k*t)*np.exp(-t*(1.6+k*.3))/k**2 for k in range(1,5))
    tone*=np.minimum(1,t/.008)*.12; audio[start:start+len(tone)]+=tone
-output=Path(__file__).resolve().parents[1]/'ChessVision/Resources/ClassicalPrelude.wav'
+output=Path(__file__).resolve().parents[1]/'NovaChess/Resources/ClassicalPrelude.wav'
 with wave.open(str(output),'wb') as file:
  file.setparams((1,2,rate,0,'NONE','not compressed'))
  file.writeframes((np.clip(audio,-1,1)*32767).astype('<i2').tobytes())

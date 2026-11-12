@@ -1,7 +1,7 @@
 #if canImport(UIKit) && !canImport(ChessCore)
 import XCTest
 import UIKit
-@testable import ChessVision
+@testable import NovaChess
 
 final class SavedPhotoTests: XCTestCase {
     @MainActor func testMultipleCapturesSurviveReopeningAndDeleteIndividually() async throws {

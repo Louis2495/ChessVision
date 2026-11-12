@@ -29,10 +29,10 @@ with torch.no_grad(): traced=trace(torch.from_numpy(x.transpose(0,3,1,2).copy())
 np.testing.assert_allclose(np.mean(rotated,axis=0),traced,atol=1e-4,rtol=1e-3)
 print('Four-rotation ONNX/traced Torch parity passed')
 ml=ct.convert(trace,inputs=[ct.ImageType(name='image',shape=(1,3,224,224),scale=1/127.5,bias=[-1,-1,-1],color_layout=ct.colorlayout.RGB)],classifier_config=ct.ClassifierConfig(['B','K','N','P','Q','R','empty','b','k','n','p','q','r']),minimum_deployment_target=ct.target.iOS17,convert_to='mlprogram')
-ml.author='David Mallasén Quintana et al. (LiveChess2FEN); Core ML conversion by ChessVision'
+ml.author='David Mallasén Quintana et al. (LiveChess2FEN); Core ML conversion by NovaChess'
 ml.license='AGPL-3.0-or-later; see Vendor/LiveChess2FEN/LICENSE'
 ml.short_description='Physical chess-square classifier, four-rotation ensemble. Experimental; review every square.'
 import hashlib
 ml.user_defined_metadata['sourceSHA256']=hashlib.sha256((ROOT/'Vendor/LiveChess2FEN/MobileNetV2_all_last.onnx').read_bytes()).hexdigest()
 ml.user_defined_metadata['inference']='Mean probabilities of four quarter-turn views per square.'
-ml.save(str(ROOT/'ChessVision/Resources/ChessPieces.mlpackage'))
+ml.save(str(ROOT/'NovaChess/Resources/ChessPieces.mlpackage'))

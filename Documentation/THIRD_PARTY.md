@@ -8,7 +8,7 @@
 
 The combined app is offered under AGPL-3.0-or-later, with Stockfish's original GPL notices retained. GPLv3 section 13 permits the combination with AGPLv3; this does not remove the respective source and notice obligations. If conveying a binary, preserve notices and provide complete corresponding source and build/conversion instructions as required. This repository contains the application and engine source, original model and conversion/training code; training datasets are not bundled. Review the release asset/data licensing and your proposed source-delivery mechanism before distribution.
 
-The app displays notices under Privacy & open-source licenses. The project source is stored in the user's ChessVision GitHub repository. Repository visibility/access may be private; that alone is not a public corresponding-source offer. A binary distributor must provide recipients with compliant corresponding-source delivery/access; a link to an unrelated upstream project alone is insufficient.
+The app displays notices under Privacy & open-source licenses. The project source is stored in the user's NovaChess GitHub repository. Repository visibility/access may be private; that alone is not a public corresponding-source offer. A binary distributor must provide recipients with compliant corresponding-source delivery/access; a link to an unrelated upstream project alone is insufficient.
 
 No App Store submission or license compatibility determination has been made. App Store signing, DRM and additional terms can conflict with GPL/AGPL redistribution requirements. Review the exact distribution plan before publishing; this project currently targets private development/device testing.
 
@@ -18,7 +18,7 @@ The board and correction palette use Colin M. L. Burnett's **CBurnett** set from
 
 ## Five-tab expansion
 
-The active engine is now Fairy-Stockfish pinned snapshot, commit `4e3d0147d5b8da1b780a29f0b3e1d24311d028fa`, GPL-3.0-or-later. Its original complete source/AUTHORS/Copying.txt accompany `Vendor/FairyStockfish`. The previous Stockfish 11 source is retained for historical provenance but not linked. NNUE embedding/evaluation are disabled; no engine weights are downloaded. See `Vendor/FairyStockfish/CHESSVISION.md` for build details.
+The active engine is now Fairy-Stockfish pinned snapshot, commit `4e3d0147d5b8da1b780a29f0b3e1d24311d028fa`, GPL-3.0-or-later. Its original complete source/AUTHORS/Copying.txt accompany `Vendor/FairyStockfish`. The previous Stockfish 11 source is retained for historical provenance but not linked. NNUE embedding/evaluation are disabled; no engine weights are downloaded. See `Vendor/FairyStockfish/NOVACHESS.md` for build details.
 
 Lichess puzzle facts and the lichess-org/chess-openings catalog are CC0. Pinned mirror/upstream commits, source hash and estimation/sampling recipes are in `Vendor/ChessData/PROVENANCE.json`, with full CC0 text. No puzzle mirror Flask/server code is copied. python-chess 1.11.2 (GPL-3.0-or-later) is an optional generation/test tool, not an iPhone dependency.
 
@@ -34,7 +34,7 @@ Merida by Armando Hernandez Marroquin (GPL-2.0-or-later, used under GPL-3.0-or-l
 
 ## Official Stockfish 19 and default NNUE
 
-Standard chess uses official-stockfish/Stockfish release sf_19, commit edb0d9db6731067ec50ce619ff372b463bc4dd5d, under GPL-3.0-or-later. Unmodified corresponding sources, AUTHORS and Copying.txt are in Vendor/Stockfish19. The full default nn-1a298aa575a0.nnue model is bundled under the same upstream license; its origin and exact SHA-256 are documented in Vendor/Stockfish19/CHESSVISION.md. ChessVision's separate bridge and build scripts are included. Fairy-Stockfish remains linked for variants and low-rated play.
+Standard chess uses official-stockfish/Stockfish release sf_19, commit edb0d9db6731067ec50ce619ff372b463bc4dd5d, under GPL-3.0-or-later. Unmodified corresponding sources, AUTHORS and Copying.txt are in Vendor/Stockfish19. The full default nn-1a298aa575a0.nnue model is bundled under the same upstream license; its origin and exact SHA-256 are documented in Vendor/Stockfish19/NOVACHESS.md. NovaChess's separate bridge and build scripts are included. Fairy-Stockfish remains linked for variants and low-rated play.
 
 ## Chessnut and Celtic pieces (0.15)
 

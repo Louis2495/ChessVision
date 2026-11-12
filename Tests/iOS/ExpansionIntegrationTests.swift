@@ -1,5 +1,5 @@
 import XCTest
-@testable import ChessVision
+@testable import NovaChess
 
 final class ExpansionIntegrationTests: XCTestCase {
     @MainActor func testLibraryPersistenceAndCorruptBackup() throws {

@@ -49,11 +49,11 @@ import Darwin
         print("PASS: public API fixtures, cancellation/restart, failure preservation and filter error recovery.")
     }
     @MainActor static func main() async {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ChessVision-features-\(UUID().uuidString)")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("NovaChess-features-\(UUID().uuidString)")
         do {
             let root = URL(fileURLWithPath: CommandLine.arguments[1])
-            let puzzles = try JSONDecoder().decode([ChessPuzzle].self, from: Data(contentsOf: root.appendingPathComponent("ChessVision/Core/Resources/Puzzles.json")))
-            let openings = try JSONDecoder().decode([OpeningLine].self, from: Data(contentsOf: root.appendingPathComponent("ChessVision/Core/Resources/Openings.json")))
+            let puzzles = try JSONDecoder().decode([ChessPuzzle].self, from: Data(contentsOf: root.appendingPathComponent("NovaChess/Core/Resources/Puzzles.json")))
+            let openings = try JSONDecoder().decode([OpeningLine].self, from: Data(contentsOf: root.appendingPathComponent("NovaChess/Core/Resources/Openings.json")))
             let store = LibraryStore(directory: directory, puzzles: puzzles, openings: openings)
             store.state.repertoire = [RepertoireLine(name: "Test line", side: .white, moves: ["e2e4", "e7e5"])]
             store.state.puzzle.record(puzzles[0], correct: true)

@@ -11,7 +11,7 @@ MAP
 library=$(bash Scripts/build-engine-library.sh)
 modern=$(python3 Scripts/build-modern-engine.py)
 printf '%s\n' 'import CStockfish' > "$build/EngineController.swift"
-cat ChessVision/Engine/EngineController.swift >> "$build/EngineController.swift"
+cat NovaChess/Engine/EngineController.swift >> "$build/EngineController.swift"
 link_options=()
 platform_options=()
 if [[ "$(uname -s)" == Linux ]]; then
@@ -21,5 +21,5 @@ else
     link_options=(-Xlinker -lc++)
     platform_options=(-target "$(uname -m)-apple-macosx13.0")
 fi
-swiftc -swift-version 5 "${platform_options[@]}" -parse-as-library -I "$build/include" ChessVision/Core/*.swift "$build/EngineController.swift" Tests/Headless/ControllerChecks.swift "$library" "$modern" "${link_options[@]}" -o "$build/controller-checks"
+swiftc -swift-version 5 "${platform_options[@]}" -parse-as-library -I "$build/include" NovaChess/Core/*.swift "$build/EngineController.swift" Tests/Headless/ControllerChecks.swift "$library" "$modern" "${link_options[@]}" -o "$build/controller-checks"
 "$build/controller-checks"

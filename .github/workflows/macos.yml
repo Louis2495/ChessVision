@@ -17,7 +17,7 @@ jobs:
         run: xcodebuild -version
       - name: Compile iOS app before workflow checks
         run: >-
-          xcodebuild build -project ChessVision.xcodeproj -scheme ChessVision
+          xcodebuild build -project NovaChess.xcodeproj -scheme NovaChess
           -destination 'generic/platform=iOS Simulator'
           -derivedDataPath .build/DerivedData CODE_SIGNING_ALLOWED=NO
       - name: Official Stockfish 19 model and reference checks

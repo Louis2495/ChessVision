@@ -8,6 +8,6 @@ if [[ -z "${SIMULATOR_ID:-}" ]]; then
 fi
 [[ -n "$SIMULATOR_ID" ]] || { echo "Install an iPhone Simulator runtime in Xcode Settings → Components." >&2; exit 1; }
 mkdir -p .build
-result_path=".build/ChessVision-$(date +%Y%m%d-%H%M%S)-$$.xcresult"
-xcodebuild test -project ChessVision.xcodeproj -scheme ChessVision -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -derivedDataPath .build/DerivedData -resultBundlePath "$result_path" CODE_SIGNING_ALLOWED=NO
+result_path=".build/NovaChess-$(date +%Y%m%d-%H%M%S)-$$.xcresult"
+xcodebuild test -project NovaChess.xcodeproj -scheme NovaChess -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -derivedDataPath .build/DerivedData -resultBundlePath "$result_path" CODE_SIGNING_ALLOWED=NO
 printf 'Test results: %s\n' "$result_path"

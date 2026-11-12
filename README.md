@@ -1,13 +1,13 @@
-# ChessVision for iPhone
+# NovaChess for iPhone
 
-A native SwiftUI chess app with five bottom tabs: **Analysis**, **Play**, **Puzzles**, **Openings**, and **Clock**. Camera recognition, training, saved repertoire and computer games run locally. Opening explorer downloads public games only when you enter a username and request an import. No account, subscription or paid API is required.
+A native SwiftUI chess app with five bottom tabs: **Analysis**, **Play**, **Puzzles**, **Openings**, and **Clock**. Camera recognition, training, saved repertoire and computer games run locally. Opening explorer downloads public games only when you enter a username and request an import. Local analysis and training need no account. Optional player profiles/friends/public spectating use iCloud/CloudKit; correspondence invitations use Game Center. No subscription or paid analysis API is used.
 
 **Build status:** prepared for Xcode 16+ and iOS 17+. This Linux environment cannot compile or launch an iOS UI. Portable Swift, actual C++/Swift engine workflows, all bundled puzzle/opening data and variant rules have been tested here. See [Validation](Documentation/VALIDATION.md) for executed versus unrun checks. Photo recognition remains experimental.
 
 ## Open on your Mac
 
-1. Open **`ChessVision.xcodeproj`** in Xcode 16 or newer. Do not open `Package.swift` for the app; that package contains the portable core/test workflow.
-2. Select **ChessVision** and an installed iPhone Simulator, then press **⌘R**. No Homebrew, CocoaPods, model downloads or project generation is needed: models, engine, artwork, 2,000 puzzles and 3,865 opening lines are bundled.
+1. Open **`NovaChess.xcodeproj`** in Xcode 16 or newer. Do not open `Package.swift` for the app; that package contains the portable core/test workflow.
+2. Select **NovaChess** and an installed iPhone Simulator, then press **⌘R**. No Homebrew, CocoaPods, model downloads or project generation is needed: models, engine, artwork, 2,000 puzzles and 3,865 opening lines are bundled.
 3. Press **⌘U** for hosted/unit/UI tests. These SDK/UI tests have not been run in this cloud machine.
 4. For a real iPhone, connect/trust the device, enable Developer Mode if asked, select your Development Team under **Signing & Capabilities**, use a unique bundle ID if required, select the device and run. Camera capture requires a physical iPhone and camera permission.
 
@@ -15,7 +15,7 @@ A native SwiftUI chess app with five bottom tabs: **Analysis**, **Play**, **Puzz
 
 ### Analysis
 
-Photograph a physical chessboard directly overhead with White's home rank at the bottom. Review/correct pieces as needed; orange uncertainty highlights are optional and do not block an otherwise valid position. Choose whose turn it is and explicitly set any castling/en passant state. Tap **Analyze with Stockfish**.
+Choose Physical board or Screen / screenshot from the camera menu, and choose whether Black is at the bottom. Photograph the whole board, or import a screenshot. Review/correct pieces as needed; orange uncertainty highlights are optional and do not block an otherwise valid position. Choose whose turn it is and explicitly set any castling/en passant state. Tap **Analyze with Stockfish**.
 
 **Analysis** has a centered inline title, filled vector pieces, standard algebraic move notation, three candidate tabs with White/Black columns, a right-side evaluation bar and a color-to-move square. Tap that square to flip the turn (clears en passant and discards future playback). Invalid state is explained rather than sent to the engine.
 
@@ -174,7 +174,7 @@ Settings → Analysis offers one candidate line (default, deepest search) or thr
 
 Standard post-game reviews spend about **3 seconds on each before/after position**, rather than 250ms. Existing saved reviews are invalidated by an engine/model/search-policy version so they refresh automatically when opened. Progress/pause/resume and repertoire-first suggestions remain available. Full games consequently take longer to review. Variants retain Fairy-Stockfish because official Stockfish does not implement their rules, and low-rated standard opponents retain its weaker settings.
 
-The bundled NNUE is 98,511,183 bytes, SHA-256 `1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2`. Builds verify that hash. No LFS setup, model conversion or internet is required to build on a Mac. The app displays a model-loading failure rather than silently using classical evaluation. See Vendor/Stockfish19/CHESSVISION.md and Scripts/test-modern-engine.py for provenance and fixed-depth comparisons against the official release.
+The bundled NNUE is 98,511,183 bytes, SHA-256 `1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2`. Builds verify that hash. No LFS setup, model conversion or internet is required to build on a Mac. The app displays a model-loading failure rather than silently using classical evaluation. See Vendor/Stockfish19/NOVACHESS.md and Scripts/test-modern-engine.py for provenance and fixed-depth comparisons against the official release.
 
 ## Version 0.15 played-move navigation and game setup
 
@@ -205,3 +205,13 @@ Normal games keep the most recently identified opening name visible as play cont
 ### Enable Game Center before testing invitations
 
 Game Center requires an Apple Developer app ID with Game Center enabled, matching bundle ID/signing team, and Game Center enabled for the app in App Store Connect. In Xcode, select your team in Signing & Capabilities and ensure the Game Center capability is active; the entitlement is included. Sign into Game Center on two supported devices/accounts to test an invitation and a reply. A Personal Team may not support this capability; bot-only builds can omit the entitlement, but online matches will then be unavailable. Cloud Linux checks cannot authenticate Apple accounts or exercise the live service.
+
+## Version 0.17 NovaChess, players and screen boards
+
+The app, source directory, Xcode project/scheme, targets, tests, user-visible text, export filenames and bundle ID are now **NovaChess** (`com.novachess.app`). Open `NovaChess.xcodeproj`. This deliberately creates a separate Apple app identity; the former app's Game Center matches do not transfer, and a new app sandbox cannot read the old installed app's files. If an old app-container backup is restored into the new container, the storage helper copies its legacy library/photo folder without deleting the original. The GitHub repository URL remains Louis2495/ChessVision; its hosted repository name is not changed by a source/project rename.
+
+Play → **Players & friends** supports unique iCloud-backed usernames, prefix search, friend requests, accept/decline, a friend list, and Game Center invitations to linked friends. Player profiles and **Watch public games** provide read-only, periodically refreshed spectator boards. Bot publication is opt-in; correspondence publication needs both players' consent. Nothing automatically makes existing/private games public.
+
+The social features require CloudKit container `iCloud.com.novachess.app`, its record types/indexes/permissions, and the new Game Center app ID to be configured by the owner. **Read [Players and spectating setup](Documentation/PLAYERS_AND_SPECTATING.md)** before testing or distributing these features. The source and entitlements are included; Apple account setup and live service verification cannot be performed from this Linux environment. Local bot/training features do not contact CloudKit unless social/publication is used.
+
+The camera menu now has **Physical board** and **Screen / screenshot** modes, **Black at bottom**, and **Import screenshot**. Screen mode accepts edge-to-edge boards, broader perspective candidates and padded search windows around a board inside surrounding UI. It compares square images with all six bundled vector sets at multiple scales, falling back to the existing classifier and flagging uncertain matches. This supports common 2D screen styles; unusual graphics, glare, moiré and severe perspective can still require corrections. Saved photos expose the same source/orientation settings. The actual screen pipeline has a hosted iOS screenshot/orientation regression, which requires Xcode to run.

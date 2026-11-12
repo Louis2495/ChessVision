@@ -3,7 +3,7 @@ import CoreML
 import Vision
 import UIKit
 import ImageIO
-@testable import ChessVision
+@testable import NovaChess
 
 final class NativeIntegrationTests: XCTestCase {
     func testBundledModelContract() throws {

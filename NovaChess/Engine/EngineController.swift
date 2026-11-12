@@ -40,6 +40,10 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
             variant == "chess" && kind != .prepare && (rating.map { $0 >= 1320 } ?? true)
         }
     }
+    private var analysisCache: [String: [EngineLine]] = [:]
+    private var reviewCache: [String: (milliseconds: Int, line: EngineLine)] = [:]
+    private var searchStarted: TimeInterval = 0
+    private var reviewStopRequested = false
     private var modernReady = false
     private var modernFailure: String?
     var analysisEngineName: String { "Stockfish 19 · NNUE" }
@@ -70,7 +74,14 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
     private func sendSearch(_ command: String) { if active?.modern == true { sendModern(command) } else { send(command) } }
     func analyze(_ position: Position) {
         guard position.problems.isEmpty else { stop(); clearResults(); error = position.problems.joined(separator: "\n"); return }
+        if running && !stopping && active?.kind == .analysis && active?.position?.fen == position.fen { return }
+        if pending?.kind == .analysis && pending?.position?.fen == position.fen { return }
+        let cached = analysisCache[position.fen]
         submit(Request(id: UUID(), kind: .analysis, variant: "chess", setup: "position fen \(position.fen)", side: position.turn, position: position))
+        if let cached, !cached.isEmpty {
+            latest = Dictionary(uniqueKeysWithValues: cached.map { ($0.rank, $0) })
+            lines = cached; analyzedFEN = position.fen
+        }
     }
     func prepareVariant(_ variant: String) async throws {
         guard ["chess", "3check", "kingofthehill", "horde", "crazyhouse", "duck", "atomic", "antichess", "cvfog", "cvpawns", "cvpawnrace", "bughouse"].contains(variant) || (variant.hasPrefix("cv960") && (0..<960).contains(Int(variant.dropFirst(5)) ?? -1)) else { throw ChessError.invalid("Unsupported game style.") }
@@ -83,10 +94,15 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
     }
     func reviewPosition(variant: String, history: [String], side: Side, milliseconds: Int = 3000) async throws -> EngineLine {
         let request = Request(id: UUID(), kind: .review, variant: variant, setup: "position startpos moves " + history.joined(separator: " "), side: side, duration: max(250, min(10000, milliseconds)))
+        let cacheKey = request.variant + "|" + request.setup
+        try Task.checkCancellation()
+        if let cached = reviewCache[cacheKey], cached.milliseconds >= (request.duration ?? 3000) { return cached.line }
         defer { reviewResults.removeValue(forKey: request.id) }
         _ = try await awaitRequest(request)
         try Task.checkCancellation()
         guard let result = reviewResults[request.id] else { throw ChessError.invalid("The engine did not return an evaluation. Resume the review to retry.") }
+        if reviewCache.count >= 256, let key = reviewCache.keys.first { reviewCache.removeValue(forKey: key) }
+        reviewCache[cacheKey] = (request.duration ?? 3000, result)
         return result
     }
     func computerMove(fen: String, rating: Int, side: Side, milliseconds: Int = 650) async throws -> String {
@@ -118,7 +134,13 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
         if running { if !stopping { stopping = true; sendSearch("stop") } }
         else { driveQueue() }
     }
+    private func cacheAnalysis() {
+        guard let fen = active?.position?.fen, active?.kind == .analysis, analyzedFEN == fen, !latest.isEmpty else { return }
+        if analysisCache.count >= 32, analysisCache[fen] == nil, let key = analysisCache.keys.first { analysisCache.removeValue(forKey: key) }
+        analysisCache[fen] = latest.values.sorted { $0.rank < $1.rank }
+    }
     private func clearResults() {
+        cacheAnalysis()
         publishTask?.cancel(); publishTask = nil; latest = [:]
         lines = []; bestMove = nil; error = nil; terminal = nil; analyzedFEN = nil
     }
@@ -144,7 +166,7 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
                 bestMove = "(none)"; complete(request.id, .success("(none)")); return
             }
         }
-        active = request; running = true
+        active = request; running = true; searchStarted = ProcessInfo.processInfo.systemUptime; reviewStopRequested = false
         searchEngine = request.modern ? "Stockfish 19 NNUE" : "Fairy-Stockfish"
         let search = request.modern ? sendModern : send
         search("setoption name MultiPV value \(request.kind == .analysis ? analysisCandidates : 1)")
@@ -184,7 +206,7 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
         pending = nil; publishTask?.cancel(); publishTask = nil
         if running && !stopping { stopping = true; sendSearch("stop") }
     }
-    private func publish() { lines = latest.values.sorted { $0.rank < $1.rank } }
+    private func publish() { lines = latest.values.sorted { $0.rank < $1.rank }; cacheAnalysis() }
     func receive(_ line: String, modern: Bool = false) {
         if modern {
             if line.hasPrefix("engineerror ") {
@@ -193,8 +215,8 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
                 driveQueue(); return
             }
             if line == "uciok" {
-                sendModern("setoption name Threads value \(max(1, min(2, ProcessInfo.processInfo.activeProcessorCount - 1)))")
-                sendModern("setoption name Hash value 128"); sendModern("ucinewgame"); sendModern("isready"); return
+                sendModern("setoption name Threads value \(max(1, min(4, ProcessInfo.processInfo.activeProcessorCount - 1)))")
+                sendModern("setoption name Hash value 192"); sendModern("ucinewgame"); sendModern("isready"); return
             }
             if line == "readyok" { modernReady = true; if ready { handshake?.cancel() }; driveQueue(); return }
         }
@@ -210,7 +232,16 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
         }
         guard active?.modern == modern else { return }
         if running && !stopping, let active, let result = EngineLine.parse(line, turn: active.side) {
+            let previous = latest[result.rank]
+            if active.kind == .analysis, let previous, result.depth < previous.depth { return }
             latest[result.rank] = result
+            if active.kind == .review && active.modern && !reviewStopRequested,
+               result.depth >= 20, let previous, previous.depth < result.depth,
+               previous.moves.prefix(3) == result.moves.prefix(3), result.mate == nil, previous.mate == nil,
+               let score = result.centipawns, let priorScore = previous.centipawns, abs(score - priorScore) <= 10,
+               ProcessInfo.processInfo.systemUptime - searchStarted >= 0.8 {
+                reviewStopRequested = true; sendSearch("stop")
+            }
             if publishTask == nil {
                 publishTask = Task {
                     do { try await Task.sleep(for: .milliseconds(200)) } catch { return }

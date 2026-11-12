@@ -163,7 +163,7 @@ import SwiftUI
         let seconds = model.clocks.indices.contains(board) ? model.clocks[board].remaining(for: side, at: ProcessInfo.processInfo.systemUptime) : 0
         let rounded = Int(ceil(seconds))
         return VStack(spacing: 0) {
-            Text("\(side.title) \(rating)").font(.system(size: 9)).lineLimit(1).minimumScaleFactor(0.7)
+            Text("\(side.title) \(String(rating))").font(.system(size: 9)).lineLimit(1).minimumScaleFactor(0.7)
             Text(String(format: "%d:%02d", rounded / 60, rounded % 60)).font(.caption.bold().monospacedDigit())
         }.foregroundStyle(BughouseConfig.team(board, side) == model.match?.config.humanTeam ? Color.accentColor : Color.primary)
     }

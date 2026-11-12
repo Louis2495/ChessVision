@@ -15,7 +15,7 @@ struct GameHistoryView: View {
                 NavigationLink { GameReviewView(id: entry.id) } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack { Text(entry.resultTitle).font(.headline); Spacer(); Text(entry.game.mode.title).font(.caption).foregroundStyle(.secondary) }
-                        Text("You: \(entry.game.human.title) · \(entry.game.opponentName ?? "Computer ≈ \(entry.game.targetRating)") · \(entry.game.moves.count) plies").font(.caption).foregroundStyle(.secondary)
+                        Text("You: \(entry.game.human.title) · \(entry.game.opponentName ?? "Computer ≈ \(String(entry.game.targetRating))") · \(entry.game.moves.count) plies").font(.caption).foregroundStyle(.secondary)
                         Text(entry.finishedAt, style: .date).font(.caption2).foregroundStyle(.secondary)
                         if entry.review?.complete == true { Text("Review saved").font(.caption).foregroundStyle(.tint) }
                     }.padding(.vertical, 6)
@@ -83,7 +83,7 @@ struct GameReviewView: View {
                     }
                     if entry.bughouse != nil { Text("Bughouse comparisons assess board A. Partner-board consequences are not fully evaluated by the engine.").font(.caption).foregroundStyle(.secondary) }
                     DisclosureGroup("About this review") {
-                        Text("Repertoire suggestions reflect your saved choices. Standard-chess suggestions use Stockfish 19 with its NNUE model and about three seconds per position. Variants use Fairy-Stockfish. Classifications can change with deeper analysis.").font(.caption).foregroundStyle(.secondary).padding(.top, 6)
+                        Text("Repertoire suggestions reflect your saved choices. Standard-chess suggestions use Stockfish 19 with its NNUE model and up to three seconds per position, ending stable searches sooner. Variants use Fairy-Stockfish. Classifications can change with deeper analysis.").font(.caption).foregroundStyle(.secondary).padding(.top, 6)
                     }
                 }.padding()
             }
@@ -123,7 +123,7 @@ struct GameReviewView: View {
         AppCard {
             Text("Game summary").font(.title2.bold())
             if let change = entry.ratingChange {
-                Text("Rated game · \(change >= 0 ? "+" : "")\(change) rating points").font(.headline)
+                Text("Rated game · \(change >= 0 ? "+" : "")\(String(change)) rating points").font(.headline)
             }
             ForEach(Side.allCases, id: \.rawValue) { side in
                 let summary = ReviewSummary(review.assessments ?? [], side: side)
@@ -131,7 +131,7 @@ struct GameReviewView: View {
                     Text(side.title).font(.headline)
                     Text("\(summary.count(.blunder)) blunders · \(summary.count(.mistake)) mistakes · \(summary.count(.inaccuracy)) inaccuracies").font(.subheadline)
                     Text("\(summary.count(.best)) best · \(summary.count(.excellent)) excellent · \(summary.count(.good)) good · \(summary.count(.book)) book").font(.caption).foregroundStyle(.secondary)
-                    if let estimate = summary.estimatedRating { Text("Move-quality estimate ≈ \(estimate)").font(.subheadline) }
+                    if let estimate = summary.estimatedRating { Text("Move-quality estimate ≈ \(String(estimate))").font(.subheadline) }
                     else { Text("Rating estimate needs eight assessed moves.").font(.caption).foregroundStyle(.secondary) }
                 }
             }

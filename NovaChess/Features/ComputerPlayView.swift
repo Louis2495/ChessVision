@@ -283,7 +283,7 @@ struct ComputerPlayView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if let game = model.game, let snapshot = model.snapshot {
-                    HStack { Text(game.mode.title).font(.headline); Spacer(); Text("\(game.adaptive == true ? "Adaptive" : game.rated == true ? "Rated" : "Bot") ≈ \(game.adaptiveRating ?? game.targetRating)").font(.subheadline).foregroundStyle(.secondary) }
+                    HStack { Text(game.mode.title).font(.headline); Spacer(); Text("\(game.adaptive == true ? "Adaptive" : game.rated == true ? "Rated" : "Bot") ≈ \(String(game.adaptiveRating ?? game.targetRating))").font(.subheadline).foregroundStyle(.secondary) }
                     HStack { Text("You play \(game.human.title)"); Spacer(); TurnBadge(side: snapshot.board.turn) }
                     if game.mode == .normal, let name = model.recognizedOpening { Text(name).font(.subheadline).foregroundStyle(.secondary) }
                     gameBoard(snapshot, game: game)
@@ -485,7 +485,7 @@ private struct GameSetupForm: View {
             }
             Toggle("Adaptive difficulty", isOn: $model.adaptive).onChange(of: model.adaptive) { _, value in if value { model.rated = false } }
             if model.adaptive { Text("The bot adjusts after your moves. Adaptive games are unrated.").font(.caption).foregroundStyle(.secondary) }
-            Button("Use my rating (\(Int(library.state.playProgress.rating(for: model.mode).value.rounded())))") { model.ratingText = String(Int(library.state.playProgress.rating(for: model.mode).value.rounded())) }
+            Button("Use my rating (\(String(Int(library.state.playProgress.rating(for: model.mode).value.rounded()))))") { model.ratingText = String(Int(library.state.playProgress.rating(for: model.mode).value.rounded())) }
             if model.game?.rated == true && model.snapshot?.finished == false { Text("Starting another game resigns your current rated game.").font(.caption).foregroundStyle(.secondary) }
             Text("Computer strength · estimated Elo").font(.caption).foregroundStyle(.secondary)
             TextField("Requested rating", text: $model.ratingText).keyboardType(.numberPad).textFieldStyle(.roundedBorder)

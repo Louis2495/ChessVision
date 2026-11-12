@@ -5,8 +5,13 @@ import AVFoundation
     static let shared = ClassicalMusic()
     private var player: AVAudioPlayer?
     func setEnabled(_ enabled: Bool) {
-        if !enabled { player?.stop(); player = nil; try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation); return }
-        guard player == nil, let url = Bundle.main.url(forResource: "ClassicalPrelude", withExtension: "wav") else { return }
+        if !enabled { player?.pause(); try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation); return }
+        if let player {
+            try? AVAudioSession.sharedInstance().setActive(true)
+            if !player.isPlaying { player.play() }
+            return
+        }
+        guard let url = Bundle.main.url(forResource: "ClassicalPrelude", withExtension: "wav") else { return }
         do {
             try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
@@ -49,16 +54,14 @@ struct SettingsView: View {
             }.listRowBackground(ThemeCardBackground())
             Section("Analysis") {
                 Text("Stockfish 19 · NNUE").font(.headline)
-                Text("Analysis always uses full strength and keeps refining three candidate lines.").font(.caption).foregroundStyle(.secondary)
             }.listRowBackground(ThemeCardBackground())
             Section("Moves") {
                 Toggle("Premoves", isOn: $premoves)
-                Text("Queue moves while the computer thinks. Tap an unrelated square to cancel the last premove; tap again to cancel another.").font(.caption).foregroundStyle(.secondary)
+                Text("Tap an unrelated square to cancel the last premove; tap again to cancel another.").font(.caption).foregroundStyle(.secondary)
                 Toggle("Auto-queen", isOn: $autoQueen)
             }.listRowBackground(ThemeCardBackground())
             Section("Sound") {
                 Toggle("Classical music", isOn: $music)
-                Text("An original classical-style piano prelude. Music pauses when you leave the app.").font(.caption).foregroundStyle(.secondary)
             }.listRowBackground(ThemeCardBackground())
             Section { NavigationLink("Privacy & licenses") { AppInfoView() } }.listRowBackground(ThemeCardBackground())
         }.modifier(AppSurface()).navigationTitle("Settings").toolbar { Button("Done") { dismiss() } }

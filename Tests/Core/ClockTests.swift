@@ -6,6 +6,13 @@ import XCTest
 #endif
 
 final class ClockTests: XCTestCase {
+    func testPausedClockResumesFromEitherFaceWithoutCompletingAMove() {
+        var clock = ChessClock(control: ClockTimeControl(seconds: 60, increment: 2, delay: 5))
+        clock.start(at: 0); clock.pause(at: 7)
+        clock.press(.black, at: 100)
+        XCTAssertEqual(clock.phase, .running); XCTAssertEqual(clock.active, .white)
+        XCTAssertEqual(clock.remaining(for: .white, at: 101), 57)
+    }
     func testDelayAppliesToFirstAndLaterMoves() {
         var clock = ChessClock(control: ClockTimeControl(seconds: 60, increment: 2, delay: 5))
         clock.start(at: 0)

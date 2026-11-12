@@ -24,6 +24,9 @@ import Darwin
             try require(engine.analyzedFEN == Position.initial.fen, "Wrong initial FEN")
             let firstDepth = engine.lines.first!.depth
             try await wait { engine.lines.first?.depth ?? 0 > firstDepth }
+            let retainedDepth = engine.lines.first!.depth
+            engine.analyze(.initial)
+            try require(engine.running && (engine.lines.first?.depth ?? 0) >= retainedDepth, "Returning to the same analysis restarted its search")
             var next = Position.initial; try next.apply(uci: "e2e4")
             engine.analyze(next)
             try require(engine.lines.isEmpty, "Old evaluations were retained")
@@ -34,7 +37,14 @@ import Darwin
             engine.analyze(.initial); engine.analyze(next); engine.analyze(final)
             try await wait { engine.analyzedFEN == final.fen && !engine.lines.isEmpty }
             try require(engine.running, "Replacement analysis is not running")
+            engine.analyze(next)
+            try require(engine.analyzedFEN == next.fen && !engine.lines.isEmpty, "Cached analysis did not restore immediately")
+            try require(engine.lines.allSatisfy { $0.moves.first.map { replies.contains($0) } ?? false }, "Rapid requests mixed cached positions")
             engine.stop(); try await wait { !engine.running }
+            let firstReview = try await engine.reviewPosition(variant: "chess", history: ["e2e4"], side: .black, milliseconds: 300)
+            let cacheStart = ProcessInfo.processInfo.systemUptime
+            let secondReview = try await engine.reviewPosition(variant: "chess", history: ["e2e4"], side: .black, milliseconds: 300)
+            try require(firstReview == secondReview && ProcessInfo.processInfo.systemUptime - cacheStart < 0.1, "Completed review was searched again instead of reused")
             let mate = try Position(fen: "7k/6Q1/6K1/8/8/8/8/8 b - - 0 1")
             engine.analyze(mate)
             try require(engine.terminal == "Checkmate — White wins" && !engine.running, "Checkmate was not handled")

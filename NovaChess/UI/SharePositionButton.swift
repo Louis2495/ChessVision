@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 struct SharePositionButton: View {
     var position: Position
     var game: [Position] = []
+    var title = "Share position"
     @State private var items: [Any] = []
     @State private var sharing = false
     @State private var exporting = false
@@ -18,7 +19,7 @@ struct SharePositionButton: View {
                 if game.count > 1 { Button("Share GIF", systemImage: "film") { shareGIF() } }
                 Button("Share FEN", systemImage: "text.alignleft") { share(image: false, fen: true) }
                 Button("Share board image", systemImage: "photo") { share(image: true, fen: false) }
-            } label: { Label("Share position", systemImage: "square.and.arrow.up") }
+            } label: { Label(title, systemImage: "square.and.arrow.up") }
             .disabled(exporting)
             if exporting {
                 HStack { ProgressView("Creating GIF…"); Button("Cancel") { exportTask?.cancel() } }

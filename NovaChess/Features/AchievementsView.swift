@@ -8,7 +8,7 @@ struct AchievementsView: View {
                 Text("Local ratings for rated games against the computer. These are separate from Chess.com, Lichess and your puzzle estimate.").font(.caption).foregroundStyle(.secondary)
                 ForEach(GameMode.allCases.filter { library.state.playProgress.rating(for: $0).games > 0 }) { mode in
                     let rating = library.state.playProgress.rating(for: mode)
-                    HStack { Text(mode.title); Spacer(); Text("\(Int(rating.value.rounded())) · \(rating.games) games").monospacedDigit() }
+                    HStack { Text(mode.title); Spacer(); Text("\(String(Int(rating.value.rounded()))) · \(rating.games) games").monospacedDigit() }
                 }
                 if library.state.playProgress.ratings.isEmpty { Text("Your starting rating is 1000. Enable Rated game in New game to begin.").foregroundStyle(.secondary) }
             }.listRowBackground(ThemeCardBackground())

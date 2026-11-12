@@ -107,7 +107,7 @@ extension NovaChessUITests {
         let running = expectation(for: NSPredicate(format: "label CONTAINS %@", "running"), evaluatedWith: app.buttons["clock-b"])
         wait(for: [running], timeout: 3)
         app.buttons["Pause"].tap()
-        XCTAssertTrue(app.buttons["Resume"].exists)
+        XCTAssertFalse(app.buttons["Resume"].exists)
         app.buttons["Time control"].tap()
         XCTAssertTrue(app.switches["Custom time control"].waitForExistence(timeout: 5))
     }
@@ -123,7 +123,7 @@ extension NovaChessUITests {
         for _ in 0..<8 { if notation.isHittable { break }; app.swipeUp() }
         if notation.value as? String == "0" { notation.tap() }
         XCTAssertTrue(app.buttons["Move 1, White, e4"].waitForExistence(timeout: 5))
-        let share = app.buttons["Share position"]
+        let share = app.buttons["Share"]
         for _ in 0..<5 { if share.isHittable { break }; app.swipeUp() }
         share.tap()
         XCTAssertTrue(app.buttons["Share GIF"].waitForExistence(timeout: 5))

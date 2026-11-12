@@ -2,12 +2,16 @@ import SwiftUI
 
 private struct InsightRequest: Hashable {
     var fen: String
-    var engine: EngineLine?
+    var moves: [String]
+    var scoreBucket: Int?
+    var mate: Int?
+    var depthBucket: Int
 }
 
 private struct NotationRequest: Hashable {
     var fen: String
-    var lines: [EngineLine]
+    var variations: [[String]]
+    var ranks: [Int]
 }
 
 struct AnalysisView: View {
@@ -39,6 +43,15 @@ struct AnalysisView: View {
         self.showsSettings = showsSettings
         self.original = original
         _history = State(initialValue: [original])
+    }
+    private var notationRequest: NotationRequest {
+        NotationRequest(fen: position.fen, variations: liveLines.map(\.moves), ranks: liveLines.map(\.rank))
+    }
+    private var insightRequest: InsightRequest? {
+        guard insights else { return nil }
+        return InsightRequest(fen: position.fen, moves: Array(principal?.moves.prefix(2) ?? []),
+                              scoreBucket: principal?.centipawns.map { $0 / 25 }, mate: principal?.mate,
+                              depthBucket: (principal?.depth ?? 0) / 4)
     }
     private var gameHistory: [Position] { Array(history.prefix(cursor + 1)) }
     private var position: Position { history[cursor] }
@@ -93,10 +106,12 @@ struct AnalysisView: View {
                 Toggle("Candidate lines", isOn: $showCandidateLines)
                 }
                 if showCandidateLines { AppCard { candidateLines } }
-                Button("Return to original position", systemImage: "arrow.counterclockwise") { history = [original]; cursor = 0; selected = nil }
-                    .disabled(cursor == 0 && position == original)
-                Button("Save game", systemImage: "folder.badge.plus") { savingGame = true }
-                SharePositionButton(position: position, game: gameHistory).buttonStyle(.bordered).controlSize(.large)
+                HStack(spacing: 10) {
+                    SharePositionButton(position: position, game: gameHistory, title: "Share").frame(maxWidth: .infinity)
+                    Button("Save", systemImage: "folder.badge.plus") { savingGame = true }.frame(maxWidth: .infinity)
+                    Button("Reset", systemImage: "arrow.counterclockwise") { history = [original]; cursor = 0; selected = nil }
+                        .disabled(cursor == 0 && position == original).frame(maxWidth: .infinity)
+                }.buttonStyle(.bordered).controlSize(.regular)
                 if let message { Text(message).font(.footnote).foregroundStyle(.red) }
             }.padding()
         }
@@ -123,7 +138,7 @@ struct AnalysisView: View {
             selected = nil; promotions = []; message = nil
             if visible && scenePhase == .active { engine.analyze(position) }
         }
-        .task(id: NotationRequest(fen: position.fen, lines: liveLines)) {
+        .task(id: notationRequest) {
             let root = position, lines = liveLines
             // SAN involves legal-move generation; keep it off the UI/engine callback queue.
             let worker = Task.detached(priority: .userInitiated) { () -> [Int: [NotatedMove]] in
@@ -138,7 +153,7 @@ struct AnalysisView: View {
             guard !Task.isCancelled else { return }
             notation = formatted; notationFEN = root.fen
         }
-        .task(id: insights ? InsightRequest(fen: position.fen, engine: principal) : nil) {
+        .task(id: insightRequest) {
             guard insights else { observations = []; insightFEN = nil; return }
             let board = position, line = principal
             let worker = Task.detached(priority: .userInitiated) { PositionInsights.observations(in: board, engine: line) }
@@ -156,9 +171,9 @@ struct AnalysisView: View {
             } catch { }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active && visible { engine.analyze(position) } else if visible { engine.stopAnalysis() }
+            if phase == .active && visible { engine.analyze(position) }
         }
-        .onDisappear { visible = false; engine.stopAnalysis() }
+        .onDisappear { visible = false }
         .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
             PromotionPicker(side: position.turn, kinds: promotions.compactMap(\.promotion)) { kind in
                 if let move = promotions.first(where: { $0.promotion == kind }) { play(move) }

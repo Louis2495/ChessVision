@@ -5,7 +5,6 @@ import SwiftUI
     @State private var visible = false
     @Environment(\.scenePhase) private var scenePhase
     @State private var setup = false
-    @State private var resumeAfterSetup = false
     @State private var resetting = false
     var body: some View {
         NavigationStack {
@@ -19,16 +18,18 @@ import SwiftUI
             }
             .modifier(AppSurface()).navigationTitle("Clock").navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if clock.phase == .running && clock.flagged(at: ProcessInfo.processInfo.systemUptime) == nil {
+                        Button("Pause", systemImage: "pause.fill") { clock.pause(at: ProcessInfo.processInfo.systemUptime) }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) { resetButton }
             }
             .onAppear { visible = true; updateScreenAwake() }
             .onDisappear { visible = false; UIApplication.shared.isIdleTimerDisabled = false }
             .onChange(of: clock.phase) { _, _ in updateScreenAwake() }
             .onChange(of: scenePhase) { _, _ in updateScreenAwake() }
-            .sheet(isPresented: $setup, onDismiss: {
-                if resumeAfterSetup && clock.phase == .paused { clock.start(at: ProcessInfo.processInfo.systemUptime) }
-                resumeAfterSetup = false
-            }) {
+            .sheet(isPresented: $setup) {
                 ClockSetupView { control in
                     clock = ChessClock(control: control)
                 }
@@ -39,7 +40,6 @@ import SwiftUI
         }
     }
     private func changeTimeControl() {
-        resumeAfterSetup = clock.phase == .running
         clock.pause(at: ProcessInfo.processInfo.systemUptime); setup = true
     }
     private func updateScreenAwake() {
@@ -63,26 +63,16 @@ import SwiftUI
     private var resetButton: some View {
         Button("Reset", systemImage: "arrow.counterclockwise") { resetting = true }
     }
-    private var runButton: some View {
-        Button(clock.phase == .running ? "Pause" : clock.phase == .ready ? "Start" : "Resume", systemImage: clock.phase == .running ? "pause.fill" : "play.fill") {
-            let time = ProcessInfo.processInfo.systemUptime
-            if clock.phase == .running { clock.pause(at: time) } else { clock.start(at: time) }
-        }.disabled(clock.flagged(at: ProcessInfo.processInfo.systemUptime) != nil)
-    }
     private func controlTitle(now: Double) -> some View {
         VStack(spacing: 4) {
             Button(action: changeTimeControl) { Label(clock.control.title, systemImage: "slider.horizontal.3").font(.headline.monospacedDigit()).frame(minHeight: 44) }.accessibilityLabel("Time control")
             if clock.flagged(at: now) != nil { Text("Time expired").font(.caption.bold()) }
         }
     }
-    private func controls(now: Double) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack { Color.clear.frame(width: 80, height: 1); Spacer(); controlTitle(now: now); Spacer(); if clock.phase != .ready { runButton } else { Color.clear.frame(width: 80, height: 1) } }
-            VStack(spacing: 8) {
-                controlTitle(now: now)
-                HStack { Spacer(); if clock.phase != .ready { runButton } }
-            }
-        }.buttonStyle(.bordered).controlSize(.large)
+    @ViewBuilder private func controls(now: Double) -> some View {
+        if clock.phase != .running || clock.flagged(at: now) != nil {
+            controlTitle(now: now).frame(maxWidth: .infinity).buttonStyle(.bordered).controlSize(.large)
+        }
     }
     private func time(_ seconds: Double) -> String {
         let rounded = Int(ceil(max(0, seconds)))
@@ -107,8 +97,8 @@ private struct ClockSetupView: View {
                     if custom {
                         Stepper("Minutes: \(minutes)", value: $minutes, in: 0...180)
                         Stepper("Seconds: \(seconds)", value: $seconds, in: 0...59)
-                        Stepper("Increment: \(increment) seconds", value: $increment, in: 0...60)
-                        Stepper("Delay: \(delay) seconds", value: $delay, in: 0...60)
+                        Stepper("Increment: \(increment) \(increment == 1 ? "second" : "seconds")", value: $increment, in: 0...60)
+                        Stepper("Delay: \(delay) \(delay == 1 ? "second" : "seconds")", value: $delay, in: 0...60)
                     } else {
                         Picker("Time control", selection: $selected) {
                             ForEach(Array(ClockTimeControl.presets.enumerated()), id: \.offset) { index, preset in Text(preset.title).tag(index) }

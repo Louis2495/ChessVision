@@ -168,11 +168,11 @@ Validation includes full portable core tests, assertion-enabled native game/revi
 
 ## Version 0.14 official Stockfish 19 NNUE
 
-The Analysis tab now uses the latest official stable Stockfish release (`sf_19`, verified 2026-11-10), with its **full default nn-1a298aa575a0.nnue model**. The previous standard search used Fairy-Stockfish with neural evaluation disabled. The new engine runs two search threads when the device supports them and uses a 128 MiB hash table. Analysis always runs at full strength continuously; the opponent rating never weakens it.
+The Analysis tab now uses the latest official stable Stockfish release (`sf_19`, verified 2026-11-10), with its **full default nn-1a298aa575a0.nnue model**. The previous standard search used Fairy-Stockfish with neural evaluation disabled. The engine uses up to four search threads when available and a 192 MiB hash table. Analysis always runs at full strength continuously; the opponent rating never weakens it.
 
 Settings → Analysis offers one candidate line (default, deepest search) or three alternatives. The best move is visible without opening the continuation. Search depth and engine/model identity appear beside the board. Different engines, depths, multi-PV counts, castling/en-passant rights and search histories can still produce different scores; this upgrade does not claim perfect analysis or equal results at unequal budgets.
 
-Standard post-game reviews spend about **3 seconds on each before/after position**, rather than 250ms. Existing saved reviews are invalidated by an engine/model/search-policy version so they refresh automatically when opened. Progress/pause/resume and repertoire-first suggestions remain available. Full games consequently take longer to review. Variants retain Fairy-Stockfish because official Stockfish does not implement their rules, and low-rated standard opponents retain its weaker settings.
+Standard post-game reviews allow up to **3 seconds on each before/after position**. Stable Stockfish searches can finish sooner after depth 20; completed identical requests are cached. Existing saved reviews are invalidated by an engine/model/search-policy version so they refresh automatically when opened. Progress/pause/resume and repertoire-first suggestions remain available. Full games consequently take longer to review. Variants retain Fairy-Stockfish because official Stockfish does not implement their rules, and low-rated standard opponents retain its weaker settings.
 
 The bundled NNUE is 98,511,183 bytes, SHA-256 `1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2`. Builds verify that hash. No LFS setup, model conversion or internet is required to build on a Mac. The app displays a model-loading failure rather than silently using classical evaluation. See Vendor/Stockfish19/NOVACHESS.md and Scripts/test-modern-engine.py for provenance and fixed-depth comparisons against the official release.
 
@@ -238,3 +238,16 @@ Normal is now labeled **Standard** without changing stored game identifiers. Sta
 Research identifies whether the displayed choices belong to the imported username or the opponent, alongside White/Black. Theme accents are brighter in dark appearance and background tints are softer to improve contrast.
 
 Clock has Reset in the top bar, no Settings or Start button, and starts by tapping a clock face. Its centered time-control button opens setup; Apply returns to a ready clock. Custom controls now offer delay as well as increment. Delay applies afresh each turn, including the first turn, and pausing preserves only the unused part of that turn's delay.
+
+
+## Version 0.20 analysis continuity, clock and music
+
+Analysis actions are a single bottom row: Share, Save, Reset. Rating text uses ungrouped decimal strings throughout the app. Settings retain only premove cancellation instructions; the Stockfish and classical-music descriptions were removed.
+
+Leaving the Analysis tab no longer stops its search. Re-entering the same active position does not submit a new search. Up to 32 positions retain candidate results in memory, restored immediately after another engine feature interrupts analysis; resumed searches retain the engine's transposition table and do not replace a deeper displayed result with a shallower one. iOS may suspend execution when the app is backgrounded, and process termination clears these session caches. No background execution entitlement is requested.
+
+Completed review evaluations are memoized for up to 256 exact variant/history/budget requests. Stockfish review searches retain their three-second maximum but may stop after at least 0.8 seconds and depth 20 when successive deeper iterations agree on the first three moves and evaluation within 0.10 pawns. Mate searches retain the full budget. Hard positions keep searching to the time limit. This remains a heuristic search, not a guarantee that deeper analysis will agree. SAN conversion no longer restarts for depth-only updates, and insight generation is less frequent. The engine remains official Stockfish 19 with its full NNUE network.
+
+The original piano soundtrack now lasts approximately 190 seconds, with four contrasting sections, varied melody/accompaniment, dynamics and a resolved cadence. Foreground playback resumes from its previous time rather than restarting the opening phrase.
+
+Clock uses a top-left Pause control and resumes from either face without switching sides or adding increment. The time-control button is hidden during active play and available before starting, while paused, or after flagging. Increment and delay use singular “second” for a value of 1.

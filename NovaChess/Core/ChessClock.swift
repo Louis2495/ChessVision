@@ -41,6 +41,7 @@ public struct ChessClock: Sendable {
         phase = .running; anchor = now
     }
     public mutating func press(_ side: Side, at now: Double) {
+        if phase == .paused { start(at: now); return }
         if phase == .ready {
             // White may finish move one before Start is pressed. A Black tap here only starts White.
             if side == .white { white += Double(control.increment) }

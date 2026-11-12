@@ -7,7 +7,7 @@ struct AppInfoView: View {
                 Text("Privacy").font(.title2.bold())
                 Text("Photos and camera recordings stay on your iPhone. NovaChess does not collect analytics. After you create a NovaChess username, game boards publish automatically through iCloud for spectating; Game Center handles online invitations. Sharing a board uses the system share sheet. Opening explorer contacts the chosen site with the public username you enter. Your repertoire, puzzle progress and local games are saved on this device. Usernames, friend-request routing and automatically published game boards are stored in CloudKit; public boards are visible to other NovaChess users.")
                 DisclosureGroup("Chess engines") {
-                    Text("Standard chess uses official Stockfish 19 and its bundled NNUE network nn-1a298aa575a0. Analysis runs at full strength until you leave or change the position. Variants use Fairy-Stockfish with their own rules. Scores can differ with search time, engine version, candidate-line count and position rights.").font(.footnote)
+                    Text("Standard chess uses official Stockfish 19 and its bundled NNUE network nn-1a298aa575a0. Analysis keeps its search across tab changes while the process remains active. iOS may suspend background execution. Variants use Fairy-Stockfish with their own rules. Scores can differ with search time, engine version, candidate-line count and position rights.").font(.footnote)
                 }
                 DisclosureGroup("Ratings") {
                     Text("Puzzle levels are estimates based on Lichess source ratings, not official Chess.com ratings. Computer strength is approximate and varies with hardware and variant.").font(.footnote)

@@ -199,6 +199,6 @@ extension NovaChessUITests {
         XCTAssertFalse(black.staticTexts["Black"].exists)
         app.buttons["Time control"].tap()
         XCTAssertTrue(app.navigationBars["Time control"].waitForExistence(timeout: 5))
-        XCTAssertGreaterThan(app.buttons["Start"].frame.width, 200)
+        XCTAssertGreaterThan(app.buttons["Apply"].frame.width, 200)
     }
 }

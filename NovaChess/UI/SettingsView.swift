@@ -72,7 +72,11 @@ struct AppAppearance: ViewModifier {
     @AppStorage("classicalMusic") private var music = false
     @Environment(\.scenePhase) private var phase
     @AppStorage("pieceStyle") private var pieces = "Illustrated"
-    private var tint: Color { Color(hex: (AppTheme(rawValue: theme) ?? .forest).hex) }
+    @Environment(\.colorScheme) private var scheme
+    private var tint: Color {
+        let base = Color(hex: (AppTheme(rawValue: theme) ?? .forest).hex)
+        return (appearance == "Dark" || (appearance == "System" && scheme == .dark)) ? Color(uiColor: UIColor(base).withAdjustedBrightness()) : base
+    }
     func body(content: Content) -> some View {
         content.accentColor(tint).tint(tint).preferredColorScheme(appearance == "Light" ? .light : appearance == "Dark" ? .dark : nil)
             .background { AppCanvas().ignoresSafeArea() }
@@ -100,8 +104,8 @@ struct AppCanvas: View {
     var body: some View {
         ZStack {
             Color(uiColor: .systemBackground)
-            if let hex = backdrop.hex { Color(hex: hex).opacity(scheme == .dark ? 0.20 : 0.12) }
-            if backdrop == .theme { accent.opacity(scheme == .dark ? 0.20 : 0.09) }
+            if let hex = backdrop.hex { Color(hex: hex).opacity(scheme == .dark ? 0.10 : 0.07) }
+            if backdrop == .theme { accent.opacity(scheme == .dark ? 0.10 : 0.06) }
             if backdrop == .aurora {
                 LinearGradient(colors: [accent.opacity(0.16), Color.purple.opacity(0.10), Color.teal.opacity(0.12)], startPoint: .topLeading, endPoint: .bottomTrailing)
             }
@@ -137,5 +141,13 @@ struct AppSurface: ViewModifier {
             .background { AppCanvas().ignoresSafeArea() }
             .toolbarBackground(bar, for: .navigationBar, .tabBar)
             .toolbarBackground(.visible, for: .navigationBar, .tabBar)
+    }
+}
+
+private extension UIColor {
+    func withAdjustedBrightness() -> UIColor {
+        var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
+        guard getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) else { return self }
+        return UIColor(hue: hue, saturation: min(saturation, 0.55), brightness: max(brightness, 0.94), alpha: alpha)
     }
 }

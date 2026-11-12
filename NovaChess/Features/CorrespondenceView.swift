@@ -70,7 +70,7 @@ import GameKit
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 HStack { Text(model.myTurn ? "Your turn" : "Waiting for your opponent").font(.headline); Spacer(); TurnBadge(side: model.board.turn) }
-                MoveBoard(position: model.board, enabled: model.myTurn && !model.busy, flipped: model.human == .black, onMove: model.play)
+                MoveBoard(position: model.board, enabled: model.myTurn && !model.busy, flipped: model.human == .black, premoveSide: model.human, onMove: model.play)
                 if let result = model.result { Text(result == "white" ? "White wins" : result == "black" ? "Black wins" : result == "draw" ? "Draw" : result).font(.title2.bold()) }
                 if let deadline = model.match?.currentParticipant?.timeoutDate, model.result == nil {
                     HStack { Text("Turn deadline"); Spacer(); Text(deadline, style: .date); Text(deadline, style: .time) }.font(.caption).foregroundStyle(.secondary)

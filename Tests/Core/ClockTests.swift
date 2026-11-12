@@ -6,6 +6,26 @@ import XCTest
 #endif
 
 final class ClockTests: XCTestCase {
+    func testDelayAppliesToFirstAndLaterMoves() {
+        var clock = ChessClock(control: ClockTimeControl(seconds: 60, increment: 2, delay: 5))
+        clock.start(at: 0)
+        XCTAssertEqual(clock.remaining(for: .white, at: 4), 60)
+        XCTAssertEqual(clock.remaining(for: .white, at: 7), 58)
+        clock.press(.white, at: 7)
+        XCTAssertEqual(clock.remaining(for: .white, at: 20), 60)
+        XCTAssertEqual(clock.remaining(for: .black, at: 11), 60)
+        XCTAssertEqual(clock.remaining(for: .black, at: 14), 58)
+        XCTAssertEqual(clock.deadline, 72)
+    }
+    func testPauseDoesNotRefreshDelay() {
+        var clock = ChessClock(control: ClockTimeControl(seconds: 60, delay: 5))
+        clock.start(at: 0); clock.pause(at: 3); clock.start(at: 100)
+        XCTAssertEqual(clock.remaining(for: .white, at: 101), 60)
+        XCTAssertEqual(clock.remaining(for: .white, at: 104), 58)
+        XCTAssertEqual(clock.deadline, 162)
+        clock.pause(at: 105); clock.start(at: 200)
+        XCTAssertEqual(clock.remaining(for: .white, at: 201), 56)
+    }
     func testElapsedTimeAndIncrementAreAppliedOnlyToActivePlayer() {
         var clock = ChessClock(control: ClockTimeControl(seconds: 180, increment: 2))
         clock.start(at: 100)

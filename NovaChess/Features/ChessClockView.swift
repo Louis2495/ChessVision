@@ -19,7 +19,7 @@ import SwiftUI
             }
             .modifier(AppSurface()).navigationTitle("Clock").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { SettingsButton() }
+                ToolbarItem(placement: .topBarTrailing) { resetButton }
             }
             .onAppear { visible = true; updateScreenAwake() }
             .onDisappear { visible = false; UIApplication.shared.isIdleTimerDisabled = false }
@@ -31,7 +31,6 @@ import SwiftUI
             }) {
                 ClockSetupView { control in
                     clock = ChessClock(control: control)
-                    clock.start(at: ProcessInfo.processInfo.systemUptime)
                 }
             }
             .confirmationDialog("Reset both clocks?", isPresented: $resetting, titleVisibility: .visible) {
@@ -78,10 +77,10 @@ import SwiftUI
     }
     private func controls(now: Double) -> some View {
         ViewThatFits(in: .horizontal) {
-            HStack { resetButton; Spacer(); controlTitle(now: now); Spacer(); runButton }
+            HStack { Color.clear.frame(width: 80, height: 1); Spacer(); controlTitle(now: now); Spacer(); if clock.phase != .ready { runButton } else { Color.clear.frame(width: 80, height: 1) } }
             VStack(spacing: 8) {
                 controlTitle(now: now)
-                HStack { resetButton; Spacer(); runButton }
+                HStack { Spacer(); if clock.phase != .ready { runButton } }
             }
         }.buttonStyle(.bordered).controlSize(.large)
     }
@@ -98,6 +97,7 @@ private struct ClockSetupView: View {
     @AppStorage("clockMinutes") private var minutes = 5
     @AppStorage("clockSeconds") private var seconds = 0
     @AppStorage("clockIncrement") private var increment = 0
+    @AppStorage("clockDelay") private var delay = 0
     let apply: (ClockTimeControl) -> Void
     var body: some View {
         NavigationStack {
@@ -108,8 +108,9 @@ private struct ClockSetupView: View {
                         Stepper("Minutes: \(minutes)", value: $minutes, in: 0...180)
                         Stepper("Seconds: \(seconds)", value: $seconds, in: 0...59)
                         Stepper("Increment: \(increment) seconds", value: $increment, in: 0...60)
+                        Stepper("Delay: \(delay) seconds", value: $delay, in: 0...60)
                     } else {
-                        Picker("Preset · minutes + increment", selection: $selected) {
+                        Picker("Time control", selection: $selected) {
                             ForEach(Array(ClockTimeControl.presets.enumerated()), id: \.offset) { index, preset in Text(preset.title).tag(index) }
                         }.pickerStyle(.inline)
                     }
@@ -117,10 +118,10 @@ private struct ClockSetupView: View {
                 Section {
                     HStack {
                         Button {
-                            let control = custom ? ClockTimeControl(seconds: minutes * 60 + seconds, increment: increment) : ClockTimeControl.presets[selected]
+                            let control = custom ? ClockTimeControl(seconds: minutes * 60 + seconds, increment: increment, delay: delay) : ClockTimeControl.presets[selected]
                             apply(control); dismiss()
                         } label: {
-                            Text("Start").font(.headline).frame(maxWidth: .infinity, minHeight: 44)
+                            Text("Apply").font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                         }.buttonStyle(.borderedProminent).controlSize(.large).disabled(custom && minutes * 60 + seconds == 0)
                     }
                 }.listRowBackground(ThemeCardBackground())

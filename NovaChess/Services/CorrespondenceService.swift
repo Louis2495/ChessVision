@@ -64,16 +64,6 @@ import GameKit
             }
         }
     }
-    func saveMetadata(_ game: CorrespondenceGame, match: GKTurnBasedMatch) async throws {
-        guard match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID else { throw ChessError.invalid("Spectator permission can be changed on your turn.") }
-        let data = try JSONEncoder().encode(game)
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            match.saveCurrentTurn(withMatch: data) { error in
-                if let error { continuation.resume(throwing: error) } else { continuation.resume() }
-            }
-        }
-        refresh()
-    }
     func submit(_ game: CorrespondenceGame, match: GKTurnBasedMatch, result: String?) async throws {
         guard match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID else { throw ChessError.invalid("It is not your turn. Refresh the game.") }
         if let deadline = match.currentParticipant?.timeoutDate, deadline <= Date() { throw ChessError.invalid("The turn deadline passed. Refresh to get the server's current result.") }

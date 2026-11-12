@@ -128,3 +128,12 @@ The camera pipeline uses AVFoundation on a serial queue, throttles recognition t
 ## Bughouse 0.18.1
 
 Six focused portable Bughouse tests passed, including increased deliberation/search in critical positions and bounded timing in severe time pressure. Assertion-enabled native Bughouse checks passed for transfers, drops, promoted captures, four clocks, three AI seats, consecutive premoves, pause/resume, save/resume, flagging and two-board review. Swift syntax and project/hash validation passed. The landscape layout reserves narrow side columns for clocks and populated pockets and no longer sends move/premove targets to BoardView. Visual sizing and touch interactions still require Xcode/iPhone verification because this environment has no Apple SDK or simulator.
+
+
+## Version 0.19 drag, Standard and delay
+
+All 120 portable tests passed, including new first-turn/later-turn delay, increment interaction, deadline and pause/resume checks. The complete assertion-enabled native feature suite passed, including thirteen game styles, Bughouse, Standard consecutive premoves and invalid-queue cancellation, rated/adaptive games, reviews and persistence. Swift syntax and project/hash checks passed. The clock UI test now expects Apply rather than Start on the time-control form.
+
+The shared interactive BoardView maps drag points through the current board orientation and uses the same legal-move/premove handlers as taps. Editor dragging relocates pieces directly. Pocket drag payloads are validated and then passed through existing drop legality. These SwiftUI gestures, visual contrast, clock toolbar layout and final-position evaluation UI still require Xcode/simulator and signed-device verification; Linux has no Apple SDK. The app cannot be certified free of every potential error from these checks.
+
+A dedicated native draw workflow passed early rejection, engine-based balanced-position acceptance, archive result, duplicate protection and persisted restoration. Run it with `bash Scripts/test-draws.sh`; CI includes it after the normal feature checks.

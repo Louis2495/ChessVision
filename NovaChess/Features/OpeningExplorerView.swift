@@ -11,7 +11,7 @@ import SwiftUI
     @Published var busy = false
     @Published private(set) var profileLabel = ""
     private var games: [OpeningGame] = []
-    private var importedUsername = ""
+    private(set) var importedUsername = ""
     private var task: Task<Void, Never>?
     private var generation = UUID()
     private let service: PublicGameService
@@ -100,6 +100,7 @@ struct OpeningExplorerView: View {
                     if !notation.isEmpty { Text(notation.joined(separator: " ")).font(.footnote.monospaced()) }
                     HStack { Button("Back", systemImage: "chevron.left") { history.removeLast(); notation.removeLast() }.disabled(history.count == 1); Spacer(); Button("Starting position") { history = [.initial]; notation = [] } }
                     let branches = model.tree.branches(at: position)
+                    Text("\(position.turn == (model.filter == .white ? Side.white : Side.black) ? (model.importedUsername.isEmpty ? "Player" : model.importedUsername) : "Opponent") to move · \(position.turn.title)").font(.headline).foregroundStyle(.primary)
                     if branches.isEmpty { ContentUnavailableView(model.profileLabel.isEmpty ? "Load a profile to begin" : "No imported games here", systemImage: "tree", description: Text("Standard public games only. The tree covers the first 40 half-moves of your public standard games.")) }
                     ForEach(branches) { branch in
                         Button { if let move = position.legalMoves().first(where: { $0.uci == branch.uci }) { play(move) } } label: {

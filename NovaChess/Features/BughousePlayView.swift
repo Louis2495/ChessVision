@@ -64,9 +64,15 @@ import SwiftUI
             .onChange(of: model.match?.id) { _, _ in composer = PremoveComposer() }
             .onChange(of: model.running) { _, running in UIApplication.shared.isIdleTimerDisabled = running && sideways }
             .onChange(of: scenePhase) { _, phase in if phase != .active { reviewTask?.cancel(); model.pause() } else { scheduleReview() } }
-            .onChange(of: model.states.first?.board.fen) { _, _ in selected = nil; drop = nil; if !queuePromotion { promotions = [] } }
+            .onChange(of: model.states.first?.board.fen) { _, _ in positionChanged() }
             .onChange(of: model.match?.winner) { _, _ in scheduleReview() }
         }
+    }
+    private func positionChanged() {
+        if let square = selected, model.states.first?.board.squares[square]?.side != model.match?.config.human { selected = nil }
+        if let square = composer.selected, let state = model.states.first, let human = model.match?.config.human, model.premoves.projected(state.board, side: human).squares[square]?.side != human { composer.selected = nil }
+        drop = nil
+        if !queuePromotion { promotions = [] }
     }
     private func scheduleReview() {
         reviewTask?.cancel()
@@ -103,7 +109,15 @@ import SwiftUI
         return HStack(spacing: 4) {
             BoardView(position: index == 0 && isPremoving ? model.premoves.projected(state.board, side: human) : state.board,
                       selected: index == 0 ? (isPremoving ? composer.selected : selected) : nil,
-                      flipped: bottom == .black) { square in if index == 0 { tap(square) } }
+                      flipped: bottom == .black, onDropPiece: { kind, target in
+                          guard index == 0, model.states[0].pockets.contains(where: { $0.side == human && $0.kind == Character(kind.lowercased()) }) else { return }
+                          if isPremoving { composer.selected = nil; composer.drop = kind } else { selected = nil; drop = kind }
+                          tap(target)
+                      }, onDragMove: { source, target in
+                          guard index == 0, model.states[0].board.squares[source]?.side == human else { return }
+                          if isPremoving { composer.selected = source; composer.drop = nil } else { selected = source; drop = nil }
+                          tap(target)
+                      }) { square in if index == 0 { tap(square) } }
                 .frame(width: side, height: side)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(index == 0 ? "bughouse-board-A" : "bughouse-board-B")
@@ -137,6 +151,7 @@ import SwiftUI
                         }.frame(maxWidth: .infinity, minHeight: 24)
                         .background((drop == kind || composer.drop == kind) && index == 0 && side == model.match?.config.human ? Color.accentColor.opacity(0.2) : Color.clear, in: RoundedRectangle(cornerRadius: 5))
                     }.buttonStyle(.plain)
+                    .onDrag { index == 0 && side == model.match?.config.human && model.running ? NSItemProvider(object: ("novachess-pocket:" + String(kind)) as NSString) : NSItemProvider() }
                     .accessibilityLabel("\(count) \(Piece(symbol).name) in hand")
                     .disabled(index != 0 || side != model.match?.config.human || (!premovesEnabled && state.board.turn != side) || !model.running)
                 }
@@ -161,14 +176,14 @@ import SwiftUI
             if !composer.promotions.isEmpty { queuePromotion = true; promotions = composer.promotions }
             return
         }
-        guard model.states[0].board.turn == human else { return }
+        guard model.states[0].board.turn == human else { selected = model.states[0].board.squares[square]?.side == human ? square : nil; return }
         let state = model.states[0]
         let choices = state.moves.filter { $0.to == square && (drop != nil ? $0.drop == drop : selected != nil && $0.from == selected) }
         if choices.count > 1 {
             if autoQueen, let queen = choices.first(where: { $0.promotion == "q" }) { model.play(queen) }
             else { queuePromotion = false; promotions = choices }; return
         }
-        if let move = choices.first { model.play(move); return }
+        if let move = choices.first { selected = nil; model.play(move); return }
         drop = nil; selected = state.board.squares[square]?.side == human ? square : nil
     }
 }

@@ -106,7 +106,7 @@ public enum GameMode: String, CaseIterable, Codable, Identifiable, Sendable {
         switch self {
         case .chess960: return "Chess960"
         case .bughouse: return "Bughouse"
-        case .normal: return "Normal"
+        case .normal: return "Standard"
         case .blindBoard: return "Blindfold · empty board"
         case .blindText: return "Blindfold · text only"
         case .threeCheck: return "3-Check"
@@ -151,6 +151,7 @@ public struct SavedComputerGame: Codable, Sendable {
     public var openingID: String?
     public var notation: [String] = []
     public var resigned: Side?
+    public var agreedDraw: Bool?
     public var chess960Index: Int?
     public var pawnWarsKings: Bool?
     public var opponentName: String?

@@ -227,3 +227,14 @@ Spectating no longer uses consent switches or records. CloudKit/Game Center stil
 
 
 Bughouse 0.18.1 uses full-height landscape boards with compact clocks/pockets alongside them. Empty pocket types are omitted on both sides, and move/premove target dots are hidden. Bots spend at least 1.4 seconds on routine moves and 2.8 seconds when in check, facing promotions or multiple tactical options, with a smaller allowance under time pressure. Real engine search also gets a larger budget in critical positions; pause, flagging and transferred-piece revision checks still interrupt or invalidate pending decisions.
+
+
+## Version 0.19 interaction and clock updates
+
+Interactive boards support dragging as well as tapping, including flipped boards, analysis, puzzles, repertoire, the photo editor and live games. Crazyhouse and Bughouse pocket pieces can be dragged onto squares; the normal legal-move/premove checks still decide whether a move can execute. Read-only history and spectator boards do not move pieces. Selecting your piece during the opponent's turn keeps that selection after their reply unless the piece was captured. Standard supports consecutive premoves; assertion-enabled native checks exercise them across multiple computer replies.
+
+Normal is now labeled **Standard** without changing stored game identifiers. Standard computer games have **Offer draw**: bots decline before move 11 and accept a later offer only when the engine reports a balanced position (within 0.80 pawns, no mate score). Agreed draws persist, archive once and count as draws. Finished Standard games show a final-position evaluation bar and score immediately, with the review available from its button. Checkmate/stalemate/draw scores are handled without waiting for an engine search.
+
+Research identifies whether the displayed choices belong to the imported username or the opponent, alongside White/Black. Theme accents are brighter in dark appearance and background tints are softer to improve contrast.
+
+Clock has Reset in the top bar, no Settings or Start button, and starts by tapping a clock face. Its centered time-control button opens setup; Apply returns to a ready clock. Custom controls now offer delay as well as increment. Delay applies afresh each turn, including the first turn, and pausing preserves only the unused part of that turn's delay.

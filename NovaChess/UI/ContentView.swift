@@ -198,7 +198,10 @@ struct EditorView: View {
         VStack(alignment:.leading,spacing:18) {
             Text("Your position").font(.title2.bold())
             Text("White's home rank is at the bottom. Tap a square to correct it, or analyze the position now.").font(.subheadline).foregroundStyle(.secondary)
-            BoardView(position:position,uncertain:uncertain,selected:selected) { index in
+            BoardView(position:position,uncertain:uncertain,selected:selected, onDragMove: { source, target in
+                position.squares[target] = position.squares[source]; position.squares[source] = nil
+                uncertain.remove(source); uncertain.remove(target); movingFrom = nil; selected = nil; editingSquare = nil
+            }) { index in
                 if let source = movingFrom { if source == index { movingFrom=nil; selected=nil; return }; position.squares[index]=position.squares[source]; position.squares[source]=nil; uncertain.remove(source); uncertain.remove(index); movingFrom=nil; selected=nil }
                 else { selected=index; editingSquare=index }
             }

@@ -2,6 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 root="$PWD"
+check_source="${FEATURE_CHECK_SOURCE:-Tests/Headless/FeatureChecks.swift}"
+check_binary="${FEATURE_CHECK_BINARY:-feature-checks}"
 build="$root/.build/features"
 mkdir -p "$build/include"
 library=$(bash Scripts/build-engine-library.sh)
@@ -29,5 +31,5 @@ else
  link_options=(-Xlinker -lc++)
  platform_options=(-target "$(uname -m)-apple-macosx13.0")
 fi
-swiftc -swift-version 5 "${platform_options[@]}" -parse-as-library -I "$build/include" NovaChess/Core/*.swift "$build"/*.swift NovaChess/Services/LibraryStore.swift NovaChess/Services/PublicGameService.swift NovaChess/Services/GameReviewModel.swift NovaChess/Services/BughouseModel.swift Tests/Headless/FeatureChecks.swift "$library" "$modern" "${link_options[@]}" -o "$build/feature-checks"
-"$build/feature-checks" "$root"
+swiftc -swift-version 5 "${platform_options[@]}" -parse-as-library -I "$build/include" NovaChess/Core/*.swift "$build"/*.swift NovaChess/Services/LibraryStore.swift NovaChess/Services/PublicGameService.swift NovaChess/Services/GameReviewModel.swift NovaChess/Services/BughouseModel.swift "$check_source" "$library" "$modern" "${link_options[@]}" -o "$build/$check_binary"
+"$build/$check_binary" "$root"

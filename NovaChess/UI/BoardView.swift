@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct PieceView: View {
     @AppStorage("pieceStyle") private var style = "Illustrated"
@@ -23,7 +24,11 @@ struct BoardView: View {
     var obscured: Set<Int> = []
     var duckSquare: Int? = nil
     var moveAssessment: MoveAssessment? = nil
+    var onDropPiece: ((Character, Int) -> Void)? = nil
+    var onDragMove: ((Int, Int) -> Void)? = nil
     var onTap: ((Int) -> Void)? = nil
+    @State private var dragging: Int?
+    @State private var dragPoint = CGPoint.zero
     var body: some View {
         GeometryReader { geometry in
             let cell = geometry.size.width / 8
@@ -37,9 +42,39 @@ struct BoardView: View {
                     }
                 }
             }
+            .contentShape(Rectangle())
+            .highPriorityGesture(DragGesture(minimumDistance: 8, coordinateSpace: .local)
+                .onChanged { value in
+                    guard onTap != nil else { return }
+                    if dragging == nil {
+                        guard let source = squareAt(value.startLocation, cell: cell), !obscured.contains(source), position.squares[source] != nil || duckSquare == source else { return }
+                        dragging = source
+                    }
+                    dragPoint = value.location
+                }
+                .onEnded { value in
+                    defer { dragging = nil }
+                    guard let source = dragging, let target = squareAt(value.location, cell: cell), source != target else { return }
+                    if let onDragMove { onDragMove(source, target); return }
+                    if selected != source { onTap?(source) }
+                    onTap?(target)
+                }, including: onTap == nil ? .none : .all)
+            .overlay(alignment: .topLeading) {
+                if !hidePieces, let source = dragging {
+                    Group {
+                        if let piece = position.squares[source] { PieceView(piece: piece) }
+                        else if duckSquare == source { Image("CartoonDuck").resizable().scaledToFit() }
+                    }.frame(width: cell, height: cell).position(dragPoint).allowsHitTesting(false)
+                }
+            }
         }
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+    private func squareAt(_ point: CGPoint, cell: CGFloat) -> Int? {
+        guard cell > 0, point.x >= 0, point.y >= 0, point.x < cell * 8, point.y < cell * 8 else { return nil }
+        let index = Int(point.y / cell) * 8 + Int(point.x / cell)
+        return flipped ? 63 - index : index
     }
     private func squareColor(light: Bool) -> Color {
         let board = BoardStyle(rawValue: style) ?? .classic
@@ -66,8 +101,8 @@ struct BoardView: View {
             ZStack {
                 Rectangle().fill(squareColor(light: light))
                 if selected == index { Rectangle().fill(Color.accentColor.opacity(0.20)) }
-                if !hidePieces && !obscured.contains(index), let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
-                if duckSquare == index { Image("CartoonDuck").resizable().scaledToFit().padding(cell * 0.06).accessibilityLabel("Duck") }
+                if dragging != index && !hidePieces && !obscured.contains(index), let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
+                if dragging != index && duckSquare == index { Image("CartoonDuck").resizable().scaledToFit().padding(cell * 0.06).accessibilityLabel("Duck") }
                 if obscured.contains(index) { Rectangle().fill(Color(white: 0.18).opacity(0.94)) }
                 if legalTargets.contains(index) {
                     if position.squares[index] == nil { Circle().fill(coordinateColor(light: light).opacity(0.5)).frame(width: cell * 0.24, height: cell * 0.24) }
@@ -91,6 +126,14 @@ struct BoardView: View {
             .frame(width: cell, height: cell)
         }
         .buttonStyle(.plain)
+        .onDrop(of: [UTType.text.identifier], isTargeted: nil) { providers in
+            guard onDropPiece != nil, let provider = providers.first, provider.canLoadObject(ofClass: NSString.self) else { return false }
+            _ = provider.loadObject(ofClass: NSString.self) { value, _ in
+                guard let text = value as? String, text.hasPrefix("novachess-pocket:"), let token = text.split(separator: ":").last, token.count == 1, let kind = token.first, "PNBRQ".contains(kind) else { return }
+                Task { @MainActor in onDropPiece?(kind, index) }
+            }
+            return true
+        }
         .accessibilityLabel(squareLabel(index))
         .accessibilityIdentifier("square-\(Position.name(index))")
         .accessibilityAddTraits(selected == index ? .isSelected : [])

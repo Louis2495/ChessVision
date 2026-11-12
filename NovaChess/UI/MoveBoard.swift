@@ -20,31 +20,8 @@ struct MoveBoard: View {
     var body: some View {
         BoardView(position: shown, selected: hidePieces ? nil : (queuing ? composer.selected : selected),
                   legalTargets: hidePieces ? [] : queuing ? Set(queue.moves.compactMap { VariantMove(uci: $0, san: "").to }) : Set(legal.filter { $0.from == selected }.map(\.to)),
-                  flipped: flipped, hidePieces: hidePieces) { index in
-            if queuing {
-                composer.tap(index, board: shown, side: premoveSide ?? position.turn, duck: false, queue: &queue)
-                if !composer.promotions.isEmpty {
-                    queuePromotion = true
-                    promotions = composer.promotions.compactMap { move in
-                        guard let from = move.from, let to = move.to else { return nil }
-                        return ChessMove(from: from, to: to, promotion: move.promotion)
-                    }
-                }
-                flush(); return
-            }
-            guard enabled else { return }
-            if let from = selected {
-                if from == index { selected = nil; return }
-                let choices = legal.filter { $0.from == from && $0.to == index }
-                if choices.count > 1 {
-                    if autoQueen, let queen = choices.first(where: { $0.promotion == "q" }) { selected = nil; onMove(queen) }
-                    else { queuePromotion = false; promotions = choices }; return
-                }
-                if let move = choices.first { selected = nil; onMove(move); return }
-            }
-            selected = position.squares[index]?.side == position.turn ? index : nil
-        }
-        .onChange(of: position.fen) { _, _ in selected = nil; if !queuePromotion { promotions = [] }; flush() }
+                  flipped: flipped, hidePieces: hidePieces, onDragMove: drag, onTap: tap)
+        .onChange(of: position.fen) { _, _ in if let square = selected, position.squares[square]?.side != (premoveSide ?? position.turn) { selected = nil }; if let square = composer.selected, shown.squares[square]?.side != premoveSide { composer.selected = nil }; if !queuePromotion { promotions = [] }; flush() }
         .onChange(of: premovesEnabled) { _, enabled in if !enabled { queue.clear(); composer = PremoveComposer() } }
         .onChange(of: premoveSide) { _, side in if side == nil { queue.clear(); composer = PremoveComposer() } }
         .onDisappear { queue.clear(); composer = PremoveComposer() }
@@ -57,6 +34,36 @@ struct MoveBoard: View {
                 promotions = []
             }
         }
+    }
+    private func drag(_ source: Int, _ target: Int) {
+        guard shown.squares[source]?.side == (premoveSide ?? position.turn) else { return }
+        if queuing { composer.selected = source; composer.drop = nil }
+        else { selected = source }
+        tap(target)
+    }
+    private func tap(_ index: Int) {
+            if queuing {
+                composer.tap(index, board: shown, side: premoveSide ?? position.turn, duck: false, queue: &queue)
+                if !composer.promotions.isEmpty {
+                    queuePromotion = true
+                    promotions = composer.promotions.compactMap { move in
+                        guard let from = move.from, let to = move.to else { return nil }
+                        return ChessMove(from: from, to: to, promotion: move.promotion)
+                    }
+                }
+                flush(); return
+            }
+            guard enabled else { selected = position.squares[index]?.side == premoveSide ? index : nil; return }
+            if let from = selected {
+                if from == index { selected = nil; return }
+                let choices = legal.filter { $0.from == from && $0.to == index }
+                if choices.count > 1 {
+                    if autoQueen, let queen = choices.first(where: { $0.promotion == "q" }) { selected = nil; onMove(queen) }
+                    else { queuePromotion = false; promotions = choices }; return
+                }
+                if let move = choices.first { selected = nil; onMove(move); return }
+            }
+            selected = position.squares[index]?.side == position.turn ? index : nil
     }
     private func flush() {
         guard enabled, position.turn == premoveSide, premovesEnabled else { return }

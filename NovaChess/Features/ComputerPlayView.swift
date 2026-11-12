@@ -18,6 +18,7 @@ import SwiftUI
     @Published var premoves = PremoveQueue()
     private weak var library: LibraryStore?
     private var task: Task<Void, Never>?
+    private var reviewPrefetch: Task<Void, Never>?
     private var generation = UUID()
     private var visible = false
     var opening: OpeningLine? { game?.openingID.flatMap { id in library?.openings.first { $0.id == id } } }
@@ -31,7 +32,7 @@ import SwiftUI
         if game != nil && game?.id == nil { game?.id = UUID(); library.state.computer = game }
         if game != nil { run() }
     }
-    func pause() { premoves.clear(); computerPiecePreview = nil; visible = false; task?.cancel(); generation = UUID(); busy = false }
+    func pause() { reviewPrefetch?.cancel(); reviewPrefetch = nil; premoves.clear(); computerPiecePreview = nil; visible = false; task?.cancel(); generation = UUID(); busy = false }
     func start() -> Bool {
         if developerOpponent && mode == .normal { adaptive = false; ratingText = "2407" }
         guard mode != .bughouse else { error = "Open Bughouse setup to start a two-board match."; return false }
@@ -50,6 +51,7 @@ import SwiftUI
         run(); return true
     }
     private func run() {
+        reviewPrefetch?.cancel(); reviewPrefetch = nil
         guard visible, let game else { return }
         task?.cancel(); generation = UUID(); let token = generation
         computerPiecePreview = nil; busy = true; error = nil
@@ -104,7 +106,26 @@ import SwiftUI
                 if let state = snapshot, !state.finished, state.board.turn == self.game?.human,
                    let next = premoves.take(legal: state.moves) { play(next) }
                 if snapshot?.finished == true { premoves.clear() }
+                if token == generation && !busy { prefetchReviewWhileIdle() }
             }
+        }
+    }
+    private func prefetchReviewWhileIdle() {
+        guard visible, let game, game.mode == .normal, game.adaptive != true, let state = snapshot, !state.finished, state.board.turn == game.human else { return }
+        let id = game.id, history = game.moves, ply = game.moves.count
+        reviewPrefetch = Task {
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+                let line = try await EngineController.shared.reviewPosition(variant: game.variant, history: history, side: state.board.turn)
+                try Task.checkCancellation()
+                guard visible, var current = self.game, current.id == id, current.moves == history, library?.state.computer?.id == id else { return }
+                if current.reviewEvaluationVersion != GameReviewLogic.evaluationVersion { current.prefetchedEvaluations = [:] }
+                var compact = line; compact.moves = Array(line.moves.prefix(4))
+                current.reviewEvaluationVersion = GameReviewLogic.evaluationVersion
+                if current.prefetchedEvaluations == nil { current.prefetchedEvaluations = [:] }
+                current.prefetchedEvaluations?[ply] = compact
+                self.game = current; library?.state.computer = current
+            } catch { /* Idle work yields silently to moves, tab changes and engine requests. */ }
         }
     }
     func flushPremoves() {
@@ -138,9 +159,11 @@ import SwiftUI
         if snapshot?.finished == true { game.id = UUID() }
         task?.cancel(); game.moves.removeLast(2)
         game.notation = Array(game.notation.prefix(game.moves.count)); game.resigned = nil; game.agreedDraw = nil
+        game.prefetchedEvaluations = game.prefetchedEvaluations?.filter { $0.key <= game.moves.count }
         self.game = game; library?.state.computer = game; run()
     }
     func resign() {
+        reviewPrefetch?.cancel(); reviewPrefetch = nil
         premoves.clear()
         guard var game, snapshot?.finished == false else { return }
         task?.cancel(); generation = UUID(); computerPiecePreview = nil; busy = false
@@ -151,6 +174,7 @@ import SwiftUI
     func offerDraw() {
         guard let game, game.mode == .normal, snapshot?.finished == false, !busy else { return }
         guard game.moves.count >= 20 else { error = "The computer declines the draw offer."; return }
+        reviewPrefetch?.cancel(); reviewPrefetch = nil
         busy = true; let token = generation
         task = Task {
             defer { if token == generation { busy = false } }

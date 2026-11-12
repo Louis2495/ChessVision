@@ -78,8 +78,15 @@ public struct CompletedGame: Codable, Identifiable, Sendable {
     public var ratingChange: Int?
     public var bughouse: BughouseMatch?
     public var partnerPositions: [String]?
+    public var engineEvaluations: [Int: EngineLine]?
+    public var evaluationSignature: String?
     public init(game: SavedComputerGame, result: String, now: Date = Date()) {
         self.id = game.id ?? UUID(); self.game = game; self.result = result; self.finishedAt = now
+        if game.reviewEvaluationVersion == GameReviewLogic.evaluationVersion, let cache = game.prefetchedEvaluations {
+            engineEvaluations = cache.filter { (0...game.moves.count).contains($0.key) }
+            evaluationSignature = GameReviewLogic.evaluationSignature(for: self)
+        }
+        self.game.prefetchedEvaluations = nil; self.game.reviewEvaluationVersion = nil
     }
     public var moveCount: Int {
         if let bughouse { return GameStatistics.moveCount(plies: bughouse.events.filter { $0.board == 0 }.count) + GameStatistics.moveCount(plies: bughouse.events.filter { $0.board == 1 }.count) }
@@ -89,6 +96,11 @@ public struct CompletedGame: Codable, Identifiable, Sendable {
     public var resultTitle: String { if let bughouse { return bughouse.resultTitle }; return result == "white" ? "White wins" : result == "black" ? "Black wins" : "Draw" }
 }
 public enum GameReviewLogic {
+    public static let evaluationVersion = "sf19-nnue-1a298aa575a0-review3000-v1"
+    public static func evaluationSignature(for entry: CompletedGame) -> String {
+        let sequence = entry.bughouse?.events.map { "\($0.board):\($0.uci)" } ?? entry.game.moves
+        return evaluationVersion + "|" + entry.game.variant + "|" + sequence.joined(separator: " ")
+    }
     public static func signature(_ lines: [RepertoireLine]) -> String {
         let text = lines.map { "\($0.id)|\($0.name)|\($0.side.rawValue)|\($0.startingFEN)|\($0.moves.joined(separator: " "))" }.sorted().joined(separator: "\n")
         var hash: UInt64 = 14695981039346656037

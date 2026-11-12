@@ -275,3 +275,14 @@ Queued premove source/destination squares have brighter cyan fills and blue bord
 **Stats & world map** in Play shows completed game totals by White, Black, combined, result and time category. Categories use base time plus 40 increments: Bullet <180 seconds, Blitz <600, Rapid <1800, Classical otherwise. Untimed games remain Untimed; Bughouse uses its actual saved clock config and correspondence uses its source. Older games are not assigned invented clock controls.
 
 Players → **Edit profile** supports a chosen country and picture. Images are downsampled/cropped into small metadata-free JPEGs. The offline map uses bundled public-domain Natural Earth boundaries for 238 countries/territories. A linked human opponent's chosen country fills in once a correspondence move has been played; completed-game metadata also contributes. Unknown profiles and bot games do not invent countries. See Documentation/PLAYERS_AND_SPECTATING.md for the two new CloudKit fields that the Apple account owner must deploy.
+
+
+## Version 0.22 faster review creation
+
+Non-adaptive Standard games do a bounded, full-strength position evaluation while waiting for the human's move. It yields immediately to play, pause, tab changes or new engine requests; completed results are carried into the finished game's review. Takebacks remove scores from the undone branch. No live move hints or ratings are exposed by this background work.
+
+Review evaluations are checkpointed separately from repertoire-dependent grades. Pausing/restarting or updating repertoire choices can reuse the same completed searches rather than calculate them again. Exact game/variant/model signatures and legal-best-move checks protect against stale reuse. Four PV moves are retained per position; scores, mate values and search depth remain unchanged. Detailed evaluation caches for the most recent 64 history entries are persisted; all completed reviews and history remain saved.
+
+Native board snapshots are reused across adjacent plies, and typical games reuse the snapshots already produced when preparing replay. A stable depth-24 search can finish without waiting for the previous 0.8-second floor; the existing depth-20 stability path and three-second limit for harder positions remain. The bundled engine and full NNUE network are unchanged.
+
+`bash Scripts/test-review-cache.sh` runs independent cold/warm processes and an idle-prefetch/takeback/persistence workflow. In one four-ply fixture a fresh review took roughly 7.1 seconds and a fresh-process cached rebuild roughly 0.2 seconds with identical grades and zero new searches. This measures cache reuse, not a universal first-review speedup or iPhone benchmark. See Documentation/APP_SIZE.md for the current App Store download estimate.

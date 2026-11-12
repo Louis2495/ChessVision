@@ -1,5 +1,5 @@
 import Foundation
-public struct EngineLine: Equatable, Hashable, Sendable {
+public struct EngineLine: Equatable, Hashable, Codable, Sendable {
     public var depth: Int
     public var rank: Int
     public var centipawns: Int?

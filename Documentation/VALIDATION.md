@@ -170,3 +170,10 @@ All Swift sources parsed and project/hash/resource checks passed, including offl
 ## Version 0.21.1 puzzle expansion
 
 Added 2000 puzzles for 4000 total, retaining every previous record and ID unchanged. The pinned source CSV SHA-256 matched provenance. Python-chess verified every source FEN, full solution and uniqueness of all normalized post-setup solving positions. All 19 Swift ExpansionTests passed, including legal replay of every solution ply in the 4000-puzzle asset, adaptive selection and progress behavior. Project/resource/hash checks and git diff checks passed. No puzzle-rating history reset or app API change was required.
+
+
+## Version 0.22 review prefetch and persistent evaluations
+
+Twelve targeted checkpoint, review-logic and grading tests passed. The actual Swift/native controller suite and full assertion-enabled feature workflows passed with idle review prefetch enabled, including ratings, adaptive play, premoves, variant and Bughouse reviews, cancellation, history and pause/resume. A dedicated workflow used separate OS processes to rebuild a four-ply review from persisted evaluations, launched zero new engine searches, and reproduced every grade/loss/depth. It also verified that idle evaluation does not play a move, yields to play, prunes takeback branches, transfers scores on game end, and retains all reviews while bounding persisted raw caches to 64 entries.
+
+Resource-size estimates use measured source bytes and DEFLATE compression, not a signed iOS archive. Device review performance, energy/thermal behavior and actual App Store size require a Release Xcode build and an iPhone. The full Stockfish 19 NNUE asset and normal review search budget remain unchanged.

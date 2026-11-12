@@ -27,16 +27,26 @@ import Combine
         result.nextPly = max(0, min(entry.game.moves.count, result.nextPly))
         review = result; positions = entry.positions; partnerPositions = entry.partnerPositions ?? []; error = nil
         if result.complete && entry.positions.count == entry.game.moves.count + 1 && (entry.bughouse == nil || partnerPositions.count == entry.positions.count) { return }
+        let evaluationSignature = GameReviewLogic.evaluationSignature(for: entry)
+        var evaluationCache: [Int: EngineLine] = entry.evaluationSignature == evaluationSignature ? (entry.engineEvaluations ?? [:]) : [:]
         let token = UUID(); generation = token; busy = true
         task = Task {
             guard generation == token, !Task.isCancelled else { return }
             @MainActor func save() {
                 guard let index = library.state.history.firstIndex(where: { $0.id == id }) else { return }
-                library.state.history[index].review = result
+                var updated = library.state.history[index]
+                updated.review = result
+                updated.evaluationSignature = evaluationCache.isEmpty ? nil : evaluationSignature
+                // Reviews use the best move/reply, not a full candidate variation.
+                updated.engineEvaluations = evaluationCache.isEmpty ? nil : evaluationCache.mapValues { line in
+                    var compact = line; compact.moves = Array(line.moves.prefix(4)); return compact
+                }
+                library.state.history[index] = updated
             }
             checkpoint = save
             do {
                 let game = entry.game
+                var stateCache: [Int: VariantSnapshot] = [:]
                 progress = "Preparing game positions…"
                 try await EngineController.shared.prepareVariant(game.variant)
                 try Task.checkCancellation()
@@ -45,7 +55,9 @@ import Combine
                     try Task.checkCancellation()
                     positions = frames[0]; partnerPositions = frames[1]
                     if let index = library.state.history.firstIndex(where: { $0.id == id }) {
-                        library.state.history[index].positions = frames[0]; library.state.history[index].partnerPositions = frames[1]
+                        var updated = library.state.history[index]
+                        updated.positions = frames[0]; updated.partnerPositions = frames[1]
+                        library.state.history[index] = updated
                     }
                 } else if entry.bughouse == nil && positions.count != game.moves.count + 1 {
                     var frames: [String] = []
@@ -53,6 +65,7 @@ import Combine
                         try Task.checkCancellation()
                         let state = try VariantRules.snapshot(variant: game.variant, history: Array(game.moves.prefix(ply)))
                         frames.append(state.fen)
+                        if game.moves.count <= 128 { stateCache[ply] = state }
                         if ply.isMultiple(of: 8) { await Task.yield() }
                     }
                     try Task.checkCancellation()
@@ -64,39 +77,54 @@ import Combine
                 let worker = Task.detached(priority: .userInitiated) { try ReviewRepertoireIndex(lines: standard ? repertoire : []) }
                 let book = try await withTaskCancellationHandler(operation: { try await worker.value }, onCancel: { worker.cancel() })
                 try Task.checkCancellation()
-                var evaluationCache: [Int: EngineLine] = [:]
+                @MainActor func state(at ply: Int) throws -> VariantSnapshot {
+                    if let cached = stateCache[ply] { return cached }
+                    let snapshot = try entry.bughouse == nil ? VariantRules.snapshot(variant: game.variant, history: Array(game.moves.prefix(ply))) : BughouseRules.snapshot(fen: positions[ply])
+                    stateCache[ply] = snapshot
+                    return snapshot
+                }
+                @MainActor func cachedEvaluation(at ply: Int, for state: VariantSnapshot) -> EngineLine? {
+                    guard let line = evaluationCache[ply], line.depth > 0,
+                          let move = line.moves.first, state.moves.contains(where: { $0.uci == move }) else { return nil }
+                    return line
+                }
                 for ply in result.nextPly..<game.moves.count {
                     try Task.checkCancellation()
+                    if ply.isMultiple(of: 8) { await Task.yield(); try Task.checkCancellation() }
                     let prefix = Array(game.moves.prefix(ply))
                     if let bughouse = entry.bughouse, bughouse.events[ply].board != 0 {
+                        stateCache.removeValue(forKey: ply)
                         result.nextPly = ply + 1; continue
                     }
-                    let before = try entry.bughouse == nil ? VariantRules.snapshot(variant: game.variant, history: prefix) : BughouseRules.snapshot(fen: positions[ply])
+                    let before = try state(at: ply)
                     guard let played = before.moves.first(where: { $0.uci == game.moves[ply] }) else { throw ChessError.invalid("A saved move could not be replayed.") }
                     progress = "Reviewing move \(before.board.fullmove) · \(ply + 1)/\(game.moves.count) plies"
                     let match = standard && before.board.turn == game.human ? GameReviewLogic.repertoireSuggestion(at: before.board, played: played.uci, san: played.san, ply: ply, choices: book.positions[before.board.openingKey] ?? []) : (matched: false, suggestion: nil as GameSuggestion?)
                     let afterHistory = prefix + [played.uci]
-                    let after = try entry.bughouse == nil ? VariantRules.snapshot(variant: game.variant, history: afterHistory) : BughouseRules.snapshot(fen: positions[ply + 1])
+                    let after = try state(at: ply + 1)
+                    stateCache.removeValue(forKey: ply)
                     // A single-board engine cannot evaluate material that has not arrived.
                     // Do not request a search with no legal moves, or label this a mate.
                     if entry.bughouse != nil && after.inCheck && after.moves.isEmpty && !after.finished {
                         if result.ungradedBughouseMoves == nil { result.ungradedBughouseMoves = [] }
                         result.ungradedBughouseMoves?.append(ply)
-                        result.nextPly = ply + 1; evaluationCache = [:]; review = result
+                        result.nextPly = ply + 1; review = result
                         continue
                     }
                     let baseline: EngineLine
-                    if let cached = evaluationCache[ply] { baseline = cached }
+                    if let cached = cachedEvaluation(at: ply, for: before) { baseline = cached }
                     else if entry.bughouse != nil { baseline = try await EngineController.shared.reviewBughouse(fen: positions[ply], side: before.board.turn) }
                     else { baseline = try await EngineController.shared.reviewPosition(variant: game.variant, history: prefix, side: before.board.turn) }
+                    evaluationCache[ply] = baseline
                     try Task.checkCancellation()
                     let outcome: EngineLine?
                     if after.finished { outcome = nil }
+                    else if let cached = cachedEvaluation(at: ply + 1, for: after) { outcome = cached }
                     else if entry.bughouse != nil { outcome = try await EngineController.shared.reviewBughouse(fen: positions[ply + 1], side: after.board.turn) }
                     else { outcome = try await EngineController.shared.reviewPosition(variant: game.variant, history: afterHistory, side: after.board.turn) }
                     try Task.checkCancellation()
                     // The next ordinary ply starts at this exact position, so reuse its search.
-                    if entry.bughouse == nil { evaluationCache = [:]; evaluationCache[ply + 1] = outcome }
+                    if let outcome { evaluationCache[ply + 1] = outcome }
                     let assessment = MoveAssessment.make(ply: ply, move: played, before: before, after: after, baseline: baseline, outcome: outcome, inBook: match.matched && match.suggestion == nil)
                     if result.assessments == nil { result.assessments = [] }
                     result.assessments?.append(assessment)

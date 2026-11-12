@@ -154,6 +154,8 @@ public struct SavedComputerGame: Codable, Sendable {
     public var agreedDraw: Bool?
     public var chess960Index: Int?
     public var pawnWarsKings: Bool?
+    public var reviewEvaluationVersion: String?
+    public var prefetchedEvaluations: [Int: EngineLine]?
     public var developerBot: Bool?
     public var opponentCountry: String?
     public var opponentGameCenterID: String?

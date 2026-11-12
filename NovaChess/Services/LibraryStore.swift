@@ -43,7 +43,15 @@ import Combine
         guard maySave else { return }
         do {
             try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let data = try JSONEncoder().encode(state)
+            var snapshot = state
+            var retainedEvaluationCaches = 0
+            for i in snapshot.history.indices where snapshot.history[i].engineEvaluations?.isEmpty == false {
+                retainedEvaluationCaches += 1
+                if retainedEvaluationCaches > 64 {
+                    snapshot.history[i].engineEvaluations = nil; snapshot.history[i].evaluationSignature = nil
+                }
+            }
+            let data = try JSONEncoder().encode(snapshot)
             #if os(iOS)
             try data.write(to: file, options: [.atomic, .completeFileProtectionUnlessOpen])
             #else

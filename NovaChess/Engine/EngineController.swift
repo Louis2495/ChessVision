@@ -42,6 +42,7 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
     }
     private var analysisCache: [String: [EngineLine]] = [:]
     private var reviewCache: [String: (milliseconds: Int, line: EngineLine)] = [:]
+    private(set) var reviewSearchCount = 0
     private var searchStarted: TimeInterval = 0
     private var reviewStopRequested = false
     private var modernReady = false
@@ -166,6 +167,7 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
                 bestMove = "(none)"; complete(request.id, .success("(none)")); return
             }
         }
+        if request.kind == .review { reviewSearchCount += 1 }
         active = request; running = true; searchStarted = ProcessInfo.processInfo.systemUptime; reviewStopRequested = false
         searchEngine = request.modern ? "Stockfish 19 NNUE" : "Fairy-Stockfish"
         let search = request.modern ? sendModern : send
@@ -239,7 +241,7 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
                result.depth >= 20, let previous, previous.depth < result.depth,
                previous.moves.prefix(3) == result.moves.prefix(3), result.mate == nil, previous.mate == nil,
                let score = result.centipawns, let priorScore = previous.centipawns, abs(score - priorScore) <= 10,
-               ProcessInfo.processInfo.systemUptime - searchStarted >= 0.8 {
+               (result.depth >= 24 || ProcessInfo.processInfo.systemUptime - searchStarted >= 0.8) {
                 reviewStopRequested = true; sendSearch("stop")
             }
             if publishTask == nil {

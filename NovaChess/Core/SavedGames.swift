@@ -5,8 +5,15 @@ public struct GameFolder: Codable, Identifiable, Sendable {
     public var name: String
     public init(name: String) { self.name = name }
 }
+public struct SavedGameVariation: Codable, Sendable {
+    public var title: String
+    public var positions: [String]
+    public var notation: [String]
+    public init(title: String, positions: [String], notation: [String]) { self.title = title; self.positions = positions; self.notation = notation }
+}
 public struct SavedBoardGame: Codable, Identifiable, Sendable {
     public var id = UUID()
+    public var variations: [SavedGameVariation]?
     public var title: String
     public var date = Date()
     public var folderID: UUID?

@@ -125,14 +125,14 @@ final class PremoveTests: XCTestCase {
         XCTAssertNil(PremoveQueue.coordinateIntent("Nf3"))
         XCTAssertNil(PremoveQueue.coordinateIntent("a9b2"))
     }
-    func testStartingWhiteByTappingBlackDoesNotAwardAnUnplayedMove() {
+    func testStartingWhiteByTappingBlackAwardsThePressedSideIncrement() {
         var clock = ChessClock(control: ClockTimeControl(seconds: 60, increment: 2))
         clock.press(.black, at: 10)
-        XCTAssertEqual(clock.remaining(for: .black, at: 10), 60)
+        XCTAssertEqual(clock.remaining(for: .black, at: 10), 62)
         clock.press(.white, at: 13)
         XCTAssertEqual(clock.remaining(for: .white, at: 13), 59)
         clock.press(.black, at: 16)
-        XCTAssertEqual(clock.remaining(for: .black, at: 16), 59)
+        XCTAssertEqual(clock.remaining(for: .black, at: 16), 61)
     }
     func testFirstFaceTapAwardsMoveOneIncrement() {
         var clock = ChessClock(control: ClockTimeControl(seconds: 60, increment: 2))

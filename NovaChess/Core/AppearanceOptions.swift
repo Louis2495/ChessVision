@@ -1,9 +1,10 @@
 import Foundation
 
 public enum AppTheme: String, CaseIterable, Sendable {
-    case forest = "Forest", ocean = "Ocean", plum = "Plum", amber = "Amber", rose = "Rose", teal = "Teal", indigo = "Indigo", graphite = "Graphite"
+    case pink = "Pink", forest = "Forest", ocean = "Ocean", plum = "Plum", amber = "Amber", rose = "Rose", teal = "Teal", indigo = "Indigo", graphite = "Graphite"
     public var hex: UInt32 {
         switch self {
+        case .pink: return 0xD94F91
         case .forest: return 0x337057
         case .ocean: return 0x2467B1
         case .plum: return 0x8050A0
@@ -16,9 +17,10 @@ public enum AppTheme: String, CaseIterable, Sendable {
     }
 }
 public enum AppBackdrop: String, CaseIterable, Sendable {
-    case standard = "Default", warm = "Warm", cool = "Cool", parchment = "Parchment", sage = "Sage", lavender = "Lavender", blush = "Blush", theme = "Theme", aurora = "Aurora", sunset = "Sunset", grid = "Grid"
+    case pink = "Pink", standard = "Default", warm = "Warm", cool = "Cool", parchment = "Parchment", sage = "Sage", lavender = "Lavender", blush = "Blush", theme = "Theme", aurora = "Aurora", sunset = "Sunset", grid = "Grid"
     public var hex: UInt32? {
         switch self {
+        case .pink: return 0xF3A8CD
         case .standard: return nil
         case .warm, .parchment: return 0xBA8E50
         case .cool: return 0x5B88B8

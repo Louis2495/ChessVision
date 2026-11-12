@@ -101,7 +101,7 @@ struct BoardView: View {
         return Button { onTap?(index) } label: {
             ZStack {
                 Rectangle().fill(squareColor(light: light))
-                if premoveSquares.contains(index) { Rectangle().fill(Color.cyan.opacity(0.48)); Rectangle().strokeBorder(Color.blue, lineWidth: 3) }
+                if premoveSquares.contains(index) { Rectangle().fill(Color.cyan.opacity(0.65)) }
                 if selected == index { Rectangle().fill(Color.accentColor.opacity(0.20)) }
                 if dragging != index && !hidePieces && !obscured.contains(index), let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
                 if dragging != index && duckSquare == index { Image("CartoonDuck").resizable().scaledToFit().padding(cell * 0.06).accessibilityLabel("Duck") }
@@ -110,6 +110,7 @@ struct BoardView: View {
                     if position.squares[index] == nil { Circle().fill(coordinateColor(light: light).opacity(0.5)).frame(width: cell * 0.24, height: cell * 0.24) }
                     else { Circle().strokeBorder(Color.accentColor.opacity(0.8), lineWidth: 3).padding(2) }
                 }
+                if premoveSquares.contains(index) { Rectangle().strokeBorder(Color.blue, lineWidth: 4) }
                 if uncertain.contains(index) { Rectangle().strokeBorder(Color.orange, lineWidth: 3) }
                 if selected == index { Rectangle().strokeBorder(Color.accentColor, lineWidth: 3) }
             }
@@ -120,10 +121,10 @@ struct BoardView: View {
                 }
             }
             .overlay(alignment: .topLeading) {
-                if col == 0 { Text(String(8 - index / 8)).padding(2).coordinateStyle(cell: cell, foreground: coordinateColor(light: light)) }
+                if col == 0 { Text(String(8 - index / 8)).padding(2).coordinateStyle(cell: cell, foreground: premoveSquares.contains(index) ? .black : coordinateColor(light: light)) }
             }
             .overlay(alignment: .bottomTrailing) {
-                if row == 7 { Text(String(Position.name(index).prefix(1))).padding(2).coordinateStyle(cell: cell, foreground: coordinateColor(light: light)) }
+                if row == 7 { Text(String(Position.name(index).prefix(1))).padding(2).coordinateStyle(cell: cell, foreground: premoveSquares.contains(index) ? .black : coordinateColor(light: light)) }
             }
             .frame(width: cell, height: cell)
         }

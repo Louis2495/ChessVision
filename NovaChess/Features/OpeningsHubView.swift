@@ -11,6 +11,9 @@ struct OpeningsHubView: View {
                     NavigationLink { OpeningTrainingView() } label: {
                         tile("Train an opening", detail: "Practice a chosen opening against the computer", icon: "square.grid.3x3.fill")
                     }.accessibilityLabel("Train an opening")
+                    NavigationLink { LearnOpeningsView() } label: {
+                        tile("Learn", detail: "Explore opening ideas and practice the moves", icon: "graduationcap.fill")
+                    }.accessibilityLabel("Learn")
                     NavigationLink { OpeningExplorerView() } label: {
                         tile("Research", detail: "Explore an account", icon: "magnifyingglass")
                     }.accessibilityLabel("Research")

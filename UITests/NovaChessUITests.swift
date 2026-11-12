@@ -168,8 +168,9 @@ extension NovaChessUITests {
         let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Play"].tap()
         if app.navigationBars["Game review"].waitForExistence(timeout: 2) { app.navigationBars.buttons["Done"].tap() }
         if app.buttons["New game"].exists { app.buttons["New game"].tap() }
+        app.buttons["Game options"].tap()
         app.buttons["game-style"].tap(); app.buttons["Bughouse"].tap()
-        app.buttons["Set up Bughouse"].tap()
+        app.buttons["Start game"].tap()
         XCUIDevice.shared.orientation = .landscapeLeft
         let start = app.buttons["Start Bughouse"]
         for _ in 0..<8 { if start.isHittable { break }; app.swipeUp() }

@@ -56,17 +56,23 @@ struct SavedGamesView: View {
 private struct SavedGameReplay: View {
     var game: SavedBoardGame
     @State private var cursor = 0
+    @State private var variation = 0
+    private var positions: [String] { if let lines = game.variations, lines.indices.contains(variation) { return lines[variation].positions }; return game.positions }
+    private var notation: [String] { if let lines = game.variations, lines.indices.contains(variation) { return lines[variation].notation }; return game.notation }
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                if game.positions.indices.contains(cursor), let snapshot = try? VariantSnapshot.parse("fen\t" + game.positions[cursor] + "\nstatus\tongoing") { BoardView(position: snapshot.board, duckSquare: snapshot.duckSquare).aspectRatio(1, contentMode: .fit) }
+                if let lines = game.variations, lines.count > 1 {
+                    Picker("Variation", selection: $variation) { ForEach(lines.indices, id: \.self) { i in Text(lines[i].title).tag(i) } }.pickerStyle(.menu)
+                }
+                if positions.indices.contains(cursor), let snapshot = try? VariantSnapshot.parse("fen\t" + positions[cursor] + "\nstatus\tongoing") { BoardView(position: snapshot.board, duckSquare: snapshot.duckSquare).aspectRatio(1, contentMode: .fit) }
                 HStack {
                     Button("Previous", systemImage: "chevron.left") { cursor = max(0, cursor - 1) }.disabled(cursor == 0)
-                    Spacer(); Text("\(String(GameStatistics.moveCount(plies: cursor))) / \(String(GameStatistics.moveCount(plies: game.positions.count - 1)))"); Spacer()
-                    Button("Next", systemImage: "chevron.right") { cursor = min(game.positions.count - 1, cursor + 1) }.disabled(cursor + 1 >= game.positions.count)
+                    Spacer(); Text("\(String(GameStatistics.moveCount(plies: cursor))) / \(String(GameStatistics.moveCount(plies: positions.count - 1)))"); Spacer()
+                    Button("Next", systemImage: "chevron.right") { cursor = min(positions.count - 1, cursor + 1) }.disabled(cursor + 1 >= positions.count)
                 }
-                Text(game.notation.enumerated().map { i, san in (i % 2 == 0 ? "\(i / 2 + 1). " : "") + san }.joined(separator: " "))
+                Text(notation.enumerated().map { i, san in (i % 2 == 0 ? "\(i / 2 + 1). " : "") + san }.joined(separator: " "))
             }.padding()
-        }.navigationTitle(game.title).modifier(AppSurface())
+        }.navigationTitle(game.title).modifier(AppSurface()).onChange(of: variation) { _, _ in cursor = 0 }
     }
 }

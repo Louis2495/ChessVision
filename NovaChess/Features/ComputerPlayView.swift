@@ -225,9 +225,14 @@ struct ComputerPlayView: View {
             playContent
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
+                    HStack(spacing: 20) {
+                    SettingsButton()
+                    if !settingUp {
                     Button { reviewPresentationTask?.cancel(); if model.snapshot?.finished == true { lastReviewedGame = model.game?.id }; model.pause(); historyPresented = true } label: { Image(systemName: "clock.arrow.circlepath") }.accessibilityLabel("Game history")
+                    }
+                    }
                 }
-                ToolbarItem(placement: .topBarTrailing) { if model.game != nil { Button("New game") { settingUp = true } } }
+                ToolbarItem(placement: .topBarTrailing) { if model.game != nil && !settingUp { Button("New game") { settingUp = true } } }
             }
             .sheet(isPresented: $historyPresented, onDismiss: {
                 if visible && scenePhase == .active { model.activate(library) }
@@ -366,7 +371,7 @@ struct ComputerPlayView: View {
                     NavigationLink { AchievementsView() } label: { Label("Achievements & ratings", systemImage: "medal") }
                 }
             }.padding()
-        }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").navigationBarTitleDisplayMode(.inline).toolbar { SettingsButton() }
+        }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").navigationBarTitleDisplayMode(.inline)
         .onChange(of: model.snapshot?.finished) { _, finished in
             if finished == true { withAnimation { proxy.scrollTo("live-game-board", anchor: .top) } }
         }
@@ -505,17 +510,21 @@ struct ComputerPlayView: View {
 private struct GameSetupForm: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var bughousePresented = false
+    @State private var expanded = false
     @ObservedObject var model: ComputerGameModel
     var resumeOnBughouseDismiss = true
     var onStart: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             AppCard {
-            Picker("Game style", selection: $model.mode) { ForEach(GameMode.allCases) { Text($0.title).tag($0) } }.pickerStyle(.menu).frame(minHeight: 44).accessibilityIdentifier("game-style")
-            if model.mode != .blindBoard && model.mode != .blindText { Text(model.mode.explanation).font(.subheadline).foregroundStyle(.secondary) }
-            if model.mode == .bughouse {
-                Button("Set up Bughouse", systemImage: "rectangle.split.2x1") { model.pause(); bughousePresented = true }.buttonStyle(.borderedProminent)
-            } else {
+                DisclosureGroup("Game options", isExpanded: $expanded) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Menu {
+                            Picker("Game type", selection: $model.mode) { ForEach(GameMode.allCases) { Text($0.title).tag($0) } }
+                        } label: {
+                            HStack { Label("Game type: " + model.mode.title, systemImage: "square.grid.2x2.fill"); Spacer(); Image(systemName: "chevron.down") }.frame(minHeight: 40)
+                        }.buttonStyle(.borderedProminent).accessibilityIdentifier("game-style")
+                        if model.mode != .bughouse {
             if model.mode == .pawnWars { Toggle("Include kings", isOn: $model.pawnWarsKings) }
             Picker("Your color", selection: $model.human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
             if model.mode == .normal { Toggle("Developer · 2407", isOn: $model.developerOpponent).onChange(of: model.developerOpponent) { _, enabled in if enabled { model.ratingText = "2407"; model.adaptive = false } } }
@@ -531,18 +540,26 @@ private struct GameSetupForm: View {
             Slider(value: Binding(get: { min(3500, max(100, Double(model.ratingText) ?? 1000)) }, set: { model.ratingText = String(Int($0)) }), in: 100...3500, step: 50).disabled(model.developerOpponent && model.mode == .normal)
                 .accessibilityLabel("Computer rating")
             HStack { Text("100"); Spacer(); Text("3500") }.font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
-            Button(action: onStart) { Label("Start game", systemImage: "play.fill").frame(maxWidth: .infinity).padding(7) }.buttonStyle(.borderedProminent)
+                        }
+                        if let error = model.error { Text(error).foregroundStyle(.red) }
+                    }.padding(.top, 12)
+                }
             }
-            }
-            if let error = model.error { Text(error).foregroundStyle(.red) }
+            Button {
+                if model.mode == .bughouse { model.pause(); bughousePresented = true }
+                else { onStart(); if model.error != nil { expanded = true } }
+            } label: { Label("Start game", systemImage: "play.fill").frame(maxWidth: .infinity).padding(7) }.buttonStyle(.borderedProminent)
         }
+        .onChange(of: model.error) { _, error in if error != nil { expanded = true } }
         .onChange(of: model.mode) { _, mode in
+            model.error = nil
             if model.developerOpponent && mode == .normal { model.ratingText = "2407"; model.adaptive = false }
             else if model.rated { model.ratingText = String(Int(library.state.playProgress.rating(for: mode).value.rounded())) }
         }
         .fullScreenCover(isPresented: $bughousePresented, onDismiss: { if resumeOnBughouseDismiss { model.activate(library) } }) { BughousePlayView() }
     }
 }
+
 struct OpeningPicker: View {
     @EnvironmentObject private var library: LibraryStore
     @Environment(\.dismiss) private var dismiss

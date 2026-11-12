@@ -286,3 +286,16 @@ Review evaluations are checkpointed separately from repertoire-dependent grades.
 Native board snapshots are reused across adjacent plies, and typical games reuse the snapshots already produced when preparing replay. A stable depth-24 search can finish without waiting for the previous 0.8-second floor; the existing depth-20 stability path and three-second limit for harder positions remain. The bundled engine and full NNUE network are unchanged.
 
 `bash Scripts/test-review-cache.sh` runs independent cold/warm processes and an idle-prefetch/takeback/persistence workflow. In one four-ply fixture a fresh review took roughly 7.1 seconds and a fresh-process cached rebuild roughly 0.2 seconds with identical grades and zero new searches. This measures cache reuse, not a universal first-review speedup or iPhone benchmark. See Documentation/APP_SIZE.md for the current App Store download estimate.
+
+
+## Version 0.23 cleaner setup, analysis variations and opening lessons
+
+New game keeps **Start game** visible, with all game options inside an initially collapsed **Game options** section. The game-type selector is a prominent button; its description is removed. Settings and New game occupy separate toolbar areas. Bughouse keeps its essential boards, clocks, seats and ratings with shorter setup labels and no explanatory rotation paragraph.
+
+Analysis keeps alternate continuations when a different move is played from an earlier position. Enable Show notation and hold a recorded move to **Promote to main line**, **Demote to variation**, or **Delete move and following moves**. Demotion requires a sibling continuation. The Variations menu switches lines, and deletion preserves other branches. Save includes all variations for replay from Saved games; Share GIF still uses the selected line. Manual turn edits are recorded as position edits and notation begins a fresh legal segment. The swipe bar follows the current side to move: white with black controls, or black with white controls. Queued premoves have stronger cyan backgrounds and blue outlines.
+
+Openings adds **Learn** with guided move-by-move explanations, a practice mode, hints and locally saved lesson completion. Train an opening remains immediately after Your Repertoire. Existing stats, profile countries/pictures, world map, correct move-pair counts and Developer 2407 opening book are retained; no additional Developer behavior was invented.
+
+Clock presses now award increment to either pressed side from the very first tap, including Black. A tap while paused is treated as a clock press and starts the opponent with a fresh delay. Pressing an inactive clock during active play is still ignored, and a flag cannot be reversed by tapping. 3+2 remains a real preset; no new Standard-game time-control feature was inferred from this request.
+
+Pink is available as both a theme and a background, with a soft default pink gradient. Music is now a gentle newly synthesized piano medley of public-domain Bach BWV 846, Beethoven WoO 59 and Satie Gymnopedie No. 1 themes, approximately 210 seconds. It uses no modern recording or soundfont. The composition/performance notes and generator are bundled with the source.

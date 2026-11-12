@@ -176,6 +176,7 @@ public struct LibraryState: Codable, Sendable {
     public var savedGames: [SavedBoardGame] = []
     public var folders: [GameFolder] = []
     public var visitedCountries: Set<String> = []
+    public var learnedOpenings: Set<String> = []
     public var version = 1
     public var puzzle = PuzzleProgress()
     public var repertoire: [RepertoireLine] = []
@@ -184,9 +185,10 @@ public struct LibraryState: Codable, Sendable {
     public var playProgress = PlayProgress()
     public var bughouse: BughouseMatch?
     public init() {}
-    private enum CodingKeys: String, CodingKey { case visitedCountries, savedGames, folders, version, puzzle, repertoire, computer, history, bughouse, playProgress }
+    private enum CodingKeys: String, CodingKey { case learnedOpenings, visitedCountries, savedGames, folders, version, puzzle, repertoire, computer, history, bughouse, playProgress }
     public init(from decoder: Decoder) throws {
         let fields = try decoder.container(keyedBy: CodingKeys.self)
+        learnedOpenings = try fields.decodeIfPresent(Set<String>.self, forKey: .learnedOpenings) ?? []
         visitedCountries = try fields.decodeIfPresent(Set<String>.self, forKey: .visitedCountries) ?? []
         savedGames = try fields.decodeIfPresent([SavedBoardGame].self, forKey: .savedGames) ?? []
         folders = try fields.decodeIfPresent([GameFolder].self, forKey: .folders) ?? []

@@ -18,11 +18,13 @@ struct AnalysisView: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var saveTitle = "Analysis game"
     @State private var savingGame = false
+    @State private var savingBranches = false
     let original: Position
     let showsSettings: Bool
     @ObservedObject private var engine = EngineController.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var history: [Position]
+    @State private var tree: AnalysisTree
     @State private var cursor = 0
     @State private var rank = 1
     @AppStorage("positionInsights") private var insights = false
@@ -43,6 +45,7 @@ struct AnalysisView: View {
         self.showsSettings = showsSettings
         self.original = original
         _history = State(initialValue: [original])
+        _tree = State(initialValue: AnalysisTree(position: original))
     }
     private var notationRequest: NotationRequest {
         NotationRequest(fen: position.fen, variations: liveLines.map(\.moves), ranks: liveLines.map(\.rank))
@@ -77,7 +80,7 @@ struct AnalysisView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 EvaluatedBoard(position: position, whiteFraction: whiteFraction, selected: selected, legalTargets: legalTargets, onTap: tapSquare)
-                HistorySwipeBar(current: cursor, total: history.count - 1, canAdvance: cursor + 1 < history.count,
+                HistorySwipeBar(side: position.turn, current: cursor, total: history.count - 1, canAdvance: cursor + 1 < history.count,
                                 back: { if cursor > 0 { cursor -= 1 } }, forward: advance)
                 HStack(alignment: .firstTextBaseline) {
                     Text(evaluation).font(.largeTitle.bold().monospacedDigit()).accessibilityIdentifier("analysis-evaluation")
@@ -102,14 +105,15 @@ struct AnalysisView: View {
                     insightCard
                 }
                 Toggle("Show notation", isOn: $showGameNotation)
+                if tree.leaves.count > 1 { branchPicker }
                 if showGameNotation { recordedGame }
                 Toggle("Candidate lines", isOn: $showCandidateLines)
                 }
                 if showCandidateLines { AppCard { candidateLines } }
                 HStack(spacing: 10) {
                     SharePositionButton(position: position, game: gameHistory, title: "Share").frame(maxWidth: .infinity)
-                    Button("Save", systemImage: "folder.badge.plus") { savingGame = true }.frame(maxWidth: .infinity)
-                    Button("Reset", systemImage: "arrow.counterclockwise") { history = [original]; cursor = 0; selected = nil }
+                    Button(savingBranches ? "Saving…" : "Save", systemImage: "folder.badge.plus") { savingGame = true }.disabled(savingBranches).frame(maxWidth: .infinity)
+                    Button("Reset", systemImage: "arrow.counterclockwise") { history = [original]; tree = AnalysisTree(position: original); cursor = 0; selected = nil }
                         .disabled(cursor == 0 && position == original).frame(maxWidth: .infinity)
                 }.buttonStyle(.bordered).controlSize(.regular)
                 if let message { Text(message).font(.footnote).foregroundStyle(.red) }
@@ -118,14 +122,7 @@ struct AnalysisView: View {
         .modifier(AppSurface()).navigationTitle("Analysis")
         .alert("Save game", isPresented: $savingGame) {
             TextField("Game name", text: $saveTitle)
-            Button("Save") {
-                do {
-                    let recording = try GameRecording.build(from: gameHistory)
-                    let frames = Array(gameHistory.dropFirst(recording.startIndex))
-                    let title = saveTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                    library.state.savedGames.insert(SavedBoardGame(title: title.isEmpty ? "Analysis game" : String(title.prefix(100)), positions: frames.map(\.fen), notation: recording.moves.map(\.san)), at: 0)
-                } catch { message = error.localizedDescription }
-            }
+            Button("Save") { saveAnalysis() }
             Button("Cancel", role: .cancel) {}
         }
         .toolbar { if showsSettings { SettingsButton() } }
@@ -214,9 +211,60 @@ struct AnalysisView: View {
         else if recording.moves.isEmpty { Text("Play a move to start the game notation.").foregroundStyle(.secondary) }
         else {
             if recording.startIndex > 0 { Text("Moves since the last manual position change").font(.caption).foregroundStyle(.secondary) }
-            VariationTable(moves: recording.moves, rootFEN: position.fen) { move, _, _ in
+            VariationTable(moves: recording.moves, rootFEN: position.fen,
+                onPromote: { editBranch($0, action: "promote") },
+                onDemote: { editBranch($0, action: "demote") },
+                onDelete: { editBranch($0, action: "delete") }, canDemote: canDemoteMove) { move, _, _ in
                 cursor = recording.startIndex + move.id + 1
             }
+        }
+    }
+    private func saveAnalysis() {
+        guard !savingBranches else { return }
+        let lines = tree, active = gameHistory, name = saveTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        savingBranches = true
+        Task { @MainActor in
+            defer { savingBranches = false }
+            do {
+                let saved = try await Task.detached(priority: .userInitiated) {
+                    let recording = try GameRecording.build(from: active)
+                    let frames = Array(active.dropFirst(recording.startIndex))
+                    var saved = SavedBoardGame(title: name.isEmpty ? "Analysis game" : String(name.prefix(100)), positions: frames.map(\.fen), notation: recording.moves.map(\.san))
+                    saved.variations = try lines.leaves.enumerated().map { index, leaf in
+                        let path = lines.positions(lines.path(to: leaf))
+                        let notation = try GameRecording.build(from: path)
+                        return SavedGameVariation(title: index == 0 ? "Main line" : "Variation \(index)", positions: Array(path.dropFirst(notation.startIndex)).map(\.fen), notation: notation.moves.map(\.san))
+                    }
+                    return saved
+                }.value
+                library.state.savedGames.insert(saved, at: 0)
+            } catch { message = error.localizedDescription }
+        }
+    }
+    private var branchPicker: some View {
+        Menu {
+            ForEach(Array(tree.leaves.enumerated()), id: \.element) { index, leaf in
+                Button(index == 0 ? "Main line" : "Variation \(index): " + tree.path(to: leaf).dropFirst().compactMap { tree.nodes[$0]?.san }.joined(separator: " ")) {
+                    let line = tree.positions(tree.path(to: leaf))
+                    guard !line.isEmpty else { return }; history = line; cursor = history.count - 1; selected = nil
+                }
+            }
+        } label: { Label("Variations", systemImage: "arrow.triangle.branch") }.buttonStyle(.bordered)
+    }
+    private func canDemoteMove(_ move: NotatedMove) -> Bool {
+        let index = recording.startIndex + move.id + 1, ids = tree.ids(for: history)
+        guard ids.indices.contains(index), let parent = tree.nodes[ids[index]]?.parent else { return false }
+        return (tree.nodes[parent]?.children.count ?? 0) > 1
+    }
+    private func editBranch(_ move: NotatedMove, action: String) {
+        let index = recording.startIndex + move.id + 1
+        let ids = tree.ids(for: history)
+        guard ids.indices.contains(index) else { return }
+        let id = ids[index]
+        if action == "promote" { tree.promote(id) }
+        else if action == "demote" { tree.demote(id) }
+        else {
+            tree.delete(id); history = tree.positions(tree.mainLine); cursor = min(index - 1, history.count - 1); selected = nil
         }
     }
     private func advance() {
@@ -227,6 +275,7 @@ struct AnalysisView: View {
         changed.turn = changed.turn.opposite
         changed.enPassant = "-"
         history = Array(history.prefix(cursor)) + [changed]
+        tree.record(history)
     }
     private func tapSquare(_ index: Int) {
         if let source = selected {
@@ -242,7 +291,9 @@ struct AnalysisView: View {
     private func play(_ move: ChessMove) {
         do {
             let next = try position.playing(move)
-            history = Array(history.prefix(cursor + 1)) + [next]; cursor += 1; selected = nil
+            let path = Array(history.prefix(cursor + 1)) + [next]
+            let ids = tree.record(path)
+            history = tree.positions(tree.continuation(from: ids.last ?? tree.root)); cursor += 1; selected = nil
         } catch { message = error.localizedDescription }
     }
     private func playThrough(_ target: NotatedMove, line: [NotatedMove], fen: String) {
@@ -251,7 +302,9 @@ struct AnalysisView: View {
             var board = position
             var continuation: [Position] = []
             for step in line.prefix(target.id + 1) { board = try board.playing(step.move); continuation.append(board) }
-            history = Array(history.prefix(cursor + 1)) + continuation; cursor += continuation.count; selected = nil
+            let path = Array(history.prefix(cursor + 1)) + continuation
+            let ids = tree.record(path)
+            history = tree.positions(tree.continuation(from: ids.last ?? tree.root)); cursor += continuation.count; selected = nil
         } catch { message = error.localizedDescription }
     }
 }
@@ -259,6 +312,10 @@ struct AnalysisView: View {
 private struct VariationTable: View {
     var moves: [NotatedMove]
     var rootFEN: String
+    var onPromote: ((NotatedMove) -> Void)? = nil
+    var onDemote: ((NotatedMove) -> Void)? = nil
+    var onDelete: ((NotatedMove) -> Void)? = nil
+    var canDemote: ((NotatedMove) -> Bool)? = nil
     var onSelect: (NotatedMove, [NotatedMove], String) -> Void
     private var numbers: [Int] { Array(Set(moves.map(\.number))).sorted() }
     var body: some View {
@@ -286,6 +343,11 @@ private struct VariationTable: View {
                 Text(move.san).font(.body.monospaced()).frame(maxWidth: .infinity, minHeight: 30, alignment: .leading).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .contextMenu {
+                if let onPromote { Button("Promote to main line") { onPromote(move) } }
+                if let onDemote { Button("Demote to variation") { onDemote(move) }.disabled(!(canDemote?(move) ?? false)) }
+                if let onDelete { Button("Delete move and following moves", role: .destructive) { onDelete(move) } }
+            }
             .accessibilityLabel("Move \(move.number), \(move.side.title), \(move.san)")
         } else { Text("—").foregroundStyle(.tertiary).frame(maxWidth: .infinity, minHeight: 30, alignment: .leading) }
     }
@@ -293,6 +355,7 @@ private struct VariationTable: View {
 
 
 private struct HistorySwipeBar: View {
+    var side: Side
     var current: Int
     var total: Int
     var canAdvance: Bool
@@ -305,7 +368,10 @@ private struct HistorySwipeBar: View {
             Button(action: forward) { Image(systemName: "chevron.right") }.disabled(!canAdvance).accessibilityLabel("Next position")
         }
         .padding(.horizontal, 16).padding(.vertical, 8)
-        .background(Color.accentColor.opacity(0.13), in: Capsule())
+        .foregroundStyle(side == .white ? Color.black : Color.white)
+        .tint(side == .white ? Color.black : Color.white)
+        .background(side == .white ? Color.white : Color.black, in: Capsule())
+        .overlay(Capsule().stroke(Color.gray.opacity(0.45), lineWidth: 1))
         .contentShape(Rectangle())
         .gesture(DragGesture(minimumDistance: 18).onEnded { value in
             guard abs(value.translation.width) > abs(value.translation.height) else { return }

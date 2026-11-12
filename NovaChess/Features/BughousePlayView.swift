@@ -22,7 +22,7 @@ import SwiftUI
         NavigationStack {
             GeometryReader { geometry in
                 if geometry.size.width <= geometry.size.height || !sideways {
-                    ContentUnavailableView("Turn your device sideways", systemImage: "rotate.right", description: Text("Bughouse uses two boards. Rotate to landscape to set up or resume the match."))
+                    ContentUnavailableView("Turn your device sideways", systemImage: "rotate.right")
                 } else if model.loading { ProgressView("Preparing Bughouse…").frame(maxWidth: .infinity, maxHeight: .infinity) }
                 else if model.match == nil || model.states.count != 2 { BughouseSetupView { model.newMatch($0) } }
                 else { table(size: geometry.size) }
@@ -200,20 +200,20 @@ private struct BughouseSetupView: View {
     let start: (BughouseConfig) -> Void
     var body: some View {
         Form {
-            Section("Seats and ratings") {
+            Section("Players") {
                 Picker("Your color on board A", selection: $human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
                 ForEach(0..<4, id: \.self) { seat in
                     let color: Side = seat.isMultiple(of: 2) ? .white : .black
-                    let role = seat == BughouseConfig.seat(0, human) ? "You (display rating)" : BughouseConfig.team(seat / 2, color) == (human == .white ? 0 : 1) ? "Partner computer" : "Opponent computer"
+                    let role = seat == BughouseConfig.seat(0, human) ? "You" : BughouseConfig.team(seat / 2, color) == (human == .white ? 0 : 1) ? "Partner" : "Opponent"
                     HStack { Text("\(seat < 2 ? "A" : "B") \(color.title) · \(role)").font(.caption); Spacer(); TextField("Rating", text: $ratings[seat]).keyboardType(.numberPad).frame(width: 75).textFieldStyle(.roundedBorder) }
                 }
             }.listRowBackground(ThemeCardBackground())
-            Section("Both boards · time control") {
+            Section("Time control") {
                 Toggle("Custom", isOn: $custom)
                 if custom {
                     Stepper("Minutes: \(minutes)", value: $minutes, in: 0...180)
                     Stepper("Seconds: \(seconds)", value: $seconds, in: 0...59)
-                    Stepper("Increment: \(increment) seconds", value: $increment, in: 0...60)
+                    Stepper("Increment: \(increment) \(increment == 1 ? "second" : "seconds")", value: $increment, in: 0...60)
                 } else { Picker("Preset", selection: $preset) { ForEach(Array(ClockTimeControl.presets.enumerated()), id: \.offset) { index, control in Text(control.title).tag(index) } } }
             }.listRowBackground(ThemeCardBackground())
             Section {

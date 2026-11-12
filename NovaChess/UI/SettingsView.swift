@@ -107,6 +107,9 @@ struct AppCanvas: View {
     var body: some View {
         ZStack {
             Color(uiColor: .systemBackground)
+            if theme == "Pink" && backdrop == .standard {
+                LinearGradient(colors: [Color.pink.opacity(0.13), Color.purple.opacity(0.04)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            }
             if let hex = backdrop.hex { Color(hex: hex).opacity(scheme == .dark ? 0.10 : 0.07) }
             if backdrop == .theme { accent.opacity(scheme == .dark ? 0.10 : 0.06) }
             if backdrop == .aurora {

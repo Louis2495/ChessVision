@@ -2,7 +2,7 @@
 
 ## Bundled assets
 
-`NovaChess/Core/Resources/Puzzles.json` has exactly 2,000 puzzle records. Each has its original Lichess ID, FEN, full solution, source rating, estimated difficulty, themes and game URL. The first solution ply is the opponent's setup move; the app applies it before asking the learner to solve. Every source FEN and every solution ply was checked with python-chess and the Swift legal-move engine. Popularity, play-count and deviation filters exclude poorly established examples. Difficulty sampling spans the available source distribution rather than duplicating positions.
+`NovaChess/Core/Resources/Puzzles.json` has exactly 4,000 puzzle records. Each has its original Lichess ID, FEN, full solution, source rating, estimated difficulty, themes and game URL. The first solution ply is the opponent's setup move; the app applies it before asking the learner to solve. Every source FEN and every solution ply was checked with python-chess and the Swift legal-move engine. Popularity, play-count and deviation filters exclude poorly established examples. Difficulty sampling spans the available source distribution rather than duplicating positions.
 
 The primary database domain was blocked in this cloud task, so public facts were read from a pinned GitHub mirror, not from its Flask application/API. No mirror application code is bundled. The exact commit, source-file SHA-256 and sampling recipe are in `Vendor/ChessData/PROVENANCE.json`. Original Lichess puzzle data is released under CC0; source reference: https://database.lichess.org/#puzzles.
 
@@ -55,3 +55,8 @@ Play adds Duck, Atomic, Fog of War, Pawn Wars and Antichess. Duck turns are one 
 The rating slider spans 100–3500 in steps of 50; the number field also accepts 1–10000. The underlying engine strength control remains approximate. Repertoire training has continuous evaluation and a bar, without displaying engine continuations.
 
 The 0.6 library retains all 1,000 original IDs and adds 1,000 validated puzzles from the remaining pinned source records. On Apple platforms Lichess NDJSON is parsed as an AsyncBytes line stream with no max parameter; Chess.com visits the entire archive list. No 1,000-game cap remains. The tree still summarizes the first 40 plies of each game.
+
+
+## Version 0.21.1 expansion
+
+The offline library now contains 4000 puzzles. All 2000 previous records and IDs are retained unchanged, preserving local completion and rating history. Another 2000 puzzles were sampled across the remaining source difficulty distribution with the same popularity/play-count/deviation filters. Every normalized solving position (after applying the setup move) is distinct across the entire library. The pinned input hash and updated count/selection recipe are recorded in Vendor/ChessData/PROVENANCE.json. The generator now reads its target count from provenance and handles a zero- or one-puzzle top-up safely.

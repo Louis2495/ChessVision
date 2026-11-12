@@ -26,16 +26,31 @@ for row in csv.DictReader(a.puzzles.open()):
   valid.append(dict(id=row['PuzzleId'],fen=row['FEN'],moves=moves,sourceRating=rating,estimatedRating=estimate,themes=row['Themes'].split(),gameURL=row['GameUrl']))
  except (ValueError,KeyError):continue
 valid.sort(key=lambda x:(x['estimatedRating'],x['id']))
-assert len(valid)>=2000
+target=provenance["puzzles"]["bundled_count"]
+assert len(valid)>=target
 existing=json.loads((ROOT/'NovaChess/Core/Resources/Puzzles.json').read_text())
 by_id={p['id']:p for p in valid}
-puzzles=[by_id[p['id']] for p in existing]
+assert all(by_id[p['id']]==p for p in existing), 'Existing puzzle records no longer match the pinned source'
+puzzles=list(existing)
+def solving_key(puzzle):
+ board=chess.Board(puzzle['fen']);board.push_uci(puzzle['moves'][0])
+ return board.epd(en_passant='legal')
+positions={solving_key(p) for p in puzzles}
+assert len(positions)==len(puzzles), 'Existing library has duplicate solving positions'
 selected={p['id'] for p in puzzles}
-remaining=[p for p in valid if p['id'] not in selected]
-needed=2000-len(puzzles)
-if needed:
+remaining=[]
+for puzzle in valid:
+ key=solving_key(puzzle)
+ if puzzle['id'] not in selected and key not in positions:
+  remaining.append(puzzle);positions.add(key)
+needed=target-len(puzzles)
+assert 0<=needed<=len(remaining), 'Not enough distinct validated puzzles'
+if needed==1:
+ puzzles.append(remaining[len(remaining)//2])
+elif needed>1:
  puzzles.extend(remaining[round(i*(len(remaining)-1)/(needed-1))] for i in range(needed))
-assert len({p['id'] for p in puzzles})==2000
+assert len(puzzles)==target and len({p['id'] for p in puzzles})==target
+assert len({solving_key(p) for p in puzzles})==target
 out=ROOT/'NovaChess/Core/Resources';out.mkdir(exist_ok=True)
 (out/'Puzzles.json').write_text(json.dumps(puzzles,separators=(',',':'))+'\n')
 openings=[]

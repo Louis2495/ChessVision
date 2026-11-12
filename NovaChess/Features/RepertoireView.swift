@@ -95,7 +95,7 @@ private struct RepertoireLineDetail: View {
                 BoardView(position: board, flipped: line.side == .black)
                 Text("You play \(line.side.title)").font(.headline)
                 if let moves = try? line.validated() { Text(moves.map(\.san).joined(separator: " ")).font(.body.monospaced()) }
-                HStack { Button("Previous") { show(cursor - 1) }.disabled(cursor == 0); Spacer(); Text("\(cursor)/\(line.moves.count)"); Spacer(); Button("Next") { show(cursor + 1) }.disabled(cursor == line.moves.count) }
+                HStack { Button("Previous") { show(cursor - 1) }.disabled(cursor == 0); Spacer(); Text("\(String(GameStatistics.moveCount(plies: cursor)))/\(String(GameStatistics.moveCount(plies: line.moves.count)))"); Spacer(); Button("Next") { show(cursor + 1) }.disabled(cursor == line.moves.count) }
                 NavigationLink("Train this line") { RepertoireTrainerView(preferred: line.id) }.buttonStyle(.borderedProminent)
             }.padding()
         }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle(line.name).onAppear { show(cursor) }

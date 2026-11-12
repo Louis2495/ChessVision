@@ -141,6 +141,10 @@ extension NovaChessUITests {
         let resign = app.buttons["Resign"]
         for _ in 0..<8 { if resign.isHittable { break }; app.swipeUp() }
         resign.tap(); app.sheets.buttons["Resign"].tap()
+        XCTAssertTrue(app.staticTexts["final-position-evaluation"].waitForExistence(timeout: 10))
+        let review = app.buttons["Review game"]
+        for _ in 0..<8 { if review.isHittable { break }; app.swipeUp() }
+        review.tap()
         XCTAssertTrue(app.navigationBars["Game review"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Areas for improvement"].waitForExistence(timeout: 5))
         app.navigationBars.buttons["Done"].tap()

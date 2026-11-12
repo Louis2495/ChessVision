@@ -85,7 +85,7 @@ struct OpeningExplorerView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     AppCard {
-                    Text("Explore games on a chess.com or lichess account").font(.subheadline).foregroundStyle(.secondary)
+                    Text("Explore an account").font(.subheadline).foregroundStyle(.secondary)
                     Picker("Site", selection: $model.site) { ForEach(PublicChessSite.allCases) { Text($0.title).tag($0) } }.pickerStyle(.segmented).disabled(model.busy)
                     TextField("Public username", text: $model.username).textContentType(.username).submitLabel(.search).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).disabled(model.busy).onSubmit { if !model.busy && PublicGames.validUsername(model.username) { model.load() } }
                     Button { model.load() } label: { Label("Load opening tree", systemImage: "arrow.down.circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(model.busy || !PublicGames.validUsername(model.username))
@@ -100,7 +100,7 @@ struct OpeningExplorerView: View {
                     if !notation.isEmpty { Text(notation.joined(separator: " ")).font(.footnote.monospaced()) }
                     HStack { Button("Back", systemImage: "chevron.left") { history.removeLast(); notation.removeLast() }.disabled(history.count == 1); Spacer(); Button("Starting position") { history = [.initial]; notation = [] } }
                     let branches = model.tree.branches(at: position)
-                    Text("\(position.turn == (model.filter == .white ? Side.white : Side.black) ? (model.importedUsername.isEmpty ? "Player" : model.importedUsername) : "Opponent") to move · \(position.turn.title)").font(.headline).foregroundStyle(.primary)
+                    Text("\(position.turn == (model.filter == .white ? Side.white : Side.black) ? (model.importedUsername.isEmpty ? "Player" : model.importedUsername) : "Opponent")’s move options · \(position.turn.title)").font(.headline).foregroundStyle(.primary)
                     if branches.isEmpty { ContentUnavailableView(model.profileLabel.isEmpty ? "Load a profile to begin" : "No imported games here", systemImage: "tree", description: Text("Standard public games only. The tree covers the first 40 half-moves of your public standard games.")) }
                     ForEach(branches) { branch in
                         Button { if let move = position.legalMoves().first(where: { $0.uci == branch.uci }) { play(move) } } label: {

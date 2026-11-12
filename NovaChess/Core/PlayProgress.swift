@@ -14,7 +14,8 @@ public struct PlayerRating: Codable, Sendable {
 }
 public enum Achievement: String, Codable, CaseIterable, Sendable {
     case hundredGames, fiveHundredGames, thousandGames, tenThousandGames, hundredWins, thousandWins
-    case firstGame, firstWin, tenGames, fiftyGames, pawnMate, knightMate, promotion, castling, explorer
+    case firstGame, firstWin, tenGames, fiftyGames, pawnMate, knightMate, promotion, explorer
+    public static var ordered: [Achievement] { [.firstGame, .firstWin, .tenGames, .promotion, .fiftyGames, .hundredGames, .knightMate, .pawnMate, .hundredWins, .explorer, .fiveHundredGames, .thousandGames, .thousandWins, .tenThousandGames] }
     public var title: String {
         switch self {
         case .hundredGames: return "Century club"
@@ -30,7 +31,6 @@ public enum Achievement: String, Codable, CaseIterable, Sendable {
         case .pawnMate: return "Small but mighty"
         case .knightMate: return "Knight finish"
         case .promotion: return "A new beginning"
-        case .castling: return "King tucked away"
         case .explorer: return "Variant explorer"
         }
     }
@@ -49,7 +49,6 @@ public enum Achievement: String, Codable, CaseIterable, Sendable {
         case .pawnMate: return "Deliver checkmate with a pawn, without promoting."
         case .knightMate: return "Deliver checkmate with a knight."
         case .promotion: return "Promote one of your pawns."
-        case .castling: return "Castle in a game."
         case .explorer: return "Complete games in eight different variants."
         }
     }
@@ -93,7 +92,6 @@ public struct PlayProgress: Codable, Sendable {
         for (ply, text) in game.moves.enumerated() where game.mode != .bughouse && (ply.isMultiple(of: 2) ? Side.white : .black) == game.human {
             let move = VariantMove(uci: text, san: "")
             if move.promotion != nil { unlock(.promotion) }
-            if game.notation.indices.contains(ply), game.notation[ply].hasPrefix("O-O") { unlock(.castling) }
         }
         if win && game.variant == "chess", let last = game.moves.last {
             var board = Position.initial

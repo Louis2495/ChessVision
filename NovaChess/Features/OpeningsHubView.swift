@@ -7,10 +7,13 @@ struct OpeningsHubView: View {
                 VStack(spacing: 20) {
                     NavigationLink { RepertoireView() } label: {
                         tile("Your Repertoire", detail: "Build and train your opening lines", icon: "books.vertical")
-                    }
+                    }.accessibilityLabel("Your Repertoire")
+                    NavigationLink { OpeningTrainingView() } label: {
+                        tile("Train an opening", detail: "Practice a chosen opening against the computer", icon: "square.grid.3x3.fill")
+                    }.accessibilityLabel("Train an opening")
                     NavigationLink { OpeningExplorerView() } label: {
-                        tile("Research", detail: "Explore games on a chess.com or lichess account", icon: "magnifyingglass")
-                    }
+                        tile("Research", detail: "Explore an account", icon: "magnifyingglass")
+                    }.accessibilityLabel("Research")
                 }.padding()
             }.modifier(AppSurface()).navigationTitle("Openings").toolbar { SettingsButton() }
         }

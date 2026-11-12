@@ -17,6 +17,8 @@ public enum Usernames {
 public struct PlayerProfile: Identifiable, Sendable {
     public var username: String
     public var ownerID: String
+    public var countryCode: String? = nil
+    public var avatarData: Data? = nil
     public var gameCenterID: String
     public var id: String { username }
 }

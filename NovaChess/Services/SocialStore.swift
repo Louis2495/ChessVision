@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import CloudKit
 import GameKit
+import ImageIO
 
 /// Public records require public-read / creator-write permissions in the CloudKit schema.
 @MainActor final class SocialStore: ObservableObject {
@@ -40,7 +41,14 @@ import GameKit
               record.recordID.recordName == "profile_" + name, let creator = record.creatorUserRecordID?.recordName else {
             throw ChessError.invalid("This player profile could not be verified.")
         }
-        return PlayerProfile(username: name, ownerID: creator, gameCenterID: record["gameCenterID"] as? String ?? "")
+        var profile = PlayerProfile(username: name, ownerID: creator, gameCenterID: record["gameCenterID"] as? String ?? "")
+        profile.countryCode = Countries.valid(record["countryCode"] as? String)
+        if let data = record["avatarData"] as? Data, data.count <= 100000,
+           let source = CGImageSourceCreateWithData(data as CFData, nil),
+           let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+           let width = properties[kCGImagePropertyPixelWidth] as? Int, let height = properties[kCGImagePropertyPixelHeight] as? Int,
+           (1...512).contains(width), (1...512).contains(height) { profile.avatarData = data }
+        return profile
     }
     private func player(_ username: String) async throws -> PlayerProfile {
         if let cached = profileCache[username] { return cached }
@@ -74,6 +82,20 @@ import GameKit
             _ = try await container.privateCloudDatabase.save(pointer)
             profile = try decodeProfile(saved); profileCache[username] = profile
         }
+    }
+    func updateProfile(country: String?, avatar: Data?) async {
+        await perform {
+            guard let profile, let record = try await optional("profile_" + profile.username), record.creatorUserRecordID?.recordName == ownerID else { throw ChessError.invalid("Connect to your profile first.") }
+            guard (avatar?.count ?? 0) <= 100000 else { throw ChessError.invalid("Choose a smaller profile image.") }
+            record["countryCode"] = (Countries.valid(country) ?? "") as CKRecordValue
+            if let avatar { record["avatarData"] = avatar as CKRecordValue } else { record["avatarData"] = nil }
+            let saved = try await database.save(record)
+            self.profile = try decodeProfile(saved); profileCache[profile.username] = self.profile
+        }
+    }
+    func refreshGameCenterIdentity() async {
+        guard profile != nil else { return }
+        await perform { try await updateGameCenterLink() }
     }
     private func updateGameCenterLink() async throws {
         guard GKLocalPlayer.local.isAuthenticated, let profile, profile.gameCenterID != GKLocalPlayer.local.gamePlayerID,

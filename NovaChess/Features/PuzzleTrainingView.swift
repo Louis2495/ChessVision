@@ -32,7 +32,7 @@ struct PuzzleTrainingView: View {
                             Button { hint() } label: { Label("Hint", systemImage: "lightbulb").foregroundStyle(Color.yellow).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).controlSize(.large).disabled(finished || board.turn != learner)
                             Button { if !finished { grade(false) }; nextPuzzle() } label: {
                                 Label(finished ? "Next puzzle" : "Skip puzzle", systemImage: "arrow.right").frame(maxWidth: .infinity, minHeight: 44)
-                            }.buttonStyle(.borderedProminent).controlSize(.large)
+                            }.buttonStyle(.borderedProminent).tint(Color(red: 0.12, green: 0.36, blue: 0.24)).foregroundStyle(.white).controlSize(.large)
                         }
                     } else { ContentUnavailableView("Puzzle library unavailable", systemImage: "puzzlepiece", description: Text("Install the complete build to use the bundled puzzle library.")) }
                 }.padding()

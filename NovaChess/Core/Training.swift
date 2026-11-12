@@ -154,6 +154,12 @@ public struct SavedComputerGame: Codable, Sendable {
     public var agreedDraw: Bool?
     public var chess960Index: Int?
     public var pawnWarsKings: Bool?
+    public var developerBot: Bool?
+    public var opponentCountry: String?
+    public var opponentGameCenterID: String?
+    public var source: String?
+    public var timeControlSeconds: Int?
+    public var timeControlIncrement: Int?
     public var opponentName: String?
     public var rated: Bool?
     public var adaptive: Bool?
@@ -167,6 +173,7 @@ public struct SavedComputerGame: Codable, Sendable {
 public struct LibraryState: Codable, Sendable {
     public var savedGames: [SavedBoardGame] = []
     public var folders: [GameFolder] = []
+    public var visitedCountries: Set<String> = []
     public var version = 1
     public var puzzle = PuzzleProgress()
     public var repertoire: [RepertoireLine] = []
@@ -175,9 +182,10 @@ public struct LibraryState: Codable, Sendable {
     public var playProgress = PlayProgress()
     public var bughouse: BughouseMatch?
     public init() {}
-    private enum CodingKeys: String, CodingKey { case savedGames, folders, version, puzzle, repertoire, computer, history, bughouse, playProgress }
+    private enum CodingKeys: String, CodingKey { case visitedCountries, savedGames, folders, version, puzzle, repertoire, computer, history, bughouse, playProgress }
     public init(from decoder: Decoder) throws {
         let fields = try decoder.container(keyedBy: CodingKeys.self)
+        visitedCountries = try fields.decodeIfPresent(Set<String>.self, forKey: .visitedCountries) ?? []
         savedGames = try fields.decodeIfPresent([SavedBoardGame].self, forKey: .savedGames) ?? []
         folders = try fields.decodeIfPresent([GameFolder].self, forKey: .folders) ?? []
         version = try fields.decode(Int.self, forKey: .version)

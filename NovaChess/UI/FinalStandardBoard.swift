@@ -24,7 +24,7 @@ struct FinalStandardBoard: View {
                 BoardView(position: position, flipped: flipped)
                 EvaluationBar(whiteFraction: fraction)
             }
-            Text(evaluation).font(.title.bold().monospacedDigit()).accessibilityLabel("Final position evaluation \(evaluation)")
+            Text(evaluation).font(.title.bold().monospacedDigit()).accessibilityIdentifier("final-position-evaluation").accessibilityLabel("Final position evaluation \(evaluation)")
         }
         .task(id: position.fen) { if !terminal && status != "draw" { engine.analyze(position) } }
         .onDisappear { engine.stopAnalysis() }

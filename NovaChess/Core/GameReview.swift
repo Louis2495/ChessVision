@@ -81,6 +81,10 @@ public struct CompletedGame: Codable, Identifiable, Sendable {
     public init(game: SavedComputerGame, result: String, now: Date = Date()) {
         self.id = game.id ?? UUID(); self.game = game; self.result = result; self.finishedAt = now
     }
+    public var moveCount: Int {
+        if let bughouse { return GameStatistics.moveCount(plies: bughouse.events.filter { $0.board == 0 }.count) + GameStatistics.moveCount(plies: bughouse.events.filter { $0.board == 1 }.count) }
+        return GameStatistics.moveCount(plies: game.moves.count)
+    }
     public var humanMoveCount: Int { if let bughouse { return bughouse.events.filter { $0.board == 0 && $0.side == bughouse.config.human }.count }; return game.human == .white ? (game.moves.count + 1) / 2 : game.moves.count / 2 }
     public var resultTitle: String { if let bughouse { return bughouse.resultTitle }; return result == "white" ? "White wins" : result == "black" ? "Black wins" : "Draw" }
 }

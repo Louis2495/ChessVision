@@ -62,7 +62,7 @@ private struct SavedGameReplay: View {
                 if game.positions.indices.contains(cursor), let snapshot = try? VariantSnapshot.parse("fen\t" + game.positions[cursor] + "\nstatus\tongoing") { BoardView(position: snapshot.board, duckSquare: snapshot.duckSquare).aspectRatio(1, contentMode: .fit) }
                 HStack {
                     Button("Previous", systemImage: "chevron.left") { cursor = max(0, cursor - 1) }.disabled(cursor == 0)
-                    Spacer(); Text("\(cursor) / \(max(0, game.positions.count - 1))"); Spacer()
+                    Spacer(); Text("\(String(GameStatistics.moveCount(plies: cursor))) / \(String(GameStatistics.moveCount(plies: game.positions.count - 1)))"); Spacer()
                     Button("Next", systemImage: "chevron.right") { cursor = min(game.positions.count - 1, cursor + 1) }.disabled(cursor + 1 >= game.positions.count)
                 }
                 Text(game.notation.enumerated().map { i, san in (i % 2 == 0 ? "\(i / 2 + 1). " : "") + san }.joined(separator: " "))

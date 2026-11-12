@@ -5,11 +5,14 @@ import GameKit
     @StateObject private var store = SocialStore.shared
     @State private var username = ""
     @State private var search = ""
+    @State private var editingProfile = false
     var body: some View {
         List {
             Section {
                 if let profile = store.profile {
-                    Label("@" + profile.username, systemImage: "person.crop.circle.fill").font(.title2.bold())
+                    HStack { ProfilePortrait(profile: profile); Text("@" + profile.username).font(.title2.bold()) }
+                    if let country = profile.countryCode { Text(Countries.name(country)).foregroundStyle(.secondary) }
+                    Button("Edit profile") { editingProfile = true }
                     Button("Refresh friends", systemImage: "arrow.clockwise") { Task { await store.refreshContacts() } }
                 } else if store.accountReady {
                     TextField("Choose a username", text: $username).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -28,7 +31,7 @@ import GameKit
                         TextField("Search usernames", text: $search).textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.search).onSubmit { Task { await store.search(search) } }
                         Button("Search") { Task { await store.search(search) } }.disabled(Usernames.prefix(search) == nil || store.busy)
                     }
-                    ForEach(store.results) { profile in NavigationLink("@" + profile.username) { PlayerDetailView(player: profile) } }
+                    ForEach(store.results) { profile in NavigationLink { PlayerDetailView(player: profile) } label: { HStack { ProfilePortrait(profile: profile); Text("@" + profile.username) } } }
                 }.listRowBackground(ThemeCardBackground())
                 Section("Friend requests") {
                     if store.requests.isEmpty { Text("No pending requests").foregroundStyle(.secondary) }
@@ -44,7 +47,7 @@ import GameKit
                 }.listRowBackground(ThemeCardBackground())
                 Section("Friends") {
                     if store.friends.isEmpty { Text("Search for a username and send a friend request.").foregroundStyle(.secondary) }
-                    ForEach(store.friends) { profile in NavigationLink("@" + profile.username) { PlayerDetailView(player: profile) } }
+                    ForEach(store.friends) { profile in NavigationLink { PlayerDetailView(player: profile) } label: { HStack { ProfilePortrait(profile: profile); Text("@" + profile.username) } } }
                 }.listRowBackground(ThemeCardBackground())
                 Section {
                     NavigationLink { SpectatorFeedView() } label: { Label("Watch public games", systemImage: "eye") }
@@ -53,6 +56,7 @@ import GameKit
         }.modifier(AppSurface()).navigationTitle("Players")
         .task { if store.profile == nil { await store.connect() } else { await store.refreshContacts() } }
         .refreshable { await store.refreshContacts() }
+        .sheet(isPresented: $editingProfile) { ProfileEditorView() }
     }
 }
 
@@ -67,7 +71,8 @@ import GameKit
     var body: some View {
         List {
             Section {
-                Text("@" + player.username).font(.title.bold())
+                HStack { ProfilePortrait(profile: player); Text("@" + player.username).font(.title.bold()) }
+                if let country = player.countryCode { Text(Countries.name(country)).foregroundStyle(.secondary) }
                 if store.profile?.username != player.username {
                     if isFriend { Label("Friends", systemImage: "person.2.fill") }
                     else if store.sent.contains(player.username) { Text("Friend request sent").foregroundStyle(.secondary) }

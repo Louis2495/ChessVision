@@ -14,7 +14,7 @@ The player directory, friend requests and spectator boards use Apple's CloudKit 
 
 | Record type | Fields | Query/sort indexes |
 | --- | --- | --- |
-| NCProfile | username (String), gameCenterID (String) | username queryable + sortable; gameCenterID queryable |
+| NCProfile | username (String), gameCenterID (String), countryCode (String, optional), avatarData (Bytes, optional) | username queryable + sortable; gameCenterID queryable |
 | NCAccount (private) | username (String) | fetched by fixed record ID `myProfile`; no query needed |
 | NCFriendRequest | sender, recipient, recipientOwner (String) | sender + recipient queryable |
 | NCFriendResponse | request, sender, recipient (String), accepted (Int64) | sender + recipient queryable |
@@ -33,3 +33,10 @@ Friend requests bind the recipient’s creator ID as well as their username, so 
 ## Verification still required on Apple services
 
 Create two profiles; race the same username and check only one succeeds; send/accept/decline a friend request; invite the accepted friend through Game Center; publish a bot game and observe another account's read-only updates; verify correspondence boards appear without approval; check profile ownership prevents another account from updating records. Repeat against the Production environment after schema deployment.
+
+
+## Country and picture fields (0.21)
+
+Deploy optional `countryCode` (String) and `avatarData` (Bytes) fields on NCProfile to Production before distributing this build. No new indexes are required. Keep public-read / creator-write permissions. The country is a player-selected ISO region, not GPS or verified residence. Pictures are downsampled, center-cropped and re-encoded as 256px JPEGs with no original photo metadata and at most 100000 bytes; public records with oversized image dimensions/data are ignored.
+
+Players → Edit profile updates the two fields together. Public profiles show the chosen picture and country. Correspondence games associate the opponent's linked profile country with local game history, and once at least one move has been played, the country is added to the local world map. Unknown countries and bots do not invent visited locations. These fields still depend on CloudKit account access and owner schema deployment; the app cannot deploy the production schema itself.

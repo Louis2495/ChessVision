@@ -15,7 +15,7 @@ struct GameHistoryView: View {
                 NavigationLink { GameReviewView(id: entry.id) } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack { Text(entry.resultTitle).font(.headline); Spacer(); Text(entry.game.mode.title).font(.caption).foregroundStyle(.secondary) }
-                        Text("You: \(entry.game.human.title) · \(entry.game.opponentName ?? "Computer ≈ \(String(entry.game.targetRating))") · \(entry.game.moves.count) plies").font(.caption).foregroundStyle(.secondary)
+                        Text("You: \(entry.game.human.title) · \(entry.game.opponentName ?? "Computer ≈ \(String(entry.game.targetRating))") · \(String(entry.moveCount)) moves").font(.caption).foregroundStyle(.secondary)
                         Text(entry.finishedAt, style: .date).font(.caption2).foregroundStyle(.secondary)
                         if entry.review?.complete == true { Text("Review saved").font(.caption).foregroundStyle(.tint) }
                     }.padding(.vertical, 6)
@@ -109,7 +109,7 @@ struct GameReviewView: View {
             }
             HStack {
                 Button("Previous", systemImage: "chevron.left") { cursor = max(0, cursor - 1) }.disabled(cursor == 0)
-                Spacer(); Text("\(cursor)/\(entry.game.moves.count)").font(.caption.monospacedDigit()); Spacer()
+                Spacer(); Text("\(String(GameStatistics.moveCount(plies: cursor)))/\(String(GameStatistics.moveCount(plies: entry.game.moves.count)))").font(.caption.monospacedDigit()); Spacer()
                 Button("Next", systemImage: "chevron.right") { cursor = min(entry.game.moves.count, cursor + 1) }.disabled(cursor >= entry.game.moves.count)
             }
             if let bughouse = entry.bughouse, cursor > 0, bughouse.events.indices.contains(cursor - 1) {

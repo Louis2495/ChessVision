@@ -262,3 +262,16 @@ Premoves can target a square occupied by a friendly piece, allowing the opponent
 In Bughouse, having no legal move in check does not end the match if a future piece drop could interpose. The bridge tests a hypothetical non-pawn drop using native legality; it does not add that piece to the actual pocket. The board waits, its clock keeps running, and the partner board can supply a real piece. Bots skip waiting boards rather than requesting an impossible move. Adjacent attacks, knight attacks and unblockable double checks still produce genuine mate. Blockable checks use '+' rather than '#'. Queued responses are retained while a board has no legal move.
 
 Single-board reviews cannot evaluate future partner deliveries. Checking moves that leave a board waiting for material are explicitly left ungraded rather than labeled mate; the review explains any such omissions. Run `bash Scripts/test-bughouse.sh` for the linked-delivery and review workflow.
+
+
+## Version 0.21 player identity, stats and streamlined play
+
+Play opens a **New game** page for game settings rather than embedding settings in the home screen. Standard offers a separate **Developer · 2407** opponent. Its White book plays e4, Nf3 and Bc4 when the opponent permits the Italian setup; as Black it answers e4 with e5 and d4 with Nf6. Every book move is checked for legality, and the engine takes over after the book or a deviation. The fixed rating is an engine target, not a platform-certified rating. No Learn page or default 3+2 setting was added, per the clarified scope.
+
+Openings now contains **Your Repertoire → Train an opening → Research**. Opening requests moved to the dedicated training page. Research says **Explore an account**, and labels whose move options are displayed using the imported username or Opponent and White/Black. Game move counts represent White/Black pairs, rounding up for the last unanswered White move. History and replay counters use the same convention. Bughouse totals count the two boards separately.
+
+Queued premove source/destination squares have brighter cyan fills and blue borders. The final Standard board scrolls into view immediately at game end, displaying its evaluation bar and score; the result banner leaves the bar uncovered. The puzzle Skip/Next control uses a darker green with white text. Achievements have an explicit ascending progression, and the castling achievement was removed from the catalog.
+
+**Stats & world map** in Play shows completed game totals by White, Black, combined, result and time category. Categories use base time plus 40 increments: Bullet <180 seconds, Blitz <600, Rapid <1800, Classical otherwise. Untimed games remain Untimed; Bughouse uses its actual saved clock config and correspondence uses its source. Older games are not assigned invented clock controls.
+
+Players → **Edit profile** supports a chosen country and picture. Images are downsampled/cropped into small metadata-free JPEGs. The offline map uses bundled public-domain Natural Earth boundaries for 238 countries/territories. A linked human opponent's chosen country fills in once a correspondence move has been played; completed-game metadata also contributes. Unknown profiles and bot games do not invent countries. See Documentation/PLAYERS_AND_SPECTATING.md for the two new CloudKit fields that the Apple account owner must deploy.

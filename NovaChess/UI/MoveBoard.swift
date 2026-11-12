@@ -20,7 +20,7 @@ struct MoveBoard: View {
     var body: some View {
         BoardView(position: shown, selected: hidePieces ? nil : (queuing ? composer.selected : selected),
                   legalTargets: hidePieces ? [] : queuing ? Set(queue.moves.compactMap { VariantMove(uci: $0, san: "").to }) : Set(legal.filter { $0.from == selected }.map(\.to)),
-                  flipped: flipped, hidePieces: hidePieces, onDragMove: drag, onTap: tap)
+                  premoveSquares: Set(queue.moves.flatMap { move -> [Int] in let m = VariantMove(uci: move, san: ""); return [m.from, m.to].compactMap { $0 } }), flipped: flipped, hidePieces: hidePieces, onDragMove: drag, onTap: tap)
         .onChange(of: position.fen) { _, _ in if let square = selected, position.squares[square]?.side != (premoveSide ?? position.turn) { selected = nil }; if let square = composer.selected, shown.squares[square]?.side != premoveSide { composer.selected = nil }; if !queuePromotion { promotions = [] }; flush() }
         .onChange(of: premovesEnabled) { _, enabled in if !enabled { queue.clear(); composer = PremoveComposer() } }
         .onChange(of: premoveSide) { _, side in if side == nil { queue.clear(); composer = PremoveComposer() } }

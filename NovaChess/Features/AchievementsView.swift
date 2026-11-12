@@ -13,7 +13,7 @@ struct AchievementsView: View {
                 if library.state.playProgress.ratings.isEmpty { Text("Your starting rating is 1000. Enable Rated game in New game to begin.").foregroundStyle(.secondary) }
             }.listRowBackground(ThemeCardBackground())
             Section("Achievements") {
-                ForEach(Achievement.allCases, id: \.rawValue) { achievement in
+                ForEach(Achievement.ordered, id: \.rawValue) { achievement in
                     let date = library.state.playProgress.achievements[achievement.rawValue]
                     HStack(spacing: 14) {
                         Image(systemName: date == nil ? "lock" : "medal.fill").foregroundStyle(date == nil ? Color.secondary : Color.accentColor).frame(width: 28)

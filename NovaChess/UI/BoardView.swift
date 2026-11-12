@@ -19,6 +19,7 @@ struct BoardView: View {
     var uncertain: Set<Int> = []
     var selected: Int? = nil
     var legalTargets: Set<Int> = []
+    var premoveSquares: Set<Int> = []
     var flipped = false
     var hidePieces = false
     var obscured: Set<Int> = []
@@ -100,6 +101,7 @@ struct BoardView: View {
         return Button { onTap?(index) } label: {
             ZStack {
                 Rectangle().fill(squareColor(light: light))
+                if premoveSquares.contains(index) { Rectangle().fill(Color.cyan.opacity(0.48)); Rectangle().strokeBorder(Color.blue, lineWidth: 3) }
                 if selected == index { Rectangle().fill(Color.accentColor.opacity(0.20)) }
                 if dragging != index && !hidePieces && !obscured.contains(index), let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
                 if dragging != index && duckSquare == index { Image("CartoonDuck").resizable().scaledToFit().padding(cell * 0.06).accessibilityLabel("Duck") }

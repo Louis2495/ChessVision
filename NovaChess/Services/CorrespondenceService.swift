@@ -24,6 +24,7 @@ import GameKit
     }
     private func didConnect() {
         authenticated = true
+        Task { await SocialStore.shared.refreshGameCenterIdentity() }
         if !registered { GKLocalPlayer.local.register(self); registered = true }
         refresh()
     }
@@ -170,6 +171,12 @@ import GameKit
         do {
             guard players.count == 2 else { return }
             let profiles = (try? await SocialStore.shared.profiles(forGameCenterIDs: players)) ?? []
+            if let opponent = profiles.first(where: { $0.gameCenterID != GKLocalPlayer.local.gamePlayerID }), let country = opponent.countryCode, !game.moves.isEmpty {
+                library?.state.visitedCountries.insert(country)
+                if let index = library?.state.history.firstIndex(where: { $0.id == CorrespondenceGame.archiveID(matchID) }) {
+                    library?.state.history[index].game.opponentCountry = country
+                }
+            }
             let white = profiles.first { $0.gameCenterID == game.whitePlayerID }?.username ?? "White"
             let black = profiles.first { $0.gameCenterID != game.whitePlayerID }?.username ?? "Black"
             try await SocialStore.shared.publish(gameID: id, fen: board.fen, notation: notation, mode: "Correspondence", white: "@" + white, black: "@" + black, result: result)
@@ -189,6 +196,8 @@ import GameKit
     private func archiveIfFinished() {
         guard let result, ["white", "black", "draw"].contains(result), let game, let id = match?.novaMatchID else { return }
         var saved = SavedComputerGame(mode: .normal, human: human, targetRating: 1000, moves: game.moves)
+        saved.source = "correspondence"
+        saved.opponentGameCenterID = (match?.novaParticipants ?? []).compactMap(\.player).first { $0.gamePlayerID != GKLocalPlayer.local.gamePlayerID }?.gamePlayerID
         saved.id = CorrespondenceGame.archiveID(id); saved.notation = notation; saved.resigned = game.resigned
         saved.opponentName = (match?.novaParticipants ?? []).compactMap(\.player).first { $0.gamePlayerID != GKLocalPlayer.local.gamePlayerID }?.displayName ?? "Game Center player"
         library?.recordCompleted(saved, result: result)

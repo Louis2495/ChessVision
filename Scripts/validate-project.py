@@ -112,3 +112,11 @@ assert 'com.novachess.app' in pbx
 assert not (ROOT/'ChessVision.xcodeproj').exists() and not (ROOT/'ChessVision').exists()
 assert 'SocialStore.swift' in pbx and 'ScreenRecognition.swift' in pbx
 print('PASS: NovaChess identity, CloudKit entitlements and social/screen source membership.')
+
+
+# Offline country map and new profile/statistics screens must ship in Xcode.
+countries=json.loads((ROOT/'NovaChess/Core/Resources/Countries.json').read_text())
+assert len(countries) >= 230 and 'Countries.json' in pbx
+assert {'US','GB','FR','JP','IN','BR','ZA','AU','SG'} <= {c['code'] for c in countries}
+assert all(len(c['code']) == 2 and c['polygons'] for c in countries)
+print('PASS: offline country geometry and resource membership.')

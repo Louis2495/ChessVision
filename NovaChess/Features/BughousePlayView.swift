@@ -109,7 +109,7 @@ import SwiftUI
         return HStack(spacing: 4) {
             BoardView(position: index == 0 && isPremoving ? model.premoves.projected(state.board, side: human) : state.board,
                       selected: index == 0 ? (isPremoving ? composer.selected : selected) : nil,
-                      flipped: bottom == .black, onDropPiece: { kind, target in
+                      premoveSquares: index == 0 ? Set(model.premoves.moves.flatMap { move -> [Int] in let m = VariantMove(uci: move, san: ""); return [m.from, m.to].compactMap { $0 } }) : [], flipped: bottom == .black, onDropPiece: { kind, target in
                           guard index == 0, model.states[0].pockets.contains(where: { $0.side == human && $0.kind == Character(kind.lowercased()) }) else { return }
                           if isPremoving { composer.selected = nil; composer.drop = kind } else { selected = nil; drop = kind }
                           tap(target)

@@ -82,7 +82,7 @@ import SwiftUI
 
 private struct ClockSetupView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var selected = 4
+    @State private var selected = ClockTimeControl.presets.firstIndex(of: ClockTimeControl(seconds: 300)) ?? 0
     @State private var custom = false
     @AppStorage("clockMinutes") private var minutes = 5
     @AppStorage("clockSeconds") private var seconds = 0

@@ -8,7 +8,7 @@ public struct ClockTimeControl: Equatable, Sendable {
         self.seconds = min(86400, max(1, seconds)); self.increment = min(3600, max(0, increment)); self.delay = min(3600, max(0, delay))
     }
     public var title: String { (seconds.isMultiple(of: 60) ? "\(seconds / 60) + \(increment)" : "\(seconds / 60):\(String(format: "%02d", seconds % 60)) + \(increment)") + (delay > 0 ? " · \(delay)s delay" : "") }
-    public static let presets = [Self(seconds: 60), Self(seconds: 120, increment: 1), Self(seconds: 180), Self(seconds: 180, increment: 2), Self(seconds: 300), Self(seconds: 300, increment: 3), Self(seconds: 600), Self(seconds: 600, increment: 5), Self(seconds: 900, increment: 10), Self(seconds: 1800)]
+    public static let presets = [Self(seconds: 60), Self(seconds: 60, increment: 1), Self(seconds: 120, increment: 1), Self(seconds: 180), Self(seconds: 180, increment: 2), Self(seconds: 300), Self(seconds: 600), Self(seconds: 900, increment: 10), Self(seconds: 1800)]
 }
 
 public struct ChessClock: Sendable {

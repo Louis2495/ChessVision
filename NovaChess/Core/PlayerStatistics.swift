@@ -37,18 +37,3 @@ public struct GameStatistics: Sendable {
     }
     public static func moveCount(plies: Int) -> Int { (max(0, plies) + 1) / 2 }
 }
-public enum DeveloperOpeningBook {
-    public static let rating = 2407
-    public static func move(history: [String], side: Side, legal: [VariantMove]) -> String? {
-        let desired: String?
-        if side == .white {
-            if history.isEmpty { desired = "e2e4" }
-            else if history.count == 2 && history == ["e2e4", "e7e5"] { desired = "g1f3" }
-            else if history.count == 4 && Array(history.prefix(3)) == ["e2e4", "e7e5", "g1f3"] { desired = "f1c4" }
-            else { desired = nil }
-        } else if history == ["e2e4"] { desired = "e7e5" }
-        else if history == ["d2d4"] { desired = "g8f6" }
-        else { desired = nil }
-        return desired.flatMap { candidate in legal.contains { $0.uci == candidate } ? candidate : nil }
-    }
-}

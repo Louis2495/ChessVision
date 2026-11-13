@@ -321,3 +321,11 @@ Learn now offers 27 curated lessons of 8–20 full moves, including deeper Londo
 Stats uses bars for color, result and time-control breakdowns, and collects improvement patterns across reviewed games. The country map supports pinch zoom, bounded pan, double-tap reset and accessibility adjustments. Play uses a centered “[N] moves” expander and yellow/red takeback/resign buttons. Existing final Standard evaluation, Developer bot, profiles/countries, branching and New game setup remain intact.
 
 Analysis insights start off independently in each new view. The swipe bar follows the newest requested style: solid white or black by side to move. Reviews show compact correction rows and the engine's top move with a gold star; improvement areas are in Stats, and the About review section and half-move progress counter are gone. Both sides receive an approximate game-performance estimate after enough reviewed moves; this is explicitly **not** a calibrated USCF rating. See [feature audit](Documentation/FEATURE_AUDIT.md) and [rating methodology](Documentation/RATINGS.md).
+
+## Version 0.27 Developer repertoire and Learn library
+
+The Developer's legal position-based book now follows the Open Ruy Lopez and Nimzo-Indian as Black, accepts the Catalan early, and uses the Italian, Grand Prix, French Tarrasch and Alekhine Exchange as White. Its configured target stays 2407; off-book deviations use the engine.
+
+Learn now opens three centered square cards: Openings, Fun facts and History. Openings has 65 deeper lessons. The offline knowledge library includes 56 short fact cards with movement diagrams, 22 historical milestones, and a championship timeline with separately labeled FIDE split reigns and dated event-rating bars. Coverage is clearly through 2024; unknown early title-era ratings are not invented. See [content, sources and scope](Documentation/LEARN.md).
+
+The common Clock/Bughouse preset list adds 1+1 and removes 5+3/10+5. Improvement areas remain in Stats, with compact graphical move suggestions in game reviews.

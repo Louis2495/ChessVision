@@ -40,16 +40,21 @@ public enum OpeningLessons {
     }()
 
     public static func curated(in openings: [OpeningLine]) -> [OpeningLine] {
-        let families = ["Italian", "Ruy Lopez", "Queen's Gambit Declined", "Queen's Gambit Accepted", "Sicilian Defense: Najdorf", "Sicilian Defense: Dragon", "Sicilian Defense: Classical", "Caro-Kann", "French Defense: Winawer", "French Defense: Tarrasch", "Nimzo-Indian", "King's Indian", "Grünfeld", "Catalan", "Semi-Slav", "Slav Defense", "Dutch", "Pirc", "Alekhine", "Petrov", "Scotch", "Vienna", "Four Knights", "English", "Réti"]
+        let families = ["Italian", "Ruy Lopez", "Queen's Gambit Declined", "Queen's Gambit Accepted", "Sicilian Defense: Najdorf", "Sicilian Defense: Dragon", "Sicilian Defense: Classical", "Caro-Kann", "French Defense: Winawer", "French Defense: Tarrasch", "Nimzo-Indian", "King's Indian", "Grünfeld", "Catalan", "Semi-Slav", "Slav Defense", "Dutch", "Pirc", "Alekhine", "Petrov", "Scotch", "Vienna", "Four Knights", "English", "Réti", "King's Gambit", "Queen's Indian", "Bogo-Indian", "Benoni", "Benko", "Budapest", "Bird", "Philidor", "Ponziani", "Evans Gambit", "Trompowsky", "Colle", "Stonewall", "Nimzowitsch Defense"]
         var selected: Set<String> = []
-        let curated: [OpeningLine] = families.compactMap { family in
+        let curated: [OpeningLine] = families.flatMap { family in
             let candidates = openings.filter { $0.name.localizedCaseInsensitiveContains(family) && (16...40).contains($0.moves.count) && !selected.contains($0.id) }
-            let line = candidates.min {
+            let ordered = candidates.sorted {
                 let a = abs($0.moves.count - 24), b = abs($1.moves.count - 24)
                 return a == b ? $0.id < $1.id : a < b
             }
-            if let line { selected.insert(line.id) }
-            return line
+            var branches: Set<String> = []
+            var choices: [OpeningLine] = []
+            for line in ordered where choices.count < 2 {
+                guard branches.insert(line.moves.prefix(12).joined(separator: " ")).inserted else { continue }
+                selected.insert(line.id); choices.append(line)
+            }
+            return choices
         }
         return curated + additional
     }

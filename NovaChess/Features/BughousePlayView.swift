@@ -191,7 +191,7 @@ import SwiftUI
 private struct BughouseSetupView: View {
     @State private var human = Side.white
     @State private var ratings = ["1000", "1000", "1000", "1000"]
-    @State private var preset = 4
+    @State private var preset = ClockTimeControl.presets.firstIndex(of: ClockTimeControl(seconds: 300)) ?? 0
     @State private var custom = false
     @State private var minutes = 5
     @State private var seconds = 0

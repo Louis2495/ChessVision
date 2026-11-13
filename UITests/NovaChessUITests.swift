@@ -256,3 +256,22 @@ extension NovaChessUITests {
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: zoomed, object: map)], timeout: 5), .completed)
     }
 }
+
+
+extension NovaChessUITests {
+    func testLearnHubFactsAndChampionTimeline() {
+        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Openings"].tap()
+        app.buttons["Learn"].tap()
+        let openings = app.buttons["learn-openings"], facts = app.buttons["learn-facts"], history = app.buttons["learn-history"]
+        XCTAssertTrue(openings.waitForExistence(timeout: 5)); XCTAssertTrue(facts.exists); XCTAssertTrue(history.exists)
+        XCTAssertLessThan(openings.frame.minY, facts.frame.minY); XCTAssertLessThan(facts.frame.minY, history.frame.minY)
+        XCTAssertEqual(openings.frame.width, openings.frame.height, accuracy: 2)
+        facts.tap()
+        XCTAssertTrue(app.staticTexts["A small board, huge possibilities"].waitForExistence(timeout: 5))
+        app.navigationBars["Fun facts"].buttons.firstMatch.tap()
+        history.tap()
+        XCTAssertTrue(app.staticTexts["Wilhelm Steinitz"].waitForExistence(timeout: 5))
+        app.buttons["Ratings"].tap()
+        XCTAssertTrue(app.staticTexts["Recorded event Elo"].waitForExistence(timeout: 5))
+    }
+}

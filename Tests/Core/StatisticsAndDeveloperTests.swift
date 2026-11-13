@@ -39,7 +39,8 @@ final class StatisticsAndDeveloperTests: XCTestCase {
         var d4 = Position.initial; try d4.apply(uci: "d2d4")
         XCTAssertEqual(DeveloperOpeningBook.move(history: ["d2d4"], side: .black, legal: legal(d4)), "g8f6")
         XCTAssertNil(DeveloperOpeningBook.move(history: [], side: .white, legal: []))
-        XCTAssertNil(DeveloperOpeningBook.move(history: ["e2e4","c7c5"], side: .white, legal: legal(.initial)))
+        var sicilian = Position.initial; try sicilian.apply(uci: "e2e4"); try sicilian.apply(uci: "c7c5")
+        XCTAssertEqual(DeveloperOpeningBook.move(history: ["e2e4","c7c5"], side: .white, legal: legal(sicilian)), "b1c3")
     }
     func testCountryValidationAndAchievementOrdering() {
         XCTAssertEqual(Countries.valid("us"), "US"); XCTAssertNil(Countries.valid("not a country"))

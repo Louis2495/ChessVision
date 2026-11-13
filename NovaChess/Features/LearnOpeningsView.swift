@@ -1,6 +1,37 @@
 import SwiftUI
 
 @MainActor struct LearnOpeningsView: View {
+    var body: some View {
+        GeometryReader { geometry in
+            let side = min(220, min(geometry.size.width - 40, max(148, (geometry.size.height - 56) / 3)))
+            ScrollView {
+                VStack(spacing: 18) {
+                    NavigationLink { OpeningLessonsView() } label: { LearnSquare(title: "Openings", symbol: "books.vertical.fill", color: .green, side: side) }.accessibilityIdentifier("learn-openings")
+                    NavigationLink { ChessFactsView() } label: { LearnSquare(title: "Fun facts", symbol: "lightbulb.fill", color: .orange, side: side) }.accessibilityIdentifier("learn-facts")
+                    NavigationLink { ChessHistoryView() } label: { LearnSquare(title: "History", symbol: "clock.arrow.circlepath", color: .purple, side: side) }.accessibilityIdentifier("learn-history")
+                }.buttonStyle(.plain).padding(.vertical, 10).frame(maxWidth: .infinity, minHeight: geometry.size.height)
+            }
+        }.modifier(AppSurface()).navigationTitle("Learn").navigationBarTitleDisplayMode(.inline)
+    }
+}
+private struct LearnSquare: View {
+    var title: String
+    var symbol: String
+    var color: Color
+    var side: CGFloat
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: symbol).font(.system(size: 42, weight: .medium)).foregroundStyle(color)
+            Text(title).font(.title2.bold()).foregroundStyle(.primary)
+        }.frame(width: side, height: side)
+            .background { ThemeCardBackground().overlay(color.opacity(0.10)).clipShape(RoundedRectangle(cornerRadius: 24)) }
+            .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(color.opacity(0.45), lineWidth: 2))
+            .contentShape(RoundedRectangle(cornerRadius: 24)).accessibilityElement(children: .ignore).accessibilityLabel(title)
+    }
+}
+
+
+@MainActor struct OpeningLessonsView: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var search = ""
     private var lessons: [OpeningLine] {

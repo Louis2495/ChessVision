@@ -17,3 +17,18 @@ struct ThemeActionButtonStyle: ButtonStyle {
             .opacity(!enabled ? 0.45 : configuration.isPressed ? 0.78 : 1)
     }
 }
+
+struct ExpansionDisclosureStyle: DisclosureGroupStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button { withAnimation(.easeInOut(duration: 0.2)) { configuration.isExpanded.toggle() } } label: {
+                HStack {
+                    configuration.label
+                    Spacer(minLength: 8)
+                    Image(systemName: configuration.isExpanded ? "chevron.up" : "chevron.down").font(.caption.bold()).foregroundStyle(.secondary)
+                }.frame(minHeight: 44).contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityValue(configuration.isExpanded ? "Expanded" : "Collapsed")
+            if configuration.isExpanded { configuration.content }
+        }
+    }
+}

@@ -32,7 +32,7 @@ import SwiftUI
                 let built = try await buildTree(games: imported.games, username: user)
                 try Task.checkCancellation(); guard generation == token else { return }
                 games = imported.games; importedUsername = user; tree = built; profileLabel = "\(user) · \(site.title)"
-                status = "\(tree.gameCount) games"
+                status = CountText.value(tree.gameCount, "game")
             } catch is CancellationError { if generation == token { status = "Import canceled." } }
             catch { if generation == token { self.error = Self.importMessage(error); status = tree.gameCount == 0 ? "Could not load this profile." : "Import did not finish. Previous results are retained." } }
             if generation == token { busy = false }
@@ -46,7 +46,7 @@ import SwiftUI
             do {
                 let built = try await buildTree()
                 try Task.checkCancellation(); guard generation == token else { return }
-                tree = built; status = "\(tree.gameCount) games"
+                tree = built; status = CountText.value(tree.gameCount, "game")
             } catch is CancellationError {} catch { if generation == token { self.error = error.localizedDescription } }
             if generation == token { busy = false }
         }
@@ -105,7 +105,7 @@ struct OpeningExplorerView: View {
                     ForEach(branches) { branch in
                         Button { if let move = position.legalMoves().first(where: { $0.uci == branch.uci }) { play(move) } } label: {
                             VStack(alignment: .leading, spacing: 7) {
-                                HStack { Text(branch.san).font(.headline.monospaced()); Spacer(); Text("\(branch.counts.games) games").foregroundStyle(.secondary) }
+                                HStack { Text(branch.san).font(.headline.monospaced()); Spacer(); Text(CountText.value(branch.counts.games, "game")).foregroundStyle(.secondary) }
                                 OpeningResultBar(counts: branch.counts)
                             }.padding(.vertical, 8).contentShape(Rectangle())
                         }.buttonStyle(.plain)

@@ -40,6 +40,11 @@ public enum OpeningLessons {
     }()
 
     public static func curated(in openings: [OpeningLine]) -> [OpeningLine] {
+        let existing = select(in: openings, perFamily: 2)
+        let known = Set(existing.map(\.id))
+        return existing + select(in: openings, perFamily: 4).filter { !known.contains($0.id) }
+    }
+    private static func select(in openings: [OpeningLine], perFamily: Int) -> [OpeningLine] {
         let families = ["Italian", "Ruy Lopez", "Queen's Gambit Declined", "Queen's Gambit Accepted", "Sicilian Defense: Najdorf", "Sicilian Defense: Dragon", "Sicilian Defense: Classical", "Caro-Kann", "French Defense: Winawer", "French Defense: Tarrasch", "Nimzo-Indian", "King's Indian", "Grünfeld", "Catalan", "Semi-Slav", "Slav Defense", "Dutch", "Pirc", "Alekhine", "Petrov", "Scotch", "Vienna", "Four Knights", "English", "Réti", "King's Gambit", "Queen's Indian", "Bogo-Indian", "Benoni", "Benko", "Budapest", "Bird", "Philidor", "Ponziani", "Evans Gambit", "Trompowsky", "Colle", "Stonewall", "Nimzowitsch Defense"]
         var selected: Set<String> = []
         let curated: [OpeningLine] = families.flatMap { family in
@@ -50,7 +55,7 @@ public enum OpeningLessons {
             }
             var branches: Set<String> = []
             var choices: [OpeningLine] = []
-            for line in ordered where choices.count < 2 {
+            for line in ordered where choices.count < perFamily {
                 guard branches.insert(line.moves.prefix(12).joined(separator: " ")).inserted else { continue }
                 selected.insert(line.id); choices.append(line)
             }

@@ -3,12 +3,13 @@ import SwiftUI
 @MainActor struct LearnOpeningsView: View {
     var body: some View {
         GeometryReader { geometry in
-            let side = min(220, min(geometry.size.width - 40, max(148, (geometry.size.height - 56) / 3)))
+            let side = min(220, min(geometry.size.width - 40, max(128, (geometry.size.height - 74) / 4)))
             ScrollView {
                 VStack(spacing: 18) {
                     NavigationLink { OpeningLessonsView() } label: { LearnSquare(title: "Openings", symbol: "books.vertical.fill", color: .green, side: side) }.accessibilityIdentifier("learn-openings")
                     NavigationLink { ChessFactsView() } label: { LearnSquare(title: "Fun facts", symbol: "lightbulb.fill", color: .orange, side: side) }.accessibilityIdentifier("learn-facts")
                     NavigationLink { ChessHistoryView() } label: { LearnSquare(title: "History", symbol: "clock.arrow.circlepath", color: .purple, side: side) }.accessibilityIdentifier("learn-history")
+                    NavigationLink { EndgameLibraryView() } label: { LearnSquare(title: "Endgames", symbol: "flag.checkered", color: .blue, side: side) }.accessibilityIdentifier("learn-endgames")
                 }.buttonStyle(.plain).padding(.vertical, 10).frame(maxWidth: .infinity, minHeight: geometry.size.height)
             }
         }.modifier(AppSurface()).navigationTitle("Learn").navigationBarTitleDisplayMode(.inline)
@@ -42,7 +43,7 @@ private struct LearnSquare: View {
         List(lessons) { line in
             NavigationLink { OpeningLessonView(opening: line) } label: {
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) { Text(line.name).font(.headline); Text("\(line.eco) · \(String(GameStatistics.moveCount(plies: line.moves.count))) moves").font(.caption).foregroundStyle(.secondary) }
+                    VStack(alignment: .leading, spacing: 4) { Text(line.name).font(.headline); Text("\(line.eco) · \(CountText.value(GameStatistics.moveCount(plies: line.moves.count), "move"))").font(.caption).foregroundStyle(.secondary) }
                     Spacer()
                     if library.state.learnedOpenings.contains(line.id) { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
                 }

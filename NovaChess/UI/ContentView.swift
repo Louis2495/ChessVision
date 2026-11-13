@@ -123,7 +123,7 @@ import PhotosUI
     }
     @discardableResult private func saveCapturedPhoto() -> Bool {
         guard let lastPhoto else { return false }
-        if savedPhotos.save(lastPhoto) { captureNotice = "\(savedPhotos.photos.count) photos saved for later"; return true }
+        if savedPhotos.save(lastPhoto) { captureNotice = "\(CountText.value(savedPhotos.photos.count, "photo")) saved for later"; return true }
         if camera { pendingCaptureError = savedPhotos.error } else { message = savedPhotos.error }; return false
     }
     private func retryRecognition() { if let lastPhoto { process(lastPhoto) } }
@@ -209,7 +209,7 @@ struct EditorView: View {
                 DisclosureGroup("Compare with the corrected photograph") { Image(uiImage:photo).resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius:12)) }
 
             }
-            if !uncertain.isEmpty { Text("\(uncertain.count) uncertain squares are highlighted. You can analyze now, or tap a square to correct it.").foregroundStyle(.orange) }
+            if !uncertain.isEmpty { Text("\(CountText.value(uncertain.count, "uncertain square")) \(uncertain.count == 1 ? "is" : "are") highlighted. You can analyze now, or tap a square to correct it.").foregroundStyle(.orange) }
             Picker("Whose turn?",selection:$position.turn) { ForEach(Side.allCases,id:\.self) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
             gameDetails
             if !issues.isEmpty { VStack(alignment:.leading,spacing:6) { ForEach(issues,id:\.self) { Text($0).font(.footnote).foregroundStyle(.red) } } }

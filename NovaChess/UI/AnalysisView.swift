@@ -85,21 +85,8 @@ struct AnalysisView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(evaluation).font(.largeTitle.bold().monospacedDigit()).accessibilityIdentifier("analysis-evaluation")
                     Spacer()
-                    HStack(spacing: 8) {
-                        VStack(alignment: .trailing, spacing: 3) {
-                            Text(engine.running ? engine.analysisEngineName : "Stockfish 19 · NNUE").font(.caption.weight(.semibold))
-                            if engine.running { Text("Depth \(principal?.depth ?? 0)").font(.caption2).foregroundStyle(.secondary) }
-                        }
-                        Button(action: flipTurn) {
-                            RoundedRectangle(cornerRadius: 3).fill(position.turn == .white ? Color.white : Color.black)
-                                .frame(width: 20, height: 20)
-                                .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color.gray, lineWidth: 1))
-                                .frame(minWidth: 44, minHeight: 44)
-                        }
-                        .accessibilityLabel("Turn: \(position.turn.title)")
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Double tap to change whose turn it is")
-                    }
+                    Text("Stockfish 19 - Depth " + String(principal?.depth ?? 0))
+                        .font(.caption.weight(.semibold)).monospacedDigit()
                 }
                 if let terminal = engine.terminal, engine.analyzedFEN == position.fen {
                     Text(terminal).font(.headline)
@@ -361,6 +348,8 @@ private struct VariationTable: View {
 
 
 private struct HistorySwipeBar: View {
+    @AppStorage("theme") private var theme = "Forest"
+    private var hex: UInt32 { (AppTheme(rawValue: theme) ?? .forest).hex }
     var side: Side
     var current: Int
     var total: Int
@@ -369,15 +358,15 @@ private struct HistorySwipeBar: View {
     var forward: () -> Void
     var body: some View {
         HStack(spacing: 12) {
-            Button(action: back) { Image(systemName: "chevron.left") }.disabled(current == 0).accessibilityLabel("Previous position")
-            Text("Swipe").font(.caption.bold()).frame(maxWidth: .infinity, minHeight: 30)
-            Button(action: forward) { Image(systemName: "chevron.right") }.disabled(!canAdvance).accessibilityLabel("Next position")
+            Button(action: back) { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(current == 0).accessibilityLabel("Previous position")
+            Spacer(minLength: 0)
+            Button(action: forward) { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(!canAdvance).accessibilityLabel("Next position")
         }
-        .padding(.horizontal, 16).padding(.vertical, 8)
-        .foregroundStyle(side == .white ? Color.black : Color.white)
-        .tint(side == .white ? Color.black : Color.white)
-        .background(side == .white ? Color.white : Color.black, in: Capsule())
-        .overlay(Capsule().strokeBorder(Color.gray.opacity(0.55), lineWidth: 1))
+        .frame(height: 44).padding(.horizontal, 8)
+        .foregroundStyle(Color(hex: InterfaceContrast.foreground(on: hex)))
+        .tint(Color(hex: InterfaceContrast.foreground(on: hex)))
+        .background { Capsule().fill(Color(hex: hex)).frame(height: 26) }
+        .overlay(Capsule().strokeBorder(side == .white ? Color.white : Color.black, lineWidth: 3).frame(height: 26))
         .contentShape(Rectangle())
         .gesture(DragGesture(minimumDistance: 18).onEnded { value in
             guard abs(value.translation.width) > abs(value.translation.height) else { return }
@@ -385,6 +374,7 @@ private struct HistorySwipeBar: View {
             else if value.translation.width > 0 && current > 0 { back() }
         })
         .accessibilityElement(children: .contain)
+        .accessibilityLabel("Move navigation. " + side.title + " to move")
         .accessibilityIdentifier("analysis-history-bar")
         .accessibilityValue("\(current)/\(total)")
     }

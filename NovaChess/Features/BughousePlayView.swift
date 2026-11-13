@@ -126,7 +126,7 @@ import SwiftUI
                 pocket(index, side: bottom.opposite)
                 Spacer(minLength: 0)
                 Text(state.inCheck && state.moves.isEmpty && !state.finished ? "Waiting for a piece" : index == 0 ? "Your board" : "Partner").font(.caption2.bold()).multilineTextAlignment(.center)
-                if index == 0 && !model.premoves.moves.isEmpty { Text("\(model.premoves.moves.count) premoves").font(.caption2) }
+                if index == 0 && !model.premoves.moves.isEmpty { Text(CountText.value(model.premoves.moves.count, "premove")).font(.caption2) }
                 if model.thinkingBoard == index { ProgressView().controlSize(.mini).accessibilityLabel("Computer thinking") }
                 Spacer(minLength: 0)
                 pocket(index, side: bottom)
@@ -152,7 +152,7 @@ import SwiftUI
                         .background((drop == kind || composer.drop == kind) && index == 0 && side == model.match?.config.human ? Color.accentColor.opacity(0.2) : Color.clear, in: RoundedRectangle(cornerRadius: 5))
                     }.buttonStyle(.plain)
                     .onDrag { index == 0 && side == model.match?.config.human && model.running ? NSItemProvider(object: ("novachess-pocket:" + String(kind)) as NSString) : NSItemProvider() }
-                    .accessibilityLabel("\(count) \(Piece(symbol).name) in hand")
+                    .accessibilityLabel("\(CountText.value(count, Piece(symbol).name)) in hand")
                     .disabled(index != 0 || side != model.match?.config.human || (!premovesEnabled && state.board.turn != side) || !model.running)
                 }
             }
@@ -211,9 +211,9 @@ private struct BughouseSetupView: View {
             Section("Time control") {
                 Toggle("Custom", isOn: $custom)
                 if custom {
-                    Stepper("Minutes: \(minutes)", value: $minutes, in: 0...180)
-                    Stepper("Seconds: \(seconds)", value: $seconds, in: 0...59)
-                    Stepper("Increment: \(increment) \(increment == 1 ? "second" : "seconds")", value: $increment, in: 0...60)
+                    Stepper(CountText.value(minutes, "minute"), value: $minutes, in: 0...180)
+                    Stepper(CountText.value(seconds, "second"), value: $seconds, in: 0...59)
+                    Stepper("Increment: " + CountText.value(increment, "second"), value: $increment, in: 0...60)
                 } else { Picker("Preset", selection: $preset) { ForEach(Array(ClockTimeControl.presets.enumerated()), id: \.offset) { index, control in Text(control.title).tag(index) } } }
             }.listRowBackground(ThemeCardBackground())
             Section {

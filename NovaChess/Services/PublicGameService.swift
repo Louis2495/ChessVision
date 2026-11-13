@@ -32,7 +32,7 @@ final class PublicGameService: @unchecked Sendable {
         let retry = response.value(forHTTPHeaderField: "Retry-After") ?? "5"
         let formatter = DateFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss z"
         let delay = max(1, Double(retry) ?? formatter.date(from: retry)?.timeIntervalSinceNow ?? 5)
-        if delay > 60 { throw ChessError.invalid("The site requested a cooldown of \(Int(delay)) seconds. Please retry later.") }
+        if delay > 60 { throw ChessError.invalid("The site requested a cooldown of \(CountText.value(Int(delay), "second")). Please retry later.") }
         guard attempt < 2 else { throw ChessError.invalid("The site is limiting requests. Please retry later.") }
         try await Task.sleep(for: .seconds(delay)); return true
     }
@@ -54,7 +54,7 @@ final class PublicGameService: @unchecked Sendable {
                     let raw = try JSONDecoder().decode(PublicGames.LichessGame.self, from: line)
                     if let game = try raw.openingGame(), !game.moves.isEmpty { games.append(game) } else { skipped += 1 }
                 } catch is CancellationError { throw CancellationError() } catch { skipped += 1 }
-                if fetched.isMultiple(of: 250) { progress("Downloaded \(fetched) games…") }
+                if fetched.isMultiple(of: 250) { progress("Downloaded \(CountText.value(fetched, "game"))…") }
             }
             #if canImport(FoundationNetworking)
             // FoundationNetworking has no AsyncBytes. Test fixtures use its buffered transport.
@@ -79,7 +79,7 @@ final class PublicGameService: @unchecked Sendable {
             for archive in archives.archives.reversed() {
                 try Task.checkCancellation()
                 guard let source = URLComponents(string: archive), source.scheme == "https", source.host == "api.chess.com" else { throw ChessError.invalid("The archive server returned an unexpected address.") }
-                progress("Downloading \(source.path.split(separator: "/").suffix(2).joined(separator: "/")) · \(fetched) games…")
+                progress("Downloading \(source.path.split(separator: "/").suffix(2).joined(separator: "/")) · \(CountText.value(fetched, "game"))…")
                 let monthBytes = try await data(source.url!)
                 let month = try? JSONDecoder().decode(PublicGames.ChessComMonth.self, from: monthBytes)
                 let records: [PublicGames.ChessComMonth.Game]

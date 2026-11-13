@@ -51,7 +51,7 @@ private struct PieceReachDiagram: View {
     }
     var body: some View {
         BoardView(position: board, legalTargets: LearningDiagram.targets(for: kind)).allowsHitTesting(false)
-            .accessibilityElement(children: .ignore).accessibilityLabel("Empty-board movement diagram: \(LearningDiagram.targets(for: kind).count) destinations")
+            .accessibilityElement(children: .ignore).accessibilityLabel("Empty-board movement diagram: \(CountText.value(LearningDiagram.targets(for: kind).count, "destination"))")
     }
 }
 

@@ -83,7 +83,7 @@ public enum PositionInsights {
             let loose = own.filter { board.squares[$0]?.kind != "k" && (values[board.squares[$0]!.kind] ?? 0) >= 3 && !board.attacked($0, by: side) && !hanging.contains($0) }
             if !loose.isEmpty && (board.fullmove > 4 || nonPawnMaterial < 40) { add(45, "\(side.title) has unprotected pieces on \(squares(loose)). They are not currently attacked, but can become tactical targets.") }
             let doubledFiles = (0..<8).filter { file in pawns.filter { $0 % 8 == file }.count > 1 }
-            if !doubledFiles.isEmpty { add(58, "\(side.title) has doubled pawns on the \(doubledFiles.map { String(Array("abcdefgh")[$0]) }.joined(separator: ", ")) file(s). Their mobility and defense deserve attention.") }
+            if !doubledFiles.isEmpty { add(58, "\(side.title) has doubled pawns on the \(doubledFiles.map { String(Array("abcdefgh")[$0]) }.joined(separator: ", ")) \(CountText.noun(doubledFiles.count, "file")). Their mobility and defense deserve attention.") }
             let isolated = pawns.filter { pawn in !pawns.contains { abs($0 % 8 - pawn % 8) == 1 } }
             if !isolated.isEmpty { add(59, "\(side.title)'s pawns on \(squares(isolated)) are isolated: no friendly pawn on an adjacent file can support them.") }
             let passed = pawns.filter { pawn in

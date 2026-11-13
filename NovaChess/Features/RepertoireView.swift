@@ -15,7 +15,7 @@ struct RepertoireView: View {
                         NavigationLink { RepertoireLineDetail(line: line) } label: {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(line.name).font(.headline)
-                                Text("\(line.side.title) repertoire · \(line.moves.count) half-moves · \(line.trained) training sessions").font(.caption).foregroundStyle(.secondary)
+                                Text("\(line.side.title) repertoire · \(CountText.value(line.moves.count, "half-move")) · \(CountText.value(line.trained, "training session"))").font(.caption).foregroundStyle(.secondary)
                             }
                         }
                     }.onDelete { offsets in library.state.repertoire.remove(atOffsets: offsets) }

@@ -4,11 +4,11 @@ import SwiftUI
     @StateObject private var library = LibraryStore()
     var body: some View {
         TabView {
+            HomeView().tabItem { Label("Home", systemImage: "house") }
             ContentView().tabItem { Label("Analysis", systemImage: "square.grid.3x3") }
             ComputerPlayView().tabItem { Label("Play", systemImage: "desktopcomputer") }
             NavigationStack { PuzzleTrainingView() }.tabItem { Label("Puzzles", systemImage: "puzzlepiece.extension") }
             OpeningsHubView().tabItem { Label("Openings", systemImage: "books.vertical") }
-            ChessClockView().tabItem { Label("Clock", systemImage: "clock") }
         }
         .modifier(AppAppearance())
         .environmentObject(library)

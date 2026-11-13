@@ -2,8 +2,8 @@ import SwiftUI
 
 struct PuzzleTrainingView: View {
     @EnvironmentObject private var library: LibraryStore
-    @Environment(\.scenePhase) private var phase
-    @State private var today = Date()
+    @Environment(\.dismiss) private var dismiss
+    var dailyDay: String? = nil
     @State private var activeDailyKey: String?
     @State private var puzzle: ChessPuzzle?
     @State private var board = Position.initial
@@ -16,27 +16,14 @@ struct PuzzleTrainingView: View {
     @State private var resultBorder: Color = .clear
     @State private var replyTask: Task<Void, Never>?
     @State private var generation = UUID()
-    private var dayKey: String { DailyPuzzle.key(for: today) }
     var body: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     AppCard {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Label("Daily puzzle", systemImage: "calendar").font(.headline)
-                                Text(today, style: .date).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Button(library.state.dailyPuzzles[dayKey]?.completed == true ? "Replay" : "Play") { startDaily() }
-                                .buttonStyle(ThemeActionButtonStyle()).accessibilityIdentifier("daily-puzzle")
-                            if library.state.dailyPuzzles[dayKey]?.completed == true { Image(systemName: "checkmark.seal.fill").foregroundStyle(.yellow) }
-                        }
-                    }
-                    AppCard {
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading) { Text("Your puzzle estimate").font(.caption).foregroundStyle(.secondary); Text(String(Int(library.state.puzzle.rating.rounded()))).font(.largeTitle.bold().monospacedDigit()) }
                         Spacer()
-                        VStack(alignment: .trailing) { Text("\(library.state.puzzle.solved) solved").font(.headline); Text("\(library.puzzles.count.formatted()) offline puzzles").font(.caption).foregroundStyle(.secondary) }
+                        VStack(alignment: .trailing) { Text("\(library.state.puzzle.solved) solved").font(.headline);  }
                     }
                     }
                     if let puzzle {
@@ -49,19 +36,21 @@ struct PuzzleTrainingView: View {
                         if !played.isEmpty { Text(played.joined(separator: "  ")).font(.subheadline.monospaced()) }
                         HStack {
                             Button { hint() } label: { Label("Hint", systemImage: "lightbulb").foregroundStyle(Color.yellow).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).controlSize(.large).disabled(finished || board.turn != learner)
-                            Button { if !finished { grade(false) }; nextPuzzle() } label: {
-                                Label(finished ? "Next puzzle" : "Skip puzzle", systemImage: "arrow.right").frame(maxWidth: .infinity, minHeight: 44)
+                            Button {
+                                if dailyDay != nil { if finished { startDaily() } else { dismiss() } }
+                                else { if !finished { grade(false) }; nextPuzzle() }
+                            } label: {
+                                Label(dailyDay != nil ? (finished ? "Replay" : "Back") : (finished ? "Next puzzle" : "Skip puzzle"), systemImage: "arrow.right").frame(maxWidth: .infinity, minHeight: 44)
                             }.buttonStyle(.borderedProminent).tint(Color(red: 0.12, green: 0.36, blue: 0.24)).foregroundStyle(.white).controlSize(.large)
                         }
                     } else { ContentUnavailableView("Puzzle library unavailable", systemImage: "puzzlepiece", description: Text("Install the complete build to use the bundled puzzle library.")) }
                 }.padding()
-            }.modifier(AppSurface()).navigationTitle("Puzzles").navigationBarTitleDisplayMode(.inline).toolbar { SettingsButton() }
-            .onAppear { today = Date(); if puzzle == nil { nextPuzzle() } else { replyIfNeeded() } }
+            }.modifier(AppSurface()).navigationTitle(dailyDay == nil ? "Puzzles" : "Daily puzzle").navigationBarTitleDisplayMode(.inline).toolbar { SettingsButton() }
+            .onAppear { if puzzle == nil { if dailyDay != nil { startDaily() } else { nextPuzzle() } } else { replyIfNeeded() } }
             .onDisappear { replyTask?.cancel() }
-            .onChange(of: phase) { _, value in if value == .active { today = Date() } }
     }
     private func startDaily() {
-        guard let chosen = DailyPuzzle.choose(day: dayKey, puzzles: library.puzzles, saved: library.state.dailyPuzzles[dayKey]) else { return }
+        guard let dayKey = dailyDay, let chosen = DailyPuzzle.choose(day: dayKey, puzzles: library.puzzles, saved: library.state.dailyPuzzles[dayKey]) else { return }
         load(chosen, daily: dayKey)
     }
     private func load(_ next: ChessPuzzle, daily: String? = nil) {

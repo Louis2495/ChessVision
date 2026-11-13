@@ -53,9 +53,8 @@ struct SettingsView: View {
                 BoardView(position: .initial).frame(maxWidth: 240).frame(maxWidth: .infinity).padding(.vertical, 8)
             }.listRowBackground(ThemeCardBackground())
             Section("Analysis") {
-                Text("Stockfish 19 · NNUE").font(.headline)
+                Text("Stockfish 19").font(.headline)
             }.listRowBackground(ThemeCardBackground())
-            Section { NavigationLink("About ratings") { RatingsInfoView() } }.listRowBackground(ThemeCardBackground())
             Section("Moves") {
                 Toggle("Premoves", isOn: $premoves)
                 Text("Tap an unrelated square to cancel the last premove; tap again to cancel another.").font(.caption).foregroundStyle(.secondary)
@@ -82,7 +81,7 @@ struct AppAppearance: ViewModifier {
         return (appearance == "Dark" || (appearance == "System" && scheme == .dark)) ? Color(uiColor: UIColor(base).withAdjustedBrightness()) : base
     }
     func body(content: Content) -> some View {
-        content.accentColor(tint).tint(tint).preferredColorScheme(appearance == "Light" ? .light : appearance == "Dark" ? .dark : nil)
+        content.accentColor(tint).tint(tint).disclosureGroupStyle(ExpansionDisclosureStyle()).preferredColorScheme(appearance == "Light" ? .light : appearance == "Dark" ? .dark : nil)
             .background { AppCanvas().ignoresSafeArea() }
             .onAppear {
                 if PieceStyle(rawValue: pieces) == nil { pieces = PieceStyle.illustrated.rawValue }

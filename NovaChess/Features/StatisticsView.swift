@@ -8,7 +8,7 @@ struct StatisticsView: View {
         let countries = stats.countries.union(library.state.visitedCountries.compactMap(Countries.valid))
         return List {
             Section("Games played") {
-                Text("\(String(stats.total)) games").font(.title2.bold().monospacedDigit())
+                Text(CountText.value(stats.total, "game")).font(.title2.bold().monospacedDigit())
                 StatisticsBar(title: "White", count: stats.white, total: max(1, stats.total), color: .white)
                 StatisticsBar(title: "Black", count: stats.black, total: max(1, stats.total), color: .black)
             }
@@ -35,7 +35,7 @@ struct StatisticsView: View {
             }
             Section("Your world map") {
                 CountryWorldMap(visited: countries).frame(height: 250)
-                Text("\(String(countries.count)) countries played").font(.headline)
+                Text("\(CountText.value(countries.count, "country", plural: "countries")) played").font(.headline)
                 ForEach(countries.sorted { Countries.name($0) < Countries.name($1) }, id: \.self) { code in
                     Label(Countries.name(code), systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                 }
@@ -135,7 +135,7 @@ struct CountryWorldMap: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("World map. Countries played: " + visited.map(Countries.name).sorted().joined(separator: ", "))
-                .accessibilityValue("\(Int(zoom.rounded())) times zoom")
+                .accessibilityValue("\(Int(zoom.rounded()))×")
                 .accessibilityIdentifier("country-world-map")
                 .accessibilityHint("Pinch to zoom, drag to pan, double-tap to reset.")
                 .accessibilityAdjustableAction { direction in

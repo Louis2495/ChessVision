@@ -1,12 +1,12 @@
 import Foundation
 
 public enum OpponentChoice: String, CaseIterable, Sendable {
-    case developer, adaptive, matched, custom
+    case matched, adaptive, developer, custom
     public var title: String {
         switch self {
         case .developer: return "Play the Developer"
         case .adaptive: return "Adaptive difficulty"
-        case .matched: return "Match my level"
+        case .matched: return "Current Rating"
         case .custom: return "Custom"
         }
     }

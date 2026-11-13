@@ -93,6 +93,14 @@ private func receiveModernEngineLine(_ pointer: UnsafePointer<CChar>?) {
         let request = Request(id: UUID(), kind: .computer, variant: variant, setup: "position startpos moves " + history.joined(separator: " "), side: side, rating: max(1, min(10000, rating)))
         return try await awaitRequest(request)
     }
+    func endgameMove(initial: Position, history: [String], milliseconds: Int = 650) async throws -> String {
+        guard initial.problems.isEmpty, history.count <= 2000 else { throw ChessError.invalid("Invalid endgame position.") }
+        var board = initial
+        for uci in history { try board.apply(uci: uci) }
+        guard !board.legalMoves().isEmpty else { throw ChessError.invalid("The endgame has already finished.") }
+        let setup = "position fen " + initial.fen + (history.isEmpty ? "" : " moves " + history.joined(separator: " "))
+        return try await awaitRequest(Request(id: UUID(), kind: .computer, variant: "chess", setup: setup, side: board.turn, duration: max(100, min(3000, milliseconds))))
+    }
     func reviewPosition(variant: String, history: [String], side: Side, milliseconds: Int = 3000) async throws -> EngineLine {
         let request = Request(id: UUID(), kind: .review, variant: variant, setup: "position startpos moves " + history.joined(separator: " "), side: side, duration: max(250, min(10000, milliseconds)))
         let cacheKey = request.variant + "|" + request.setup

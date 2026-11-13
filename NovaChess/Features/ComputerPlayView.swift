@@ -359,7 +359,6 @@ struct ComputerPlayView: View {
                         }
                     }
                     if let opening = model.opening { Text("Requested: \(opening.name)\(model.bookMatches ? "" : " · game has left this line")").font(.caption).foregroundStyle(.secondary) }
-                    if game.mode == .normal && !snapshot.finished { Button("Offer draw", systemImage: "equal.circle") { model.offerDraw() }.buttonStyle(.bordered).disabled(model.busy) }
                     if snapshot.finished { Button("Rematch", systemImage: "arrow.triangle.2.circlepath") { rematchSide = game.human; rematching = true }.buttonStyle(ThemeActionButtonStyle()) }
                     if snapshot.finished, let id = game.id {
                         Button("Review game", systemImage: "list.bullet.clipboard") { lastReviewedGame = id; reviewRoute = CompletedReviewRoute(id: id) }.buttonStyle(ThemeActionButtonStyle())
@@ -371,14 +370,24 @@ struct ComputerPlayView: View {
                         AppCard {
                             Button { withAnimation { showMoves.toggle() } } label: {
                                 VStack(spacing: 5) {
-                                    Text("\(String(GameStatistics.moveCount(plies: game.notation.count))) moves").font(.headline)
-                                    Image(systemName: "chevron.down").font(.caption.bold())
+                                    Text(CountText.value(GameStatistics.moveCount(plies: game.notation.count), "move")).font(.headline)
+                                    Image(systemName: showMoves ? "chevron.up" : "chevron.down").font(.caption.bold())
                                 }.frame(maxWidth: .infinity, minHeight: 48)
                             }.buttonStyle(.plain).accessibilityLabel("Game moves").accessibilityValue(showMoves ? "Expanded" : "Collapsed")
                             if showMoves { GameMoveTable(moves: game.notation).padding(.top, 8) }
                         }
                     }
-                    HStack { Button("Take back", systemImage: "arrow.uturn.backward") { model.undo() }.accessibilityHint("Undo your last move and the computer’s reply").disabled(game.moves.count < 2 || game.rated == true).buttonStyle(ThemeActionButtonStyle(backgroundHex: 0xFFD43B)); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished).buttonStyle(ThemeActionButtonStyle(backgroundHex: 0xCF2943)) }.buttonStyle(.bordered).controlSize(.large)
+                    HStack(spacing: 6) {
+                        if game.mode == .normal && !snapshot.finished {
+                            Button { model.offerDraw() } label: { Label("Offer draw", systemImage: "equal.circle").frame(maxWidth: .infinity) }
+                                .disabled(model.busy).buttonStyle(ThemeActionButtonStyle(backgroundHex: 0xF5A623))
+                        }
+                        Button { model.undo() } label: { Label("Take back", systemImage: "arrow.uturn.backward").frame(maxWidth: .infinity) }
+                            .accessibilityHint("Undo your last move and the computer’s reply").disabled(game.moves.count < 2 || game.rated == true)
+                            .buttonStyle(ThemeActionButtonStyle(backgroundHex: 0xFFD43B))
+                        Button(role: .destructive) { resigning = true } label: { Label("Resign", systemImage: "flag.fill").frame(maxWidth: .infinity) }
+                            .disabled(snapshot.finished).buttonStyle(ThemeActionButtonStyle(backgroundHex: 0xCF2943))
+                    }.font(.caption).labelStyle(.titleOnly).lineLimit(1).minimumScaleFactor(0.7)
                 } else if model.busy { ProgressView("Preparing the game…").frame(maxWidth: .infinity).padding(.vertical, 40) }
                 else {
                     Button("New game", systemImage: "plus.circle.fill") { settingUp = true }.buttonStyle(ThemeActionButtonStyle()).controlSize(.large)
@@ -532,7 +541,8 @@ private struct GameSetupForm: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var bughousePresented = false
     @State private var expanded = false
-    @State private var choice = OpponentChoice.custom
+    @State private var choosingMode = false
+    @State private var choice = OpponentChoice.matched
     @State private var didLoadOptions = false
     @State private var customRating = "1000"
     @ObservedObject var model: ComputerGameModel
@@ -556,7 +566,7 @@ private struct GameSetupForm: View {
                 } label: {
                     VStack(spacing: 7) {
                         Text("Game options").font(.headline)
-                        Image(systemName: "chevron.down").font(.caption.bold())
+                        Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.caption.bold())
                     }.frame(maxWidth: .infinity, minHeight: 52).contentShape(Rectangle())
                 }.buttonStyle(.plain).accessibilityLabel("Game options").accessibilityIdentifier("game-options")
                     .accessibilityValue(expanded ? "Expanded" : "Collapsed")
@@ -565,15 +575,16 @@ private struct GameSetupForm: View {
         }
         .onAppear {
             guard !didLoadOptions else { return }; didLoadOptions = true
-            choice = model.developerOpponent && model.mode == .normal ? .developer : model.adaptive ? .adaptive : .custom
-            if choice == .custom { customRating = model.ratingText }
+            choice = .matched
+            customRating = model.ratingText
+            apply(choice)
         }
         .onChange(of: choice) { _, value in apply(value) }
         .onChange(of: customRating) { _, value in if choice == .custom { model.ratingText = value } }
         .onChange(of: model.error) { _, error in if error != nil { expanded = true } }
         .onChange(of: model.mode) { _, mode in
             model.error = nil
-            if choice == .developer && mode != .normal { choice = .custom }
+            if choice == .developer && mode != .normal { choice = .matched }
             else { apply(choice) }
         }
         .fullScreenCover(isPresented: $bughousePresented, onDismiss: { if resumeOnBughouseDismiss { model.activate(library) } }) { BughousePlayView() }
@@ -583,11 +594,21 @@ private struct GameSetupForm: View {
     }
     private var options: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Menu {
-                Picker("Game type", selection: $model.mode) { ForEach(GameMode.allCases) { Text($0.title).tag($0) } }
-            } label: {
-                HStack { Label("Game type: " + model.mode.title, systemImage: "square.grid.2x2.fill"); Spacer(); Image(systemName: "chevron.down") }.frame(minHeight: 40)
+            Button { choosingMode.toggle() } label: {
+                HStack { Label("Game type: " + model.mode.title, systemImage: "square.grid.2x2.fill"); Spacer(); Image(systemName: choosingMode ? "chevron.up" : "chevron.down") }.frame(minHeight: 40)
             }.buttonStyle(ThemeActionButtonStyle()).accessibilityIdentifier("game-style")
+                .accessibilityValue(choosingMode ? "Expanded" : "Collapsed")
+            if choosingMode {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    ForEach(GameMode.allCases) { mode in
+                        Button { model.mode = mode; choosingMode = false } label: {
+                            HStack { Text(mode.title).font(.subheadline); if model.mode == mode { Image(systemName: "checkmark") } }
+                                .frame(maxWidth: .infinity, minHeight: 44).padding(.horizontal, 5)
+                                .background(Color.accentColor.opacity(model.mode == mode ? 0.18 : 0.06), in: RoundedRectangle(cornerRadius: 9))
+                        }.buttonStyle(.plain).accessibilityIdentifier("game-mode-" + mode.rawValue)
+                    }
+                }
+            }
             if model.mode != .bughouse {
                 if model.mode == .pawnWars { Toggle("Include kings", isOn: $model.pawnWarsKings) }
                 Picker("Your color", selection: $model.human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
@@ -598,18 +619,17 @@ private struct GameSetupForm: View {
                                 Image(systemName: choice == option ? "largecircle.fill.circle" : "circle").foregroundStyle(Color.accentColor)
                                 Text(option.title).foregroundStyle(.primary)
                                 Spacer()
+                                if option == .matched { Text(String(matchedRating)).foregroundStyle(.secondary).monospacedDigit() }
                             }.frame(minHeight: 48).contentShape(Rectangle())
-                        }.buttonStyle(.plain).accessibilityIdentifier("opponent-" + option.rawValue)
+                        }.buttonStyle(.plain).accessibilityLabel(option.title).accessibilityIdentifier("opponent-" + option.rawValue)
                             .accessibilityAddTraits(choice == option ? .isSelected : [])
                     }
                 }
                 if choice == .custom { customStrength }
-                if choice == .matched { Text("Bot strength · \(String(matchedRating))").font(.caption).foregroundStyle(.secondary) }
                 Toggle("Rated", isOn: $model.rated).disabled(choice == .adaptive)
                 if model.game?.rated == true && model.snapshot?.finished == false {
                     Text("Starting another game resigns your current rated game.").font(.caption).foregroundStyle(.secondary)
                 }
-                NavigationLink("About ratings") { RatingsInfoView() }.font(.caption)
             }
             if let error = model.error { Text(error).foregroundStyle(.red) }
         }.padding(.top, 8)

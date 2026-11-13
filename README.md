@@ -329,3 +329,9 @@ The Developer's legal position-based book now follows the Open Ruy Lopez and Nim
 Learn now opens three centered square cards: Openings, Fun facts and History. Openings has 65 deeper lessons. The offline knowledge library includes 56 short fact cards with movement diagrams, 22 historical milestones, and a championship timeline with separately labeled FIDE split reigns and dated event-rating bars. Coverage is clearly through 2024; unknown early title-era ratings are not invented. See [content, sources and scope](Documentation/LEARN.md).
 
 The common Clock/Bughouse preset list adds 1+1 and removes 5+3/10+5. Improvement areas remain in Stats, with compact graphical move suggestions in game reviews.
+
+## Version 0.28 Home and endgame training
+
+Home is the default tab, with the complete Clock utility and Daily puzzle. Clock's in-memory session survives closing/reopening its screen. Puzzles keeps adaptive practice and drops the offline-count caption. Learn now has 111 deeper opening lessons and a 17-position endgame trainer: legal board play against Stockfish, manual hints, optional technique tips, explicit mate/promotion/draw goals and saved completion.
+
+Analysis has a thin theme-filled bar outlined white/black by turn, without the separate turn square or Swipe text. Its engine label shows Stockfish 19 and the actual depth; the neural model is retained. Current Rating is the first/default exclusive opponent choice, followed by Adaptive, Developer and Custom. About ratings is removed. Draw/takeback/resign share a colored action row, custom expansion arrows reverse when open, and count labels use singular/plural words correctly. Openings hub captions are gone. See [endgame rules and navigation details](Documentation/ENDGAMES.md).

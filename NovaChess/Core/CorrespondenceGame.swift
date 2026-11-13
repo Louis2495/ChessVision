@@ -37,7 +37,7 @@ public struct CorrespondenceGame: Codable, Sendable {
         guard state.result == nil, state.board.legalMoves().contains(where: { $0.uci == uci }) else { throw ChessError.invalid("That move is not legal in this game.") }
         moves.append(uci)
     }
-    private static func deadMaterial(_ board: Position) -> Bool {
+    public static func deadMaterial(_ board: Position) -> Bool {
         let nonKings = board.squares.enumerated().compactMap { index, piece -> (Int, Piece)? in guard let piece, piece.kind != "k" else { return nil }; return (index, piece) }
         if nonKings.isEmpty { return true }
         if nonKings.count == 1 { return "bn".contains(nonKings[0].1.kind) }

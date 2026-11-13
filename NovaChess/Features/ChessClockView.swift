@@ -1,7 +1,12 @@
 import SwiftUI
 
+@MainActor final class ClockSession: ObservableObject {
+    @Published var clock = ChessClock()
+}
+
 @MainActor struct ChessClockView: View {
-    @State private var clock = ChessClock()
+    @ObservedObject var session: ClockSession
+    @Environment(\.dismiss) private var dismiss
     @State private var visible = false
     @Environment(\.scenePhase) private var scenePhase
     @State private var setup = false
@@ -14,50 +19,53 @@ import SwiftUI
                     face(.black, now: now).rotationEffect(.degrees(180))
                     controls(now: now)
                     face(.white, now: now)
-                }.padding().onChange(of: clock.flagged(at: now)) { _, _ in updateScreenAwake() }
+                }.padding().onChange(of: session.clock.flagged(at: now)) { _, _ in updateScreenAwake() }
             }
             .modifier(AppSurface()).navigationTitle("Clock").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if clock.phase == .running && clock.flagged(at: ProcessInfo.processInfo.systemUptime) == nil {
-                        Button("Pause", systemImage: "pause.fill") { clock.pause(at: ProcessInfo.processInfo.systemUptime) }
+                    HStack(spacing: 16) {
+                        Button("Close", systemImage: "xmark") { dismiss() }.accessibilityIdentifier("close-clock")
+                    if session.clock.phase == .running && session.clock.flagged(at: ProcessInfo.processInfo.systemUptime) == nil {
+                        Button("Pause", systemImage: "pause.fill") { session.clock.pause(at: ProcessInfo.processInfo.systemUptime) }
+                    }
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) { resetButton }
             }
             .onAppear { visible = true; updateScreenAwake() }
             .onDisappear { visible = false; UIApplication.shared.isIdleTimerDisabled = false }
-            .onChange(of: clock.phase) { _, _ in updateScreenAwake() }
+            .onChange(of: session.clock.phase) { _, _ in updateScreenAwake() }
             .onChange(of: scenePhase) { _, _ in updateScreenAwake() }
             .sheet(isPresented: $setup) {
                 ClockSetupView { control in
-                    clock = ChessClock(control: control)
+                    session.clock = ChessClock(control: control)
                 }
             }
             .confirmationDialog("Reset both clocks?", isPresented: $resetting, titleVisibility: .visible) {
-                Button("Reset clock", role: .destructive) { clock = ChessClock(control: clock.control) }
+                Button("Reset clock", role: .destructive) { session.clock = ChessClock(control: session.clock.control) }
             }
         }
     }
     private func changeTimeControl() {
-        clock.pause(at: ProcessInfo.processInfo.systemUptime); setup = true
+        session.clock.pause(at: ProcessInfo.processInfo.systemUptime); setup = true
     }
     private func updateScreenAwake() {
-        UIApplication.shared.isIdleTimerDisabled = visible && scenePhase == .active && clock.phase == .running && clock.flagged(at: ProcessInfo.processInfo.systemUptime) == nil
+        UIApplication.shared.isIdleTimerDisabled = visible && scenePhase == .active && session.clock.phase == .running && session.clock.flagged(at: ProcessInfo.processInfo.systemUptime) == nil
     }
     private func face(_ side: Side, now: Double) -> some View {
-        let flagged = clock.flagged(at: now)
-        let active = clock.phase == .running && clock.active == side && flagged == nil
-        return Button { clock.press(side, at: ProcessInfo.processInfo.systemUptime) } label: {
+        let flagged = session.clock.flagged(at: now)
+        let active = session.clock.phase == .running && session.clock.active == side && flagged == nil
+        return Button { session.clock.press(side, at: ProcessInfo.processInfo.systemUptime) } label: {
             VStack(spacing: 12) {
-                Text(time(clock.remaining(for: side, at: now))).font(.system(size: 74, weight: .bold, design: .rounded)).monospacedDigit().minimumScaleFactor(0.45).lineLimit(1)
+                Text(time(session.clock.remaining(for: side, at: now))).font(.system(size: 74, weight: .bold, design: .rounded)).monospacedDigit().minimumScaleFactor(0.45).lineLimit(1)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity).padding(20)
             .foregroundStyle(side == .white ? Color.black : Color.white)
             .background(side == .white ? Color(white: 0.97) : Color(white: 0.12), in: RoundedRectangle(cornerRadius: 24))
             .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(flagged == side ? Color.red : active ? Color.accentColor : Color.gray.opacity(0.35), lineWidth: active || flagged == side ? 4 : 1))
         }.buttonStyle(.plain)
-            .accessibilityLabel("\(side.title), \(time(clock.remaining(for: side, at: now)))\(active ? ", running" : "")")
+            .accessibilityLabel("\(side.title), \(time(session.clock.remaining(for: side, at: now)))\(active ? ", running" : "")")
             .accessibilityIdentifier("clock-\(side.rawValue)")
     }
     private var resetButton: some View {
@@ -65,12 +73,12 @@ import SwiftUI
     }
     private func controlTitle(now: Double) -> some View {
         VStack(spacing: 4) {
-            Button(action: changeTimeControl) { Label(clock.control.title, systemImage: "slider.horizontal.3").font(.headline.monospacedDigit()).frame(minHeight: 44) }.accessibilityLabel("Time control")
-            if clock.flagged(at: now) != nil { Text("Time expired").font(.caption.bold()) }
+            Button(action: changeTimeControl) { Label(session.clock.control.title, systemImage: "slider.horizontal.3").font(.headline.monospacedDigit()).frame(minHeight: 44) }.accessibilityLabel("Time control")
+            if session.clock.flagged(at: now) != nil { Text("Time expired").font(.caption.bold()) }
         }
     }
     @ViewBuilder private func controls(now: Double) -> some View {
-        if clock.phase != .running || clock.flagged(at: now) != nil {
+        if session.clock.phase != .running || session.clock.flagged(at: now) != nil {
             controlTitle(now: now).frame(maxWidth: .infinity).buttonStyle(.bordered).controlSize(.large)
         }
     }
@@ -95,10 +103,10 @@ private struct ClockSetupView: View {
                 Section("Time control") {
                     Toggle("Custom time control", isOn: $custom)
                     if custom {
-                        Stepper("Minutes: \(minutes)", value: $minutes, in: 0...180)
-                        Stepper("Seconds: \(seconds)", value: $seconds, in: 0...59)
-                        Stepper("Increment: \(increment) \(increment == 1 ? "second" : "seconds")", value: $increment, in: 0...60)
-                        Stepper("Delay: \(delay) \(delay == 1 ? "second" : "seconds")", value: $delay, in: 0...60)
+                        Stepper(CountText.value(minutes, "minute"), value: $minutes, in: 0...180)
+                        Stepper(CountText.value(seconds, "second"), value: $seconds, in: 0...59)
+                        Stepper("Increment: " + CountText.value(increment, "second"), value: $increment, in: 0...60)
+                        Stepper("Delay: " + CountText.value(delay, "second"), value: $delay, in: 0...60)
                     } else {
                         Picker("Time control", selection: $selected) {
                             ForEach(Array(ClockTimeControl.presets.enumerated()), id: \.offset) { index, preset in Text(preset.title).tag(index) }

@@ -9,14 +9,13 @@ struct AchievementsView: View {
                 ForEach(GameMode.allCases.filter { library.state.playProgress.rating(for: $0).games > 0 }) { mode in
                     let rating = library.state.playProgress.rating(for: mode)
                     VStack(alignment: .leading, spacing: 4) {
-                        HStack { Text(mode.title); Spacer(); Text("\(String(Int(rating.value.rounded()))) · \(rating.games) games").monospacedDigit() }
+                        HStack { Text(mode.title); Spacer(); Text("\(String(Int(rating.value.rounded()))) · \(CountText.value(rating.games, "game"))").monospacedDigit() }
                         if rating.provisional { Text("Provisional").font(.caption).foregroundStyle(.secondary) }
                         if rating.legacySeed == true { Text("Continues from your previous local estimate; some earlier game results are unavailable.").font(.caption).foregroundStyle(.secondary) }
                     }
                 }
                 if library.state.playProgress.ratings.values.allSatisfy({ $0.games == 0 }) { Text("Your starting rating is 1000. Enable Rated game in New game to begin.").foregroundStyle(.secondary) }
             }.listRowBackground(ThemeCardBackground())
-            Section { NavigationLink("About ratings") { RatingsInfoView() } }.listRowBackground(ThemeCardBackground())
             Section("Achievements") {
                 ForEach(Achievement.ordered, id: \.rawValue) { achievement in
                     let date = library.state.playProgress.achievements[achievement.rawValue]

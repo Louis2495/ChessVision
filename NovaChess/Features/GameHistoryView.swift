@@ -15,7 +15,7 @@ struct GameHistoryView: View {
                 NavigationLink { GameReviewView(id: entry.id) } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack { Text(entry.resultTitle).font(.headline); Spacer(); Text(entry.game.mode.title).font(.caption).foregroundStyle(.secondary) }
-                        Text("You: \(entry.game.human.title) · \(entry.game.opponentName ?? "Computer ≈ \(String(entry.game.targetRating))") · \(String(entry.moveCount)) moves").font(.caption).foregroundStyle(.secondary)
+                        Text("You: \(entry.game.human.title) · \(entry.game.opponentName ?? "Computer ≈ \(String(entry.game.targetRating))") · \(CountText.value(entry.moveCount, "move"))").font(.caption).foregroundStyle(.secondary)
                         Text(entry.finishedAt, style: .date).font(.caption2).foregroundStyle(.secondary)
                         if entry.review?.complete == true { Text("Review saved").font(.caption).foregroundStyle(.tint) }
                     }.padding(.vertical, 6)
@@ -80,7 +80,7 @@ struct GameReviewView: View {
                         suggestions(review)
                     }
                     if let ungraded = model.review?.ungradedBughouseMoves, !ungraded.isEmpty {
-                        Text("\(String(ungraded.count)) moves awaiting partner material were left ungraded.").font(.caption).foregroundStyle(.secondary)
+                        Text("\(CountText.value(ungraded.count, "move")) awaiting partner material \(ungraded.count == 1 ? "was" : "were") left ungraded.").font(.caption).foregroundStyle(.secondary)
                     }
                     if entry.bughouse != nil { Text("Bughouse comparisons assess board A. Partner-board consequences are not fully evaluated by the engine.").font(.caption).foregroundStyle(.secondary) }
 

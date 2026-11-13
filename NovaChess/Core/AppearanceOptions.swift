@@ -4,15 +4,15 @@ public enum AppTheme: String, CaseIterable, Sendable {
     case pink = "Pink", forest = "Forest", ocean = "Ocean", plum = "Plum", amber = "Amber", rose = "Rose", teal = "Teal", indigo = "Indigo", graphite = "Graphite"
     public var hex: UInt32 {
         switch self {
-        case .pink: return 0xD94F91
-        case .forest: return 0x337057
-        case .ocean: return 0x2467B1
-        case .plum: return 0x8050A0
-        case .amber: return 0xA26613
-        case .rose: return 0xB4496D
-        case .teal: return 0x187C80
-        case .indigo: return 0x5752B5
-        case .graphite: return 0x526171
+        case .pink: return 0xEF5BA8
+        case .forest: return 0x23845D
+        case .ocean: return 0x1D7CDD
+        case .plum: return 0x9948C5
+        case .amber: return 0xD7980C
+        case .rose: return 0xDC507D
+        case .teal: return 0x089B9A
+        case .indigo: return 0x6E65DD
+        case .graphite: return 0x677F9E
         }
     }
 }

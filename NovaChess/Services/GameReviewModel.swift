@@ -98,7 +98,7 @@ import Combine
                     }
                     let before = try state(at: ply)
                     guard let played = before.moves.first(where: { $0.uci == game.moves[ply] }) else { throw ChessError.invalid("A saved move could not be replayed.") }
-                    progress = "Reviewing move \(before.board.fullmove) · \(ply + 1)/\(game.moves.count) plies"
+                    progress = "Reviewing move \(before.board.fullmove)"
                     let match = standard && before.board.turn == game.human ? GameReviewLogic.repertoireSuggestion(at: before.board, played: played.uci, san: played.san, ply: ply, choices: book.positions[before.board.openingKey] ?? []) : (matched: false, suggestion: nil as GameSuggestion?)
                     let afterHistory = prefix + [played.uci]
                     let after = try state(at: ply + 1)

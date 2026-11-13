@@ -23,6 +23,9 @@ public struct MoveAssessment: Codable, Identifiable, Sendable {
     public var quality: MoveQuality
     public var loss: Int
     public var depth: Int
+    public var bestUCI: String?
+    public var bestSAN: String?
+    public var playedTopMove: Bool { bestUCI == uci }
     public var id: Int { ply }
     public var destination: Int? { VariantMove(uci: uci, san: san).to }
     public static func make(ply: Int, move: VariantMove, before: VariantSnapshot, after: VariantSnapshot, baseline: EngineLine, outcome: EngineLine?, inBook: Bool = false) -> MoveAssessment {
@@ -42,13 +45,24 @@ public struct MoveAssessment: Codable, Identifiable, Sendable {
         else if baseline.moves.first == move.uci { quality = .best }
         else if loss <= 20 { quality = .excellent }
         else { quality = .good }
-        return MoveAssessment(ply: ply, side: before.board.turn, uci: move.uci, san: move.san, quality: quality, loss: loss, depth: min(baseline.depth, outcome?.depth ?? baseline.depth))
+        var assessment = MoveAssessment(ply: ply, side: before.board.turn, uci: move.uci, san: move.san, quality: quality, loss: loss, depth: min(baseline.depth, outcome?.depth ?? baseline.depth))
+        if let best = baseline.moves.first.flatMap({ uci in before.moves.first { $0.uci == uci } }) {
+            assessment.bestUCI = best.uci; assessment.bestSAN = best.san
+        }
+        return assessment
     }
 }
 public struct ReviewSummary: Sendable {
     public var moves: [MoveAssessment]
     public init(_ moves: [MoveAssessment], side: Side) { self.moves = moves.filter { $0.side == side } }
     public func count(_ quality: MoveQuality) -> Int { moves.filter { $0.quality == quality }.count }
+    /// Heuristic single-game estimate, not a calibrated USCF or platform rating.
+    public var performanceEstimate: Int? {
+        let assessed = moves.filter { $0.quality != .book }
+        guard assessed.count >= 8 else { return nil }
+        let penalty = assessed.reduce(0.0) { $0 + log1p(Double(max(0, $1.loss)) / 35) } / Double(assessed.count)
+        return Int((min(2800, max(400, 2800 - 700 * penalty)) / 50).rounded()) * 50
+    }
     /// Measured engine loss, not a conversion to a human rating pool.
     public var averageCentipawnLoss: Double? {
         let assessed = moves.filter { $0.quality != .book }

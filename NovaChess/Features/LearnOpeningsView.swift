@@ -4,15 +4,14 @@ import SwiftUI
     @EnvironmentObject private var library: LibraryStore
     @State private var search = ""
     private var lessons: [OpeningLine] {
-        if !search.isEmpty { return Array(library.openings.filter { $0.name.localizedCaseInsensitiveContains(search) || $0.eco.localizedCaseInsensitiveContains(search) }.prefix(100)) }
-        let names = ["Italian", "Ruy Lopez", "Queen's Gambit", "London", "Caro-Kann", "Sicilian", "French", "Scandinavian"]
-        return names.compactMap { name in library.openings.filter { $0.name.localizedCaseInsensitiveContains(name) && $0.moves.count >= 4 }.min { $0.moves.count < $1.moves.count } }
+        if !search.isEmpty { return Array((library.openings + OpeningLessons.additional).filter { (16...40).contains($0.moves.count) && ($0.name.localizedCaseInsensitiveContains(search) || $0.eco.localizedCaseInsensitiveContains(search)) }.prefix(100)) }
+        return OpeningLessons.curated(in: library.openings)
     }
     var body: some View {
         List(lessons) { line in
             NavigationLink { OpeningLessonView(opening: line) } label: {
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) { Text(line.name).font(.headline); Text(line.eco).font(.caption).foregroundStyle(.secondary) }
+                    VStack(alignment: .leading, spacing: 4) { Text(line.name).font(.headline); Text("\(line.eco) · \(String(GameStatistics.moveCount(plies: line.moves.count))) moves").font(.caption).foregroundStyle(.secondary) }
                     Spacer()
                     if library.state.learnedOpenings.contains(line.id) { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
                 }

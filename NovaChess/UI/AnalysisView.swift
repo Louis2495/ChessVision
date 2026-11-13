@@ -27,7 +27,7 @@ struct AnalysisView: View {
     @State private var tree: AnalysisTree
     @State private var cursor = 0
     @State private var rank = 1
-    @AppStorage("positionInsights") private var insights = false
+    @State private var insights = false
     @AppStorage("showCandidateLines") private var showCandidateLines = true
     @AppStorage("showGameNotation") private var showGameNotation = false
     @State private var observations: [String] = []
@@ -361,8 +361,6 @@ private struct VariationTable: View {
 
 
 private struct HistorySwipeBar: View {
-    @AppStorage("theme") private var theme = "Forest"
-    private var hex: UInt32 { (AppTheme(rawValue: theme) ?? .forest).hex }
     var side: Side
     var current: Int
     var total: Int
@@ -376,10 +374,10 @@ private struct HistorySwipeBar: View {
             Button(action: forward) { Image(systemName: "chevron.right") }.disabled(!canAdvance).accessibilityLabel("Next position")
         }
         .padding(.horizontal, 16).padding(.vertical, 8)
-        .foregroundStyle(Color(hex: InterfaceContrast.foreground(on: hex)))
-        .tint(Color(hex: InterfaceContrast.foreground(on: hex)))
-        .background(Color(hex: hex), in: Capsule())
-        .overlay(Capsule().strokeBorder(side == .white ? Color.white : Color.black, lineWidth: 4))
+        .foregroundStyle(side == .white ? Color.black : Color.white)
+        .tint(side == .white ? Color.black : Color.white)
+        .background(side == .white ? Color.white : Color.black, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.gray.opacity(0.55), lineWidth: 1))
         .contentShape(Rectangle())
         .gesture(DragGesture(minimumDistance: 18).onEnded { value in
             guard abs(value.translation.width) > abs(value.translation.height) else { return }

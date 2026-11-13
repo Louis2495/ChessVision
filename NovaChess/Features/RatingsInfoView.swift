@@ -14,7 +14,7 @@ struct RatingsInfoView: View {
             }.listRowBackground(ThemeCardBackground())
             Section("Puzzles & review") {
                 Text("Puzzle difficulty uses the original Lichess puzzle rating. Your puzzle estimate tracks practice results on that scale; puzzle performance has no reliable direct conversion to USCF. Older training estimates are rescaled when the library is loaded, preserving solved puzzles.")
-                Text("Game reviews show move assessments and average centipawn loss instead of deriving a human rating from one game.")
+                Text("Game reviews include an approximate game-performance estimate for each side after eight assessed non-book moves. It is a heuristic based on engine loss, not an official rating or a calibrated USCF equivalent.")
             }.listRowBackground(ThemeCardBackground())
             Section("References") {
                 Link("US Chess rating system", destination: URL(string: "https://new.uschess.org/sites/default/files/media/documents/the-us-chess-rating-system-revised-september-2020.pdf")!)

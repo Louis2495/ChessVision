@@ -76,18 +76,14 @@ struct GameReviewView: View {
                     }
                     if let error = model.error { Text(error).font(.footnote).foregroundStyle(.red) }
                     if let review = model.review {
-                        Text("\(review.assessedMoves)/\(entry.humanMoveCount) of your moves reviewed · \(review.repertoireMatches) repertoire positions").font(.caption).foregroundStyle(.secondary)
                         gameSummary(entry, review: review)
-                        improvementAreas(review)
                         suggestions(review)
                     }
                     if let ungraded = model.review?.ungradedBughouseMoves, !ungraded.isEmpty {
                         Text("\(String(ungraded.count)) moves awaiting partner material were left ungraded.").font(.caption).foregroundStyle(.secondary)
                     }
                     if entry.bughouse != nil { Text("Bughouse comparisons assess board A. Partner-board consequences are not fully evaluated by the engine.").font(.caption).foregroundStyle(.secondary) }
-                    DisclosureGroup("About this review") {
-                        Text("Repertoire suggestions reflect your saved choices. Standard-chess suggestions use Stockfish 19 with its NNUE model and up to three seconds per position, ending stable searches sooner. Variants use Fairy-Stockfish. Classifications can change with deeper analysis.").font(.caption).foregroundStyle(.secondary).padding(.top, 6)
-                    }
+
                 }.padding()
             }
         }.modifier(AppSurface()).navigationTitle("Game review").navigationBarTitleDisplayMode(.inline)
@@ -105,7 +101,7 @@ struct GameReviewView: View {
                 if entry.bughouse != nil, let partner = model.position(at: cursor, partner: true) { BoardView(position: partner.board, flipped: entry.game.human == .white) }
             }
             if let assessment = model.review?.assessments?.first(where: { $0.ply == cursor - 1 }) {
-                Label("\(assessment.san) · \(assessment.quality.title)", systemImage: assessment.quality.symbol).foregroundStyle(assessment.quality.color).font(.headline)
+                ReviewMoveRow(assessment: assessment)
             }
             HStack {
                 Button("Previous", systemImage: "chevron.left") { cursor = max(0, cursor - 1) }.disabled(cursor == 0)
@@ -124,64 +120,64 @@ struct GameReviewView: View {
     }
     private func gameSummary(_ entry: CompletedGame, review: GameReview) -> some View {
         AppCard {
-            Text("Game summary").font(.title2.bold())
-            if let change = entry.ratingChange {
-                Text("Local rated game · \(change >= 0 ? "+" : "")\(String(change)) rating points").font(.headline)
+            HStack {
+                Text("Game summary").font(.title2.bold())
+                Spacer()
+                if let change = entry.ratingChange { Text("\(change >= 0 ? "+" : "")\(String(change))").font(.headline.monospacedDigit()) }
             }
             ForEach(Side.allCases, id: \.rawValue) { side in
                 let summary = ReviewSummary(review.assessments ?? [], side: side)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(side.title).font(.headline)
-                    Text("\(summary.count(.blunder)) blunders · \(summary.count(.mistake)) mistakes · \(summary.count(.inaccuracy)) inaccuracies").font(.subheadline)
-                    Text("\(summary.count(.best)) best · \(summary.count(.excellent)) excellent · \(summary.count(.good)) good · \(summary.count(.book)) book").font(.caption).foregroundStyle(.secondary)
-                    if let loss = summary.averageCentipawnLoss { Text("Average loss · \(String(Int(loss.rounded()))) cp").font(.subheadline) }
-                    else { Text("No non-book moves assessed yet.").font(.caption).foregroundStyle(.secondary) }
-                }
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        RoundedRectangle(cornerRadius: 3).fill(side == .white ? Color.white : Color.black).frame(width: 18, height: 18).overlay(RoundedRectangle(cornerRadius: 3).stroke(Color.gray, lineWidth: 1))
+                        Text(side.title).font(.headline)
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(summary.performanceEstimate.map { "≈" + String($0) } ?? "—").font(.title3.bold().monospacedDigit())
+                            Text("Game estimate").font(.caption2).foregroundStyle(.secondary)
+                        }.accessibilityLabel(side.title + " uncalibrated game rating estimate")
+                    }
+                    HStack(spacing: 12) {
+                        ForEach([MoveQuality.best, .excellent, .good, .inaccuracy, .mistake, .blunder], id: \.self) { quality in
+                            VStack(spacing: 4) {
+                                Image(systemName: quality.symbol).foregroundStyle(quality.color)
+                                Text(String(summary.count(quality))).font(.caption.monospacedDigit())
+                            }.frame(maxWidth: .infinity).accessibilityElement(children: .ignore)
+                                .accessibilityLabel("\(quality.title): \(summary.count(quality))")
+                        }
+                    }
+                }.padding(.vertical, 6)
             }
-            Text("Average loss measures this game against the engine. It does not estimate a USCF rating. Counts update as review completes.").font(.caption).foregroundStyle(.secondary)
             DisclosureGroup("All assessed moves") {
                 ForEach(review.assessments ?? []) { assessment in
                     Button { cursor = assessment.ply + 1 } label: {
-                        HStack {
-                            Label("\(assessment.ply / 2 + 1)\(assessment.side == .white ? "." : "…") \(assessment.san)", systemImage: assessment.quality.symbol)
-                            Spacer(); Text(assessment.quality.title)
-                        }.font(.caption).foregroundStyle(assessment.quality.color).padding(.vertical, 4)
-                    }
+                        ReviewMoveRow(assessment: assessment).padding(.vertical, 7)
+                    }.buttonStyle(.plain)
                 }
-            }
-        }
-    }
-    @ViewBuilder private func improvementAreas(_ review: GameReview) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Areas for improvement").font(.title2.bold())
-            if review.areas.isEmpty { Text(review.complete ? (review.assessedMoves == 0 ? "There were no moves by you to assess." : "No clear mistake pattern was found in this quick review.") : "Areas will appear as your moves are reviewed.").foregroundStyle(.secondary) }
-            ForEach(review.areas, id: \.rawValue) { concept in
-                let moves = review.suggestions.filter { $0.concept == concept }.map { String($0.number) }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(concept.title).font(.headline)
-                    Text(concept.practice).font(.subheadline)
-                    Text("Move\(moves.count == 1 ? "" : "s"): \(moves.joined(separator: ", "))").font(.caption).foregroundStyle(.secondary)
-                }.frame(maxWidth: .infinity, alignment: .leading).padding()
-                    .background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
             }
         }
     }
     @ViewBuilder private func suggestions(_ review: GameReview) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Move suggestions").font(.title2.bold())
-            if review.suggestions.isEmpty && review.complete { Text("No clear move corrections at this search budget. You can still replay and analyze any position.").foregroundStyle(.secondary) }
-            ForEach(review.suggestions) { item in
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack { Text(item.moveLabel).font(.headline.monospaced()); Spacer(); Text(item.label).font(.caption).foregroundStyle(.secondary) }
-                    Text("Instead of \(item.played), consider \(item.recommended.joined(separator: " or ")).").font(.headline)
-                    Text(item.explanation).font(.subheadline)
-                    if let depth = item.depth { Text("Engine comparison depth: \(depth)").font(.caption).foregroundStyle(.secondary) }
-                    Button("View this position") { cursor = item.ply }
-                    if let line = library.state.repertoire.first(where: { item.repertoireIDs.contains($0.id) }) {
-                        NavigationLink("Train \(line.name)") { RepertoireTrainerView(preferred: line.id) }
+        if !review.suggestions.isEmpty {
+            AppCard {
+                Text("Move suggestions").font(.title2.bold())
+                ForEach(review.suggestions) { item in
+                    HStack {
+                        Button { cursor = item.ply + 1 } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: item.source == .repertoire ? "book.closed.fill" : "arrow.triangle.branch").foregroundStyle(.tint)
+                                Text(item.moveLabel).monospaced().foregroundStyle(.primary)
+                                Image(systemName: "arrow.right").foregroundStyle(.secondary)
+                                Text(item.recommended.joined(separator: " / ")).fontWeight(.semibold).foregroundStyle(.green)
+                                Spacer(minLength: 0)
+                            }.frame(minHeight: 44)
+                        }.buttonStyle(.plain).accessibilityLabel("\(item.moveLabel). Suggested: \(item.recommended.joined(separator: " or "))")
+                        if let line = library.state.repertoire.first(where: { item.repertoireIDs.contains($0.id) }) {
+                            NavigationLink { RepertoireTrainerView(preferred: line.id) } label: { Image(systemName: "graduationcap.fill") }
+                                .accessibilityLabel("Train " + line.name)
+                        }
                     }
-                }.padding().frame(maxWidth: .infinity, alignment: .leading)
-                    .background { ThemeCardBackground().clipShape(RoundedRectangle(cornerRadius: 14)) }
+                }
             }
         }
     }

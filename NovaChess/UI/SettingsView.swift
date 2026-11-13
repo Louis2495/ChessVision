@@ -155,6 +155,6 @@ private extension UIColor {
     func withAdjustedBrightness() -> UIColor {
         var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
         guard getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) else { return self }
-        return UIColor(hue: hue, saturation: min(saturation, 0.55), brightness: max(brightness, 0.94), alpha: alpha)
+        return UIColor(hue: hue, saturation: min(saturation, 0.66), brightness: max(brightness, 0.94), alpha: alpha)
     }
 }

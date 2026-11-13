@@ -101,7 +101,7 @@ struct BoardView: View {
         return Button { onTap?(index) } label: {
             ZStack {
                 Rectangle().fill(squareColor(light: light))
-                if premoveSquares.contains(index) { Rectangle().fill(Color.cyan.opacity(0.65)) }
+                if premoveSquares.contains(index) { Rectangle().fill(Color.cyan.opacity(0.78)) }
                 if selected == index { Rectangle().fill(Color.accentColor.opacity(0.20)) }
                 if dragging != index && !hidePieces && !obscured.contains(index), let piece = position.squares[index] { PieceView(piece: piece).padding(cell * 0.055) }
                 if dragging != index && duckSquare == index { Image("CartoonDuck").resizable().scaledToFit().padding(cell * 0.06).accessibilityLabel("Duck") }
@@ -110,7 +110,7 @@ struct BoardView: View {
                     if position.squares[index] == nil { Circle().fill(coordinateColor(light: light).opacity(0.5)).frame(width: cell * 0.24, height: cell * 0.24) }
                     else { Circle().strokeBorder(Color.accentColor.opacity(0.8), lineWidth: 3).padding(2) }
                 }
-                if premoveSquares.contains(index) { Rectangle().strokeBorder(Color.blue, lineWidth: 4) }
+                if premoveSquares.contains(index) { Rectangle().strokeBorder(Color(hex: 0x0066FF), lineWidth: 4) }
                 if uncertain.contains(index) { Rectangle().strokeBorder(Color.orange, lineWidth: 3) }
                 if selected == index { Rectangle().strokeBorder(Color.accentColor, lineWidth: 3) }
             }

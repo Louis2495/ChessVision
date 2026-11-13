@@ -4,10 +4,11 @@ struct FinalStandardBoard: View {
     let position: Position
     let status: String
     var flipped = false
+    var cachedLine: EngineLine?
     @Environment(\.scenePhase) private var phase
     @ObservedObject private var engine = EngineController.shared
     private var terminal: Bool { position.legalMoves().isEmpty }
-    private var line: EngineLine? { engine.analyzedFEN == position.fen ? engine.lines.first : nil }
+    private var line: EngineLine? { (engine.analyzedFEN == position.fen ? engine.lines.first : nil) ?? cachedLine }
     private var evaluation: String {
         if status == "draw" { return "0.00" }
         if terminal { return position.isInCheck ? (position.turn == .white ? "−M0" : "+M0") : "0.00" }

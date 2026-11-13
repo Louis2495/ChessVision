@@ -230,3 +230,29 @@ extension NovaChessUITests {
         XCTAssertTrue(app.textFields["Rating"].exists)
     }
 }
+
+
+extension NovaChessUITests {
+    func testDailyPuzzleAndInsightsStartDisabled() {
+        let app = XCUIApplication(); app.launch()
+        let insights = app.switches["Position insights"]
+        for _ in 0..<5 { if insights.isHittable { break }; app.swipeUp() }
+        XCTAssertEqual(insights.value as? String, "0")
+        app.tabBars.buttons["Puzzles"].tap()
+        XCTAssertTrue(app.buttons["daily-puzzle"].waitForExistence(timeout: 5))
+        app.buttons["daily-puzzle"].tap()
+        XCTAssertTrue(app.buttons.matching(identifier: "square-e2").firstMatch.exists)
+    }
+    func testStatsMapCanZoom() {
+        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Play"].tap()
+        if app.navigationBars["Game review"].waitForExistence(timeout: 2) { app.navigationBars.buttons["Done"].tap() }
+        let stats = app.buttons["Stats & world map"]
+        for _ in 0..<6 { if stats.isHittable { break }; app.swipeUp() }
+        stats.tap()
+        let map = app.otherElements["country-world-map"]
+        for _ in 0..<10 { if map.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(map.exists); map.pinch(withScale: 2, velocity: 1)
+        let zoomed = NSPredicate(format: "value CONTAINS %@ AND value != %@", "times zoom", "1 times zoom")
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: zoomed, object: map)], timeout: 5), .completed)
+    }
+}

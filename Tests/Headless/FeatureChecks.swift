@@ -243,6 +243,8 @@ import Darwin
             try require(reviewer.error == nil && reviewer.review?.complete == true, "Engine review did not resume")
             try require(reviewer.positions.count == 8, "History replay lost positions")
             try require(reviewer.review?.assessments?.count == 7, "Review did not grade both sides")
+            try require(reviewer.review?.assessments?.allSatisfy { $0.bestUCI != nil && $0.bestSAN != nil } == true, "Review did not retain top moves")
+            try require(!reviewer.progress.contains("plies"), "Review progress still shows plies")
             try require(reviewer.review?.assessments?.first(where: { $0.ply == 5 })?.quality == .blunder, "Review badge missed the mating blunder")
             try require(reviewer.review?.suggestions.contains { $0.ply == 5 && $0.source == .engine } == true, "Engine missed the forced-mate blunder on Nf6")
             let restoredHistory = LibraryStore(directory: directory, puzzles: puzzles, openings: openings)

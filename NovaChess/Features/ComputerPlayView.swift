@@ -226,6 +226,7 @@ struct ComputerPlayView: View {
     @State private var textMove = ""
     @State private var selected: Int?
     @State private var selectedDrop: Character?
+    @State private var showMoves = false
     @State private var promotions: [VariantMove] = []
     @State private var resigning = false
     @State private var duckChoices: [VariantMove] = []
@@ -367,9 +368,17 @@ struct ComputerPlayView: View {
                     if game.mode == .blindBoard || game.mode == .blindText {
                         if snapshot.board.turn == game.human, let last = game.notation.last { Text("Computer: \(last)").font(.headline.monospaced()) }
                     } else if game.mode != .fogOfWar && !game.notation.isEmpty {
-                        AppCard { DisclosureGroup("Game moves · \(String(GameStatistics.moveCount(plies: game.notation.count)))") { GameMoveTable(moves: game.notation).padding(.top, 8) } }
+                        AppCard {
+                            Button { withAnimation { showMoves.toggle() } } label: {
+                                VStack(spacing: 5) {
+                                    Text("\(String(GameStatistics.moveCount(plies: game.notation.count))) moves").font(.headline)
+                                    Image(systemName: "chevron.down").font(.caption.bold())
+                                }.frame(maxWidth: .infinity, minHeight: 48)
+                            }.buttonStyle(.plain).accessibilityLabel("Game moves").accessibilityValue(showMoves ? "Expanded" : "Collapsed")
+                            if showMoves { GameMoveTable(moves: game.notation).padding(.top, 8) }
+                        }
                     }
-                    HStack { Button("Take back", systemImage: "arrow.uturn.backward") { model.undo() }.accessibilityHint("Undo your last move and the computer’s reply").disabled(game.moves.count < 2 || game.rated == true); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished) }.buttonStyle(.bordered).controlSize(.large)
+                    HStack { Button("Take back", systemImage: "arrow.uturn.backward") { model.undo() }.accessibilityHint("Undo your last move and the computer’s reply").disabled(game.moves.count < 2 || game.rated == true).buttonStyle(ThemeActionButtonStyle(backgroundHex: 0xFFD43B)); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished).buttonStyle(ThemeActionButtonStyle(backgroundHex: 0xCF2943)) }.buttonStyle(.bordered).controlSize(.large)
                 } else if model.busy { ProgressView("Preparing the game…").frame(maxWidth: .infinity).padding(.vertical, 40) }
                 else {
                     Button("New game", systemImage: "plus.circle.fill") { settingUp = true }.buttonStyle(ThemeActionButtonStyle()).controlSize(.large)
@@ -405,7 +414,8 @@ struct ComputerPlayView: View {
     }
     @ViewBuilder private func gameBoard(_ snapshot: VariantSnapshot, game: SavedComputerGame) -> some View {
         if snapshot.finished && game.mode == .normal {
-            FinalStandardBoard(position: snapshot.board, status: snapshot.status, flipped: game.human == .black)
+            FinalStandardBoard(position: snapshot.board, status: snapshot.status, flipped: game.human == .black,
+                cachedLine: game.reviewEvaluationVersion == GameReviewLogic.evaluationVersion ? game.prefetchedEvaluations?[game.moves.count] : nil)
                 .overlay(alignment: .top) { if let result = snapshot.result, dismissedResult != game.id { resultButton(result).padding(.trailing, 26).padding(12) } }
         } else if game.mode != .blindText {
             let hidden = game.mode == .blindBoard

@@ -69,8 +69,9 @@ import GameKit
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                HStack { Text(model.myTurn ? "Your turn" : "Waiting for your opponent").font(.headline); Spacer(); TurnBadge(side: model.board.turn) }
-                MoveBoard(position: model.board, enabled: model.myTurn && !model.busy, flipped: model.human == .black, premoveSide: model.human, onMove: model.play)
+                PlayerBoardLabel(name: model.match?.novaParticipants.compactMap(\.player).first { $0.gamePlayerID != GKLocalPlayer.local.gamePlayerID }?.displayName ?? "Opponent", rating: nil, active: model.result == nil && !model.myTurn)
+                MoveBoard(position: model.board, enabled: model.myTurn && !model.busy, flipped: model.human == .black, premoveSide: model.human, onMove: model.play).padding(.vertical, 10)
+                PlayerBoardLabel(name: SocialStore.shared.profile?.username ?? GKLocalPlayer.local.displayName, rating: nil, active: model.result == nil && model.myTurn)
                 if let result = model.result { Text(result == "white" ? "White wins" : result == "black" ? "Black wins" : result == "draw" ? "Draw" : result).font(.title2.bold()) }
                 if let deadline = model.match?.currentParticipant?.timeoutDate, model.result == nil {
                     HStack { Text("Turn deadline"); Spacer(); Text(deadline, style: .date); Text(deadline, style: .time) }.font(.caption).foregroundStyle(.secondary)
@@ -84,7 +85,7 @@ import GameKit
                 HStack {
                     Button("Refresh", systemImage: "arrow.clockwise") { model.refresh(id) }.disabled(model.busy)
                     Spacer()
-                    Button("Resign", role: .destructive) { resigning = true }.disabled(!model.myTurn || model.busy)
+                    Button("Resign", role: .destructive) { if MovePreferences.confirmResign { resigning = true } else { model.resign() } }.disabled(!model.myTurn || model.busy)
                 }.buttonStyle(.bordered)
             }.padding()
         }.modifier(AppSurface()).navigationTitle("Correspondence game").navigationBarTitleDisplayMode(.inline)

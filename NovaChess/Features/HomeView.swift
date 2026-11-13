@@ -14,7 +14,7 @@ import SwiftUI
                     Button { showingClock = true } label: {
                         AppCard {
                             HStack(spacing: 16) {
-                                Image(systemName: "clock.fill").font(.largeTitle).foregroundStyle(.tint)
+                                Image(systemName: "clock.fill").font(.largeTitle).foregroundStyle(.orange)
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text("Clock").font(.title2.bold()).foregroundStyle(.primary)
                                     Text(clock.clock.control.title).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)

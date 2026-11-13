@@ -128,6 +128,24 @@ public enum GameMode: String, CaseIterable, Codable, Identifiable, Sendable {
         case .antichess: return "Antichess"
         }
     }
+    public var symbol: String {
+        switch self {
+        case .normal: return "square.grid.3x3"
+        case .crazyhouse: return "tray.and.arrow.down.fill"
+        case .fogOfWar: return "cloud.fog.fill"
+        case .chess960: return "shuffle"
+        case .threeCheck: return "3.circle.fill"
+        case .kingOfTheHill: return "mountain.2.fill"
+        case .atomic: return "atom"
+        case .duck: return "bird.fill"
+        case .horde: return "person.3.fill"
+        case .pawnWars: return "flag.2.crossed.fill"
+        case .antichess: return "arrow.down.right.and.arrow.up.left"
+        case .bughouse: return "square.split.2x2.fill"
+        case .blindBoard: return "eye.slash"
+        case .blindText: return "keyboard"
+        }
+    }
     public var variant: String {
         switch self { case .chess960: return "cv9600"; case .threeCheck: return "3check"; case .kingOfTheHill: return "kingofthehill"; case .horde: return "horde"; case .crazyhouse: return "crazyhouse"; case .bughouse: return "bughouse"; case .duck: return "duck"; case .atomic: return "atomic"; case .fogOfWar: return "cvfog"; case .pawnWars: return "cvpawns"; case .antichess: return "antichess"; default: return "chess" }
     }

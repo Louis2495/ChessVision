@@ -126,7 +126,7 @@ import GameKit
                 NavigationLink { SpectatorBoardView(id: game.id) } label: {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(game.white + " · " + game.black).font(.headline)
-                        Text(game.mode + (game.result == nil ? " · In progress" : " · Finished")).font(.caption).foregroundStyle(.secondary)
+                        Label(game.result == nil ? "In progress" : "Finished", systemImage: GameMode.allCases.first { $0.title == game.mode }?.symbol ?? "square.grid.3x3").font(.caption).foregroundStyle(.secondary).accessibilityLabel(game.mode + (game.result == nil ? ", In progress" : ", Finished"))
                         Text("Shared by @" + game.publisher).font(.caption2).foregroundStyle(.secondary)
                     }.padding(.vertical, 5)
                 }.listRowBackground(ThemeCardBackground())

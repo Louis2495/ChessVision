@@ -24,7 +24,7 @@ private struct LearnSquare: View {
         VStack(spacing: 16) {
             Image(systemName: symbol).font(.system(size: 42, weight: .medium)).foregroundStyle(color)
             Text(title).font(.title2.bold()).foregroundStyle(.primary)
-        }.frame(width: side, height: side)
+        }.frame(width: side, height: side * 0.8)
             .background { ThemeCardBackground().overlay(color.opacity(0.10)).clipShape(RoundedRectangle(cornerRadius: 24)) }
             .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(color.opacity(0.45), lineWidth: 2))
             .contentShape(RoundedRectangle(cornerRadius: 24)).accessibilityElement(children: .ignore).accessibilityLabel(title)

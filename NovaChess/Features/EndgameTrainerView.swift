@@ -41,7 +41,7 @@ import SwiftUI
                         .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(session.outcome == .success ? Color.yellow : session.outcome == .failure ? Color.red : Color.clear, lineWidth: 5).allowsHitTesting(false))
                     if session.outcome != .ongoing {
                         Label(session.outcome == .success ? "Complete" : (session.result ?? "Try again"), systemImage: session.outcome == .success ? "checkmark.seal.fill" : "arrow.counterclockwise").font(.title3.bold())
-                    } else if model.busy { ProgressView(session.board.turn == exercise.side ? "Finding a hint…" : "Computer thinking…") }
+                    } else if model.busy { ProgressView() }
                     else { TurnBadge(side: session.board.turn) }
                     if let hint = model.hint { Label(hint, systemImage: "lightbulb.fill").foregroundStyle(.yellow).font(.headline.monospaced()) }
                     if let error = model.error {

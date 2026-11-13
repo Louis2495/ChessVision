@@ -26,7 +26,7 @@ import SwiftUI
                 } else if model.loading { ProgressView("Preparing Bughouse…").frame(maxWidth: .infinity, maxHeight: .infinity) }
                 else if model.match == nil || model.states.count != 2 { BughouseSetupView { model.newMatch($0) } }
                 else { table(size: geometry.size) }
-            }.modifier(AppSurface()).navigationTitle("Bughouse").navigationBarTitleDisplayMode(.inline)
+            }.modifier(AppSurface()).navigationTitle("Play").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button("Close") { reviewTask?.cancel(); model.pause(); dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -34,7 +34,7 @@ import SwiftUI
                         if model.match != nil { Button("New") { reviewTask?.cancel(); model.pause(); setup = true } }
                         if model.match?.winner == nil && model.states.count == 2 {
                             Button(model.running ? "Pause" : "Resume") { if model.running { model.pause() } else if sideways { model.resume() } }
-                            Button("Resign", role: .destructive) { resigning = true }
+                            Button("Resign", role: .destructive) { if MovePreferences.confirmResign { resigning = true } else { model.resign() } }
                         }
                     }
                 }
@@ -87,8 +87,8 @@ import SwiftUI
     }
     private func table(size: CGSize) -> some View {
         TimelineView(.periodic(from: .now, by: 0.1)) { _ in
-            // Put clocks and pockets beside the squares so neither board loses vertical space.
-            let side = max(1, min((size.width - 8) / 2 - 72, size.height))
+            // Keep clocks and pockets beside the squares; compact player strips bracket each board.
+            let side = max(1, min((size.width - 8) / 2 - 72, size.height - 68))
             HStack(alignment: .center, spacing: 8) {
                 board(0, side: side)
                 board(1, side: side)
@@ -106,7 +106,9 @@ import SwiftUI
         let state = model.states[index]
         let human = model.match?.config.human ?? .white
         let bottom = index == 0 ? human : human.opposite
-        return HStack(spacing: 4) {
+        return VStack(alignment: .leading, spacing: 8) {
+            playerLabel(index, side: bottom.opposite)
+            HStack(spacing: 4) {
             BoardView(position: index == 0 && isPremoving ? model.premoves.projected(state.board, side: human) : state.board,
                       selected: index == 0 ? (isPremoving ? composer.selected : selected) : nil,
                       premoveSquares: index == 0 ? Set(model.premoves.moves.flatMap { move -> [Int] in let m = VariantMove(uci: move, san: ""); return [m.from, m.to].compactMap { $0 } }) : [], flipped: bottom == .black, onDropPiece: { kind, target in
@@ -127,11 +129,13 @@ import SwiftUI
                 Spacer(minLength: 0)
                 Text(state.inCheck && state.moves.isEmpty && !state.finished ? "Waiting for a piece" : index == 0 ? "Your board" : "Partner").font(.caption2.bold()).multilineTextAlignment(.center)
                 if index == 0 && !model.premoves.moves.isEmpty { Text(CountText.value(model.premoves.moves.count, "premove")).font(.caption2) }
-                if model.thinkingBoard == index { ProgressView().controlSize(.mini).accessibilityLabel("Computer thinking") }
+                if model.thinkingBoard == index { ProgressView().controlSize(.mini).accessibilityLabel("Move in progress") }
                 Spacer(minLength: 0)
                 pocket(index, side: bottom)
                 clockRow(index, side: bottom)
             }.frame(width: 68, height: side)
+            }
+            playerLabel(index, side: bottom)
         }.frame(width: side + 72)
     }
     private func pocket(_ index: Int, side: Side) -> some View {
@@ -159,13 +163,22 @@ import SwiftUI
         }
     }
     private func clockRow(_ board: Int, side: Side) -> some View {
-        let rating = model.match?.config.ratings[BughouseConfig.seat(board, side)] ?? 1000
         let seconds = model.clocks.indices.contains(board) ? model.clocks[board].remaining(for: side, at: ProcessInfo.processInfo.systemUptime) : 0
         let rounded = Int(ceil(seconds))
         return VStack(spacing: 0) {
-            Text("\(side.title) \(String(rating))").font(.system(size: 9)).lineLimit(1).minimumScaleFactor(0.7)
             Text(String(format: "%d:%02d", rounded / 60, rounded % 60)).font(.caption.bold().monospacedDigit())
         }.foregroundStyle(BughouseConfig.team(board, side) == model.match?.config.humanTeam ? Color.accentColor : Color.primary)
+    }
+    private func playerLabel(_ board: Int, side: Side) -> some View {
+        let human = model.match?.config.human ?? .white
+        let isPartner = BughouseConfig.team(board, side) == model.match?.config.humanTeam
+        let name = board == 0 && side == human ? SocialStore.shared.profile?.username ?? "You" : isPartner ? "Partner" : "Opponent \(board + 1)"
+        let rating = model.match?.config.ratings[BughouseConfig.seat(board, side)] ?? 1000
+        return HStack(spacing: 6) {
+            Text(name).font(.caption.bold()).lineLimit(1)
+            Text(String(rating)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+        }.padding(.horizontal, 8).padding(.vertical, 4)
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(model.running && model.states[board].board.turn == side ? Color.accentColor : Color.clear, lineWidth: 2))
     }
     private var isPremoving: Bool { premovesEnabled && (model.states.first?.board.turn != model.match?.config.human || !model.premoves.moves.isEmpty || composer.selected != nil || composer.drop != nil) }
     private func tap(_ square: Int) {

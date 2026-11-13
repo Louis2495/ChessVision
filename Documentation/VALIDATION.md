@@ -228,3 +228,11 @@ UI test definitions were updated for default Home navigation, clock relocation/s
 The focused Play landing workflow passed fresh setup without creating a game, saving/starting from the landing, passive saved-position preparation without a hidden bot reply, resuming with the same game ID, blocking premature replacement of a loading rated game, and settling that old game exactly once when replacement is requested. This check caught and verified the correction of the passive loader's busy flag.
 
 Swift syntax parsing and structural Xcode checks passed. UI test definitions cover the direct setup page/community links and minimal puzzle header/streak. They were not executed without the iOS SDK/simulator in this Linux environment; actual layout, tab navigation and visual verification still require Xcode/iPhone.
+
+## Version 0.30 Player labels and history presentation
+
+181 core tests passed, zero failures. New coverage verifies win/loss/draw from either player color, both bughouse teams, distinct variant symbols and default-off/persisted resignation confirmation. Source parsing and structural project/resource validation passed. UI test definitions use the renamed Learn tab, a distinct learning-library identifier and immediate resignation.
+
+The iOS SDK and simulator are unavailable in this Linux environment. SwiftUI type-checking, SF Symbol rendering, board layout at different text sizes, confirmation dialogs and device navigation still require Xcode/iPhone validation.
+
+The full assertion-enabled native feature suite also passed: import cancellation/failure recovery, linked bughouse rules and clocks, all thirteen computer game styles, legal/illegal premove queues, rated/adaptive progression, multi-turn 3-Check, automatic history, repertoire/engine review, review persistence and analysis handover.

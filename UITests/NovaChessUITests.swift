@@ -36,15 +36,15 @@ final class NovaChessUITests: XCTestCase {
 extension NovaChessUITests {
     func testBottomTabsAndNewTrainingFlows() {
         let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Analysis"].tap()
-        for title in ["Home", "Analysis", "Play", "Puzzles", "Openings"] { XCTAssertTrue(app.tabBars.buttons[title].waitForExistence(timeout: 5)) }
-        app.tabBars.buttons["Openings"].tap()
+        for title in ["Home", "Analysis", "Play", "Puzzles", "Learn"] { XCTAssertTrue(app.tabBars.buttons[title].waitForExistence(timeout: 5)) }
+        app.tabBars.buttons["Learn"].tap()
         app.buttons["Research"].tap()
         XCTAssertTrue(app.textFields["Public username"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Puzzles"].tap()
         XCTAssertTrue(app.staticTexts["Your puzzle estimate"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Hint"].exists)
-        app.tabBars.buttons["Openings"].tap()
-        app.navigationBars.buttons["Openings"].tap()
+        app.tabBars.buttons["Learn"].tap()
+        app.navigationBars.buttons["Learn"].tap()
         app.buttons["Your Repertoire"].tap()
         app.buttons["Add a line"].tap()
         app.buttons["square-e2"].tap(); app.buttons["square-e4"].tap()
@@ -100,7 +100,7 @@ extension NovaChessUITests {
 extension NovaChessUITests {
     func testFiveTabOrderAndClock() {
         let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Analysis"].tap()
-        XCTAssertEqual(app.tabBars.buttons.allElementsBoundByIndex.map(\.label), ["Home", "Analysis", "Play", "Puzzles", "Openings"])
+        XCTAssertEqual(app.tabBars.buttons.allElementsBoundByIndex.map(\.label), ["Home", "Analysis", "Play", "Puzzles", "Learn"])
         app.tabBars.buttons["Home"].tap(); app.buttons["home-clock"].tap()
         XCTAssertTrue(app.buttons["clock-w"].waitForExistence(timeout: 5))
         app.buttons["clock-w"].tap()
@@ -140,7 +140,7 @@ extension NovaChessUITests {
         start.tap()
         let resign = app.buttons["Resign"]
         for _ in 0..<8 { if resign.isHittable { break }; app.swipeUp() }
-        resign.tap(); app.sheets.buttons["Resign"].tap()
+        resign.tap()
         XCTAssertTrue(app.staticTexts["final-position-evaluation"].waitForExistence(timeout: 10))
         let review = app.buttons["Review game"]
         for _ in 0..<8 { if review.isHittable { break }; app.swipeUp() }
@@ -263,8 +263,8 @@ extension NovaChessUITests {
 
 extension NovaChessUITests {
     func testLearnHubFactsAndChampionTimeline() {
-        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Analysis"].tap(); app.tabBars.buttons["Openings"].tap()
-        app.buttons["Learn"].tap()
+        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Analysis"].tap(); app.tabBars.buttons["Learn"].tap()
+        app.buttons["learn-library"].tap()
         let openings = app.buttons["learn-openings"], facts = app.buttons["learn-facts"], history = app.buttons["learn-history"]
         XCTAssertTrue(openings.waitForExistence(timeout: 5)); XCTAssertTrue(facts.exists); XCTAssertTrue(history.exists)
         XCTAssertLessThan(openings.frame.minY, facts.frame.minY); XCTAssertLessThan(facts.frame.minY, history.frame.minY)
@@ -296,8 +296,8 @@ extension NovaChessUITests {
         XCTAssertFalse(app.staticTexts["4000 offline puzzles"].exists)
     }
     func testEndgameTrainerAndCompletion() {
-        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Openings"].tap()
-        app.buttons["Learn"].tap()
+        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Learn"].tap()
+        app.buttons["learn-library"].tap()
         let endgames = app.buttons["learn-endgames"]
         for _ in 0..<4 { if endgames.isHittable { break }; app.swipeUp() }
         endgames.tap(); app.buttons["endgame-queen-finish"].tap()

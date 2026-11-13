@@ -223,6 +223,7 @@ struct ComputerPlayView: View {
     @EnvironmentObject private var library: LibraryStore
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model = ComputerGameModel()
+    @ObservedObject private var social = SocialStore.shared
     @State private var settingUp = false
     @State private var showingLanding = true
     @State private var dismissedResult: UUID?
@@ -362,10 +363,10 @@ struct ComputerPlayView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if let game = model.game, let snapshot = model.snapshot {
-                    HStack { Text(game.mode.title).font(.headline); Spacer(); Text("\(game.developerBot == true ? "Developer" : game.adaptive == true ? "Adaptive" : game.rated == true ? "Rated" : "Bot") ≈ \(String(game.adaptiveRating ?? game.targetRating))").font(.subheadline).foregroundStyle(.secondary) }
-                    HStack { Text("You play \(game.human.title)"); Spacer(); TurnBadge(side: snapshot.board.turn) }
+                    PlayerBoardLabel(name: game.opponentName ?? (game.developerBot == true ? "Developer" : "Computer"), rating: game.adaptiveRating ?? game.targetRating, active: !snapshot.finished && snapshot.board.turn != game.human)
+                    gameBoard(snapshot, game: game).padding(.vertical, 10).id("live-game-board")
+                    PlayerBoardLabel(name: social.profile?.username ?? "You", rating: Int(library.state.playProgress.rating(for: game.mode).value.rounded()), active: !snapshot.finished && snapshot.board.turn == game.human)
                     if game.mode == .normal, let name = model.recognizedOpening { Text(name).font(.subheadline).foregroundStyle(.secondary) }
-                    gameBoard(snapshot, game: game).id("live-game-board")
                     if !model.premoves.moves.isEmpty {
                         HStack {
                             Text("Premoves: " + model.premoves.moves.joined(separator: " → ")).font(.caption).foregroundStyle(.tint)
@@ -379,8 +380,8 @@ struct ComputerPlayView: View {
                         Text("Checks remaining · White \(values.first ?? "") · Black \(values.last ?? "")").font(.caption.monospaced())
                     }
                     if let result = snapshot.result, game.mode == .blindText, dismissedResult != game.id { resultButton(result) }
-                    else if model.busy { ProgressView(model.computerPiecePreview == nil ? "Computer is thinking…" : "Placing the duck…") }
-                    else if !snapshot.finished { Text(!duckChoices.isEmpty ? "Place the duck" : snapshot.inCheck ? "Your king is in check." : "Your move").font(.headline) }
+                    else if model.busy { ProgressView() }
+                    else if !snapshot.finished && (!duckChoices.isEmpty || snapshot.inCheck) { Text(!duckChoices.isEmpty ? "Place the duck" : "Your king is in check.").font(.headline) }
                     if !duckChoices.isEmpty { Button("Cancel piece move") { duckChoices = [] } }
                     if !snapshot.finished && (game.mode == .blindBoard || game.mode == .blindText) {
                         HStack {
@@ -415,7 +416,7 @@ struct ComputerPlayView: View {
                         Button { model.undo() } label: { Label("Take back", systemImage: "arrow.uturn.backward").frame(maxWidth: .infinity) }
                             .accessibilityHint("Undo your last move and the computer’s reply").disabled(game.moves.count < 2 || game.rated == true)
                             .buttonStyle(ThemeActionButtonStyle(backgroundHex: 0xFFD43B))
-                        Button(role: .destructive) { resigning = true } label: { Label("Resign", systemImage: "flag.fill").frame(maxWidth: .infinity) }
+                        Button(role: .destructive) { if MovePreferences.confirmResign { resigning = true } else { model.resign() } } label: { Label("Resign", systemImage: "flag.fill").frame(maxWidth: .infinity) }
                             .disabled(snapshot.finished).buttonStyle(ThemeActionButtonStyle(backgroundHex: 0xCF2943))
                     }.font(.caption).labelStyle(.titleOnly).lineLimit(1).minimumScaleFactor(0.7)
                 } else if model.busy { ProgressView("Preparing the game…").frame(maxWidth: .infinity).padding(.vertical, 40) }
@@ -424,7 +425,7 @@ struct ComputerPlayView: View {
                 }
 
             }.padding()
-        }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").navigationBarTitleDisplayMode(.inline)
+        }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play").navigationBarTitleDisplayMode(.inline)
         .onChange(of: model.snapshot?.finished) { _, finished in
             if finished == true { withAnimation { proxy.scrollTo("live-game-board", anchor: .top) } }
         }
@@ -631,14 +632,14 @@ private struct GameSetupForm: View {
     private var options: some View {
         VStack(alignment: .leading, spacing: 18) {
             Button { choosingMode.toggle() } label: {
-                HStack { Label("Game type: " + model.mode.title, systemImage: "square.grid.2x2.fill"); Spacer(); Image(systemName: choosingMode ? "chevron.up" : "chevron.down") }.frame(minHeight: 40)
+                HStack { Label("Game type: " + model.mode.title, systemImage: model.mode.symbol); Spacer(); Image(systemName: choosingMode ? "chevron.up" : "chevron.down") }.frame(minHeight: 40)
             }.buttonStyle(ThemeActionButtonStyle()).accessibilityIdentifier("game-style")
                 .accessibilityValue(choosingMode ? "Expanded" : "Collapsed")
             if choosingMode {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                     ForEach(GameMode.allCases) { mode in
                         Button { model.mode = mode; choosingMode = false } label: {
-                            HStack { Text(mode.title).font(.subheadline); if model.mode == mode { Image(systemName: "checkmark") } }
+                            HStack { Label(mode.title, systemImage: mode.symbol).font(.subheadline); if model.mode == mode { Image(systemName: "checkmark") } }
                                 .frame(maxWidth: .infinity, minHeight: 44).padding(.horizontal, 5)
                                 .background(Color.accentColor.opacity(model.mode == mode ? 0.18 : 0.06), in: RoundedRectangle(cornerRadius: 9))
                         }.buttonStyle(.plain).accessibilityIdentifier("game-mode-" + mode.rawValue)
@@ -703,5 +704,22 @@ private struct GameMoveTable: View {
                 HStack { Text(String(index / 2 + 1)).frame(width: 25); Text(moves[index]).frame(maxWidth: .infinity, alignment: .leading); Text(index + 1 < moves.count ? moves[index + 1] : "—").frame(maxWidth: .infinity, alignment: .leading) }.font(.subheadline.monospaced())
             }
         }
+    }
+}
+
+/// Names stay in the same orientation as the board, with the active player outlined.
+struct PlayerBoardLabel: View {
+    var name: String
+    var rating: Int?
+    var active: Bool
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(name).font(.headline).lineLimit(1)
+            if let rating { Text(String(rating)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary) }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(Color.accentColor.opacity(active ? 0.12 : 0.04), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(active ? Color.accentColor : Color.clear, lineWidth: 2))
+        .accessibilityValue(active ? "To move" : "")
     }
 }

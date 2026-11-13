@@ -2,6 +2,7 @@ import Foundation
 
 public enum MovePreferences {
     public static var premoves: Bool { UserDefaults.standard.object(forKey: "premoves") as? Bool ?? true }
+    public static var confirmResign: Bool { UserDefaults.standard.bool(forKey: "confirmResign") }
     public static var autoQueen: Bool { UserDefaults.standard.bool(forKey: "autoQueen") }
 }
 

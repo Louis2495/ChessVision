@@ -14,19 +14,32 @@ struct GameHistoryView: View {
             ForEach(library.state.history) { entry in
                 NavigationLink { GameReviewView(id: entry.id) } label: {
                     VStack(alignment: .leading, spacing: 6) {
-                        HStack { Text(entry.resultTitle).font(.headline); Spacer(); Text(entry.game.mode.title).font(.caption).foregroundStyle(.secondary) }
-                        Text("You: \(entry.game.human.title) · \(entry.game.opponentName ?? "Computer ≈ \(String(entry.game.targetRating))") · \(CountText.value(entry.moveCount, "move"))").font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Image(systemName: entry.playerOutcome == "Win" ? "checkmark.circle.fill" : entry.playerOutcome == "Loss" ? "xmark.circle.fill" : "equal.circle.fill").foregroundStyle(outcomeColor(entry))
+                            Text(entry.game.opponentName ?? "Computer").font(.headline).lineLimit(1)
+                            Text(String(entry.game.adaptiveRating ?? entry.game.targetRating)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            Spacer()
+                            Image(systemName: entry.game.mode.symbol).accessibilityLabel(entry.game.mode.title)
+                        }
+                        Text("You played \(entry.game.human.title) · \(CountText.value(entry.moveCount, "move"))").font(.caption).foregroundStyle(.secondary)
                         Text(entry.finishedAt, style: .date).font(.caption2).foregroundStyle(.secondary)
                         if entry.review?.complete == true { Text("Review saved").font(.caption).foregroundStyle(.tint) }
-                    }.padding(.vertical, 6)
+                    }.padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(outcomeColor(entry).opacity(0.14), in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(outcomeColor(entry), lineWidth: 2))
+                    .accessibilityElement(children: .combine).accessibilityValue(entry.playerOutcome)
                 }.swipeActions(edge: .leading) {
                     Button("Save", systemImage: "folder.badge.plus") {
                         save(entry)
                     }.tint(.blue)
-                }.listRowBackground(ThemeCardBackground())
+                }.listRowBackground(Color.clear)
             }
         }.modifier(AppSurface()).navigationTitle("Game history")
             .toolbar { Button("Done") { dismiss() } }
+    }
+    private func outcomeColor(_ entry: CompletedGame) -> Color {
+        entry.playerOutcome == "Win" ? Color(red: 0.22, green: 0.95, blue: 0.36) : entry.playerOutcome == "Loss" ? Color(red: 1, green: 0.28, blue: 0.32) : .gray
     }
     private func save(_ entry: CompletedGame) {
                         Task { @MainActor in
@@ -65,7 +78,7 @@ struct GameReviewView: View {
             if let entry {
                 VStack(alignment: .leading, spacing: 22) {
                     Text(entry.resultTitle).font(.largeTitle.bold())
-                    Text("\(entry.game.mode.title) · You played \(entry.game.human.title)").foregroundStyle(.secondary)
+                    Label("You played \(entry.game.human.title)", systemImage: entry.game.mode.symbol).foregroundStyle(.secondary).accessibilityLabel("\(entry.game.mode.title). You played \(entry.game.human.title)")
                     if let resigned = entry.game.resigned { Text("\(resigned.title) resigned").font(.caption).foregroundStyle(.secondary) }
                     if let reason = entry.bughouse?.reason { Text(reason).font(.caption).foregroundStyle(.secondary) }
                     replay(entry)

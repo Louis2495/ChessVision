@@ -93,6 +93,14 @@ public struct CompletedGame: Codable, Identifiable, Sendable {
         return GameStatistics.moveCount(plies: game.moves.count)
     }
     public var humanMoveCount: Int { if let bughouse { return bughouse.events.filter { $0.board == 0 && $0.side == bughouse.config.human }.count }; return game.human == .white ? (game.moves.count + 1) / 2 : game.moves.count / 2 }
+    /// Outcome relative to the local player, including either bughouse team.
+    public var playerOutcome: String {
+        if let match = bughouse, let winner = match.winner {
+            return winner == 2 ? "Draw" : winner == match.config.humanTeam ? "Win" : "Loss"
+        }
+        guard result == "white" || result == "black" else { return "Draw" }
+        return result == game.human.title.lowercased() ? "Win" : "Loss"
+    }
     public var resultTitle: String { if let bughouse { return bughouse.resultTitle }; return result == "white" ? "White wins" : result == "black" ? "Black wins" : "Draw" }
 }
 public enum GameReviewLogic {

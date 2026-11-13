@@ -341,3 +341,9 @@ Analysis has a thin theme-filled bar outlined white/black by turn, without the s
 Play now opens directly on New game on its first visit, with Start game, Game options and the moved community/progress links. Saved games can be resumed; preparing the landing does not play hidden computer moves. The board stays uncluttered during play, and Offer draw is purple.
 
 Puzzle difficulty and visible side-to-move labels are removed. Hint has a bright cyan background, and a saved fire streak appears below the solved total. Only unassisted complete solves build the streak; wrong answers, hints and skips reset it, while daily replays cannot score twice. See [flow and streak details](Documentation/PLAY_LANDING.md).
+
+## Version 0.30 Player-focused game screens
+
+The Openings tab is now Learn, with taller hub cards and slightly rectangular learning tiles. Home’s clock icon stays orange across themes. Games place names and ratings above/below the board and outline the active player; opening names appear below the board, with more breathing room around the squares. Unavailable online ratings are omitted rather than invented. Generic computer-thinking text and the active variant heading are removed.
+
+Settings → Moves includes Confirm resign, off by default, across computer, bughouse and correspondence games. History uses a bright green/red/gray outline and muted matching fill for your win/loss/draw, with accessible outcome labels. Each variant has a distinct icon used in game setup, history, review and public-game lists.

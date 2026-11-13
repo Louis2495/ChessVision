@@ -38,6 +38,7 @@ struct SettingsView: View {
     @AppStorage("boardStyle") private var board = "Classic"
     @AppStorage("pieceStyle") private var pieces = "Illustrated"
     @AppStorage("premoves") private var premoves = true
+    @AppStorage("confirmResign") private var confirmResign = false
     @AppStorage("autoQueen") private var autoQueen = false
     @AppStorage("classicalMusic") private var music = false
     var body: some View {
@@ -59,6 +60,7 @@ struct SettingsView: View {
                 Toggle("Premoves", isOn: $premoves)
                 Text("Tap an unrelated square to cancel the last premove; tap again to cancel another.").font(.caption).foregroundStyle(.secondary)
                 Toggle("Auto-queen", isOn: $autoQueen)
+                Toggle("Confirm resign", isOn: $confirmResign)
             }.listRowBackground(ThemeCardBackground())
             Section("Sound") {
                 Toggle("Classical music", isOn: $music)

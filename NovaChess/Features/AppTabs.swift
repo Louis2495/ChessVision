@@ -8,7 +8,7 @@ import SwiftUI
             ContentView().tabItem { Label("Analysis", systemImage: "square.grid.3x3") }
             ComputerPlayView().tabItem { Label("Play", systemImage: "desktopcomputer") }
             NavigationStack { PuzzleTrainingView() }.tabItem { Label("Puzzles", systemImage: "puzzlepiece.extension") }
-            OpeningsHubView().tabItem { Label("Openings", systemImage: "books.vertical") }
+            OpeningsHubView().tabItem { Label("Learn", systemImage: "books.vertical") }
         }
         .modifier(AppAppearance())
         .environmentObject(library)

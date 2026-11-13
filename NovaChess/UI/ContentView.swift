@@ -213,7 +213,7 @@ struct EditorView: View {
             Picker("Whose turn?",selection:$position.turn) { ForEach(Side.allCases,id:\.self) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
             gameDetails
             if !issues.isEmpty { VStack(alignment:.leading,spacing:6) { ForEach(issues,id:\.self) { Text($0).font(.footnote).foregroundStyle(.red) } } }
-            Button { showAnalysis=true } label:{Label("Analyze with Stockfish",systemImage:"sparkle.magnifyingglass").frame(maxWidth:.infinity).padding(8)}.buttonStyle(.borderedProminent).controlSize(.large)
+            Button { showAnalysis=true } label:{Label("Analyze with Stockfish",systemImage:"sparkle.magnifyingglass").frame(maxWidth:.infinity).padding(8)}.buttonStyle(ThemeActionButtonStyle()).controlSize(.large)
                 .disabled(!issues.isEmpty)
             SharePositionButton(position:position)
             Text(position.fen).font(.caption.monospaced()).textSelection(.enabled)

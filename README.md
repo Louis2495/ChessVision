@@ -305,3 +305,11 @@ Pink is available as both a theme and a background, with a soft default pink gra
 Standard local ratings now use the published US Chess approximation, including provisional performance and the rating-dependent effective-games factor, instead of fixed K=64/32. Complete legacy rated histories are recalculated once; incomplete histories remain labeled legacy seeds. Unsupported bot-strength targets and adaptive games cannot earn rating points. These are **local estimates, not official or calibrated USCF ratings**: engine targets are not a USCF human pool. A new About ratings page explains each scale.
 
 Puzzles now use their original Lichess difficulty without the arbitrary 0.8 multiplier. Existing personal training estimates migrate once while retaining solved puzzles. Review reports average centipawn loss instead of the uncalibrated single-game human-rating estimate. See [rating methodology and limitations](Documentation/RATINGS.md).
+
+## Version 0.25 game setup and visual feedback
+
+New game centers the collapsed controls vertically, with Start game above Game options and a downward chevron below its centered title. The expanded form uses one exclusive radio list: Play the Developer, Adaptive difficulty, Match my level, Custom. Rated remains separate and is unavailable in adaptive mode. Custom alone shows the rating field and slider; leaving and returning to the ratings guide preserves the selected option.
+
+Analysis places the engine/depth status beside the tappable turn square without a visible Turn label. The swipe bar uses the selected theme color with a four-point white/black outline indicating the side to move. Primary action buttons use solid theme backgrounds with black/white text selected for at least WCAG AA 4.5:1 contrast. Puzzle mistakes give the board a red border; completing a solution gives it a bright yellow border, reset for the next puzzle.
+
+All prior music themes were replaced by full, quiet score-based piano performances of John Field's Nocturne No.5 (H.37) and Burgmüller's Consolation and Douce plainte (Op.100 Nos.13 and 16), about 400 seconds total. Scores, exact provenance, credits, recording license and regeneration instructions are in [Vendor/ClassicalMusic](Vendor/ClassicalMusic/README.md). No music tools are needed to open or build the app in Xcode.

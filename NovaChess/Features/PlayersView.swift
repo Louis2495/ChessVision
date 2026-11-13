@@ -39,7 +39,7 @@ import GameKit
                         VStack(alignment: .leading, spacing: 8) {
                             Text("@" + request.sender.username).font(.headline)
                             HStack {
-                                Button("Accept") { Task { await store.respond(request, accept: true) } }.buttonStyle(.borderedProminent)
+                                Button("Accept") { Task { await store.respond(request, accept: true) } }.buttonStyle(ThemeActionButtonStyle())
                                 Button("Decline") { Task { await store.respond(request, accept: false) } }.buttonStyle(.bordered)
                             }.disabled(store.busy)
                         }.padding(.vertical, 4)

@@ -85,18 +85,24 @@ struct AnalysisView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(evaluation).font(.largeTitle.bold().monospacedDigit()).accessibilityIdentifier("analysis-evaluation")
                     Spacer()
-                    Button(action: flipTurn) { TurnBadge(side: position.turn) }
+                    HStack(spacing: 8) {
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text(engine.running ? engine.analysisEngineName : "Stockfish 19 · NNUE").font(.caption.weight(.semibold))
+                            if engine.running { Text("Depth \(principal?.depth ?? 0)").font(.caption2).foregroundStyle(.secondary) }
+                        }
+                        Button(action: flipTurn) {
+                            RoundedRectangle(cornerRadius: 3).fill(position.turn == .white ? Color.white : Color.black)
+                                .frame(width: 20, height: 20)
+                                .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color.gray, lineWidth: 1))
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
+                        .accessibilityLabel("Turn: \(position.turn.title)")
                         .buttonStyle(.plain)
                         .accessibilityHint("Double tap to change whose turn it is")
+                    }
                 }
                 if let terminal = engine.terminal, engine.analyzedFEN == position.fen {
                     Text(terminal).font(.headline)
-                } else {
-                    HStack(spacing: 6) {
-                        if engine.running { Circle().fill(.green).frame(width: 6, height: 6) }
-                        Text(engine.running ? "\(engine.analysisEngineName) · Depth \(principal?.depth ?? 0)" : "Preparing Stockfish 19…")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
                 }
                 if let error = engine.error { Text(error).foregroundStyle(.red) }
                 AppCard {
@@ -355,6 +361,8 @@ private struct VariationTable: View {
 
 
 private struct HistorySwipeBar: View {
+    @AppStorage("theme") private var theme = "Forest"
+    private var hex: UInt32 { (AppTheme(rawValue: theme) ?? .forest).hex }
     var side: Side
     var current: Int
     var total: Int
@@ -368,10 +376,10 @@ private struct HistorySwipeBar: View {
             Button(action: forward) { Image(systemName: "chevron.right") }.disabled(!canAdvance).accessibilityLabel("Next position")
         }
         .padding(.horizontal, 16).padding(.vertical, 8)
-        .foregroundStyle(side == .white ? Color.black : Color.white)
-        .tint(side == .white ? Color.black : Color.white)
-        .background(side == .white ? Color.white : Color.black, in: Capsule())
-        .overlay(Capsule().stroke(Color.gray.opacity(0.45), lineWidth: 1))
+        .foregroundStyle(Color(hex: InterfaceContrast.foreground(on: hex)))
+        .tint(Color(hex: InterfaceContrast.foreground(on: hex)))
+        .background(Color(hex: hex), in: Capsule())
+        .overlay(Capsule().strokeBorder(side == .white ? Color.white : Color.black, lineWidth: 4))
         .contentShape(Rectangle())
         .gesture(DragGesture(minimumDistance: 18).onEnded { value in
             guard abs(value.translation.width) > abs(value.translation.height) else { return }

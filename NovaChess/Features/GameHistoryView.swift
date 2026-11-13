@@ -72,7 +72,7 @@ struct GameReviewView: View {
                     if model.busy {
                         HStack { ProgressView(); Text(model.progress).font(.caption); Spacer(); Button("Pause") { model.cancel() } }
                     } else if model.review?.complete != true {
-                        Button("Resume review", systemImage: "play.fill") { model.start(id: id, library: library) }.buttonStyle(.borderedProminent)
+                        Button("Resume review", systemImage: "play.fill") { model.start(id: id, library: library) }.buttonStyle(ThemeActionButtonStyle())
                     }
                     if let error = model.error { Text(error).font(.footnote).foregroundStyle(.red) }
                     if let review = model.review {

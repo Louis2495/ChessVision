@@ -20,6 +20,15 @@ import Foundation
         try require(restored.state.playProgress.rating(for: .normal).value == 1600, "Migration was applied twice or not persisted")
         let model = ComputerGameModel(); model.activate(store); defer { model.pause() }
         model.rated = true
+        model.chooseOpponent(.developer, matchedRating: 1550, customRating: "1100")
+        try require(model.developerOpponent && !model.adaptive && model.ratingText == "2407", "Developer choice is not exclusive")
+        model.chooseOpponent(.adaptive, matchedRating: 1550, customRating: "1100")
+        try require(!model.developerOpponent && model.adaptive && !model.rated && model.ratingText == "1550", "Adaptive choice is not exclusive/unrated")
+        model.chooseOpponent(.matched, matchedRating: 1550, customRating: "1100")
+        try require(!model.developerOpponent && !model.adaptive && model.ratingText == "1550", "Match my level retained another mode")
+        model.chooseOpponent(.custom, matchedRating: 1550, customRating: "1100")
+        try require(!model.developerOpponent && !model.adaptive && model.ratingText == "1100", "Custom retained another mode")
+        model.rated = true
         for (mode, targets) in [(GameMode.normal, [100, 4000, 10000]), (.threeCheck, [100, 3190, 4000])] {
             model.mode = mode
             for target in targets {
@@ -28,6 +37,7 @@ import Foundation
                 try require(model.error?.contains("For rated games") == true, "Missing supported-range explanation")
             }
         }
+        print("PASS: exclusive Developer/adaptive/matched/custom opponent choices.")
         print("PASS: LibraryStore persists rating migration once; New game rejects unsupported rated targets.")
     }
 }

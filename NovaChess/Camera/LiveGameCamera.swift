@@ -87,7 +87,7 @@ struct LiveGameCameraView: View {
                 HStack {
                     Button(recording ? "Pause" : "Record", systemImage: recording ? "pause.fill" : "record.circle") {
                         if recording { stop() } else { start() }
-                    }.buttonStyle(.borderedProminent)
+                    }.buttonStyle(ThemeActionButtonStyle())
                     Button("Undo last move") { tracker.undo() }.disabled(recording || tracker.notation.isEmpty)
                     Button("Save", systemImage: "folder.badge.plus") { stop(); save = true }.disabled(tracker.notation.isEmpty)
                 }

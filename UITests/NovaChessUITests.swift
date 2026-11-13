@@ -41,7 +41,7 @@ extension NovaChessUITests {
         app.buttons["Research"].tap()
         XCTAssertTrue(app.textFields["Public username"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Puzzles"].tap()
-        XCTAssertTrue(app.staticTexts["Your training estimate"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Your puzzle estimate"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Hint"].exists)
         app.tabBars.buttons["Openings"].tap()
         app.navigationBars.buttons["Openings"].tap()
@@ -205,5 +205,28 @@ extension NovaChessUITests {
         app.buttons["Time control"].tap()
         XCTAssertTrue(app.navigationBars["Time control"].waitForExistence(timeout: 5))
         XCTAssertGreaterThan(app.buttons["Apply"].frame.width, 200)
+    }
+}
+
+
+extension NovaChessUITests {
+    func testNewGameUsesExclusiveOpponentChoices() {
+        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Play"].tap()
+        if app.navigationBars["Game review"].waitForExistence(timeout: 2) { app.navigationBars.buttons["Done"].tap() }
+        app.buttons["New game"].firstMatch.tap()
+        let start = app.buttons["start-computer-game"], options = app.buttons["game-options"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5)); XCTAssertTrue(options.exists)
+        XCTAssertLessThan(start.frame.minY, options.frame.minY)
+        XCTAssertEqual(options.value as? String, "Collapsed")
+        options.tap()
+        for choice in ["developer", "adaptive", "matched", "custom"] {
+            let button = app.buttons["opponent-" + choice]
+            for _ in 0..<5 { if button.isHittable { break }; app.swipeUp() }
+            button.tap(); XCTAssertTrue(button.isSelected)
+            for other in ["developer", "adaptive", "matched", "custom"] where other != choice {
+                XCTAssertFalse(app.buttons["opponent-" + other].isSelected)
+            }
+        }
+        XCTAssertTrue(app.textFields["Rating"].exists)
     }
 }

@@ -95,7 +95,7 @@ import SwiftUI
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay(alignment: .top) {
                 if let match = model.match, match.winner != nil {
-                    Button(match.resultTitle + " · Review match") { reviewing = true }.font(.headline).buttonStyle(.borderedProminent)
+                    Button(match.resultTitle + " · Review match") { reviewing = true }.font(.headline).buttonStyle(ThemeActionButtonStyle())
                 } else if let error = model.error {
                     Text(error).font(.caption).foregroundStyle(.red).padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
                 }
@@ -222,7 +222,7 @@ private struct BughouseSetupView: View {
                     let control = custom ? ClockTimeControl(seconds: minutes * 60 + seconds, increment: increment) : ClockTimeControl.presets[preset]
                     let config = BughouseConfig(human: human, ratings: values, seconds: control.seconds, increment: control.increment)
                     do { try config.validate(); error = nil; start(config) } catch { self.error = error.localizedDescription }
-                }.buttonStyle(.borderedProminent).disabled(custom && minutes * 60 + seconds == 0)
+                }.buttonStyle(ThemeActionButtonStyle()).disabled(custom && minutes * 60 + seconds == 0)
                 if let error { Text(error).font(.caption).foregroundStyle(.red) }
             }.listRowBackground(ThemeCardBackground())
         }.scrollDismissesKeyboard(.interactively).modifier(AppSurface())

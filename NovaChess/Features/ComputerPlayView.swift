@@ -33,6 +33,13 @@ import SwiftUI
         if game != nil { run() }
     }
     func pause() { reviewPrefetch?.cancel(); reviewPrefetch = nil; premoves.clear(); computerPiecePreview = nil; visible = false; task?.cancel(); generation = UUID(); busy = false }
+    func chooseOpponent(_ choice: OpponentChoice, matchedRating: Int, customRating: String) {
+        developerOpponent = choice == .developer && mode == .normal
+        adaptive = choice == .adaptive
+        if adaptive { rated = false }
+        ratingText = developerOpponent ? "2407" : choice == .matched || adaptive ? String(matchedRating) : customRating
+        error = nil
+    }
     func start() -> Bool {
         if developerOpponent && mode == .normal { adaptive = false; ratingText = "2407" }
         guard mode != .bughouse else { error = "Open Bughouse setup to start a two-board match."; return false }
@@ -276,16 +283,18 @@ struct ComputerPlayView: View {
                                 model.pawnWarsKings = previous.pawnWarsKings ?? true
                                 if model.start() { rematching = false }
                             }
-                        }.buttonStyle(.borderedProminent)
+                        }.buttonStyle(ThemeActionButtonStyle())
                     }.navigationTitle("Rematch").toolbar { Button("Cancel") { rematching = false } }
                 }
             }
             .navigationDestination(isPresented: $settingUp) {
-                ScrollView {
-                    GameSetupForm(model: model, resumeOnBughouseDismiss: false) {
-                        if model.start() { settingUp = false }
-                    }.padding()
-                }.scrollDismissesKeyboard(.interactively).modifier(AppSurface())
+                GeometryReader { geometry in
+                    ScrollView {
+                        GameSetupForm(model: model, resumeOnBughouseDismiss: false) {
+                            if model.start() { settingUp = false }
+                        }.padding().frame(minHeight: geometry.size.height)
+                    }.scrollDismissesKeyboard(.interactively)
+                }.modifier(AppSurface())
                     .navigationTitle("New game").navigationBarTitleDisplayMode(.inline)
             }
             .confirmationDialog("Resign this game?", isPresented: $resigning, titleVisibility: .visible) { Button("Resign", role: .destructive) { model.resign() } }
@@ -345,14 +354,14 @@ struct ComputerPlayView: View {
                     if !snapshot.finished && (game.mode == .blindBoard || game.mode == .blindText) {
                         HStack {
                             TextField(isPremoving ? "Premove, e.g. g1f3" : "Move, e.g. Nf3", text: $textMove).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).onSubmit(enter)
-                            Button("Play", action: enter).buttonStyle(.borderedProminent).disabled((!premovesEnabled && (model.busy || snapshot.board.turn != game.human)) || textMove.isEmpty)
+                            Button("Play", action: enter).buttonStyle(ThemeActionButtonStyle()).disabled((!premovesEnabled && (model.busy || snapshot.board.turn != game.human)) || textMove.isEmpty)
                         }
                     }
                     if let opening = model.opening { Text("Requested: \(opening.name)\(model.bookMatches ? "" : " · game has left this line")").font(.caption).foregroundStyle(.secondary) }
                     if game.mode == .normal && !snapshot.finished { Button("Offer draw", systemImage: "equal.circle") { model.offerDraw() }.buttonStyle(.bordered).disabled(model.busy) }
-                    if snapshot.finished { Button("Rematch", systemImage: "arrow.triangle.2.circlepath") { rematchSide = game.human; rematching = true }.buttonStyle(.borderedProminent) }
+                    if snapshot.finished { Button("Rematch", systemImage: "arrow.triangle.2.circlepath") { rematchSide = game.human; rematching = true }.buttonStyle(ThemeActionButtonStyle()) }
                     if snapshot.finished, let id = game.id {
-                        Button("Review game", systemImage: "list.bullet.clipboard") { lastReviewedGame = id; reviewRoute = CompletedReviewRoute(id: id) }.buttonStyle(.borderedProminent)
+                        Button("Review game", systemImage: "list.bullet.clipboard") { lastReviewedGame = id; reviewRoute = CompletedReviewRoute(id: id) }.buttonStyle(ThemeActionButtonStyle())
                     }
                     if let error = model.error { Text(error).foregroundStyle(.red).font(.footnote) }
                     if game.mode == .blindBoard || game.mode == .blindText {
@@ -363,7 +372,7 @@ struct ComputerPlayView: View {
                     HStack { Button("Take back", systemImage: "arrow.uturn.backward") { model.undo() }.accessibilityHint("Undo your last move and the computer’s reply").disabled(game.moves.count < 2 || game.rated == true); Spacer(); Button("Resign", role: .destructive) { resigning = true }.disabled(snapshot.finished) }.buttonStyle(.bordered).controlSize(.large)
                 } else if model.busy { ProgressView("Preparing the game…").frame(maxWidth: .infinity).padding(.vertical, 40) }
                 else {
-                    Button("New game", systemImage: "plus.circle.fill") { settingUp = true }.buttonStyle(.borderedProminent).controlSize(.large)
+                    Button("New game", systemImage: "plus.circle.fill") { settingUp = true }.buttonStyle(ThemeActionButtonStyle()).controlSize(.large)
                 }
                 AppCard {
                     NavigationLink { PlayersView() } label: { Label("Players & friends", systemImage: "person.crop.circle.badge.plus") }
@@ -513,6 +522,9 @@ private struct GameSetupForm: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var bughousePresented = false
     @State private var expanded = false
+    @State private var choice = OpponentChoice.custom
+    @State private var didLoadOptions = false
+    @State private var customRating = "1000"
     @ObservedObject var model: ComputerGameModel
     var resumeOnBughouseDismiss = true
     var onStart: () -> Void
@@ -520,50 +532,85 @@ private struct GameSetupForm: View {
         let range = RatingPolicy.ratedBotRange(for: model.mode)
         return min(range.upperBound, max(range.lowerBound, Int(library.state.playProgress.rating(for: model.mode).value.rounded())))
     }
+    private var choices: [OpponentChoice] { OpponentChoice.allCases.filter { $0 != .developer || model.mode == .normal } }
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            AppCard {
-                DisclosureGroup("Game options", isExpanded: $expanded) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        Menu {
-                            Picker("Game type", selection: $model.mode) { ForEach(GameMode.allCases) { Text($0.title).tag($0) } }
-                        } label: {
-                            HStack { Label("Game type: " + model.mode.title, systemImage: "square.grid.2x2.fill"); Spacer(); Image(systemName: "chevron.down") }.frame(minHeight: 40)
-                        }.buttonStyle(.borderedProminent).accessibilityIdentifier("game-style")
-                        if model.mode != .bughouse {
-            if model.mode == .pawnWars { Toggle("Include kings", isOn: $model.pawnWarsKings) }
-            Picker("Your color", selection: $model.human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
-            if model.mode == .normal { Toggle("Developer · 2407", isOn: $model.developerOpponent).onChange(of: model.developerOpponent) { _, enabled in if enabled { model.ratingText = "2407"; model.adaptive = false } } }
-            Toggle("Rated game · local estimate", isOn: $model.rated).onChange(of: model.rated) { _, value in
-                if value { model.adaptive = false; model.ratingText = model.developerOpponent && model.mode == .normal ? "2407" : String(matchedRating) }
-            }
-            Toggle("Adaptive difficulty", isOn: $model.adaptive).disabled(model.developerOpponent && model.mode == .normal).onChange(of: model.adaptive) { _, value in if value { model.rated = false } }
-            if model.adaptive { Text("The bot adjusts after your moves. Adaptive games are unrated.").font(.caption).foregroundStyle(.secondary) }
-            Button("Match my level (\(String(matchedRating)))") { model.ratingText = String(matchedRating) }.disabled(model.developerOpponent && model.mode == .normal)
-            if model.game?.rated == true && model.snapshot?.finished == false { Text("Starting another game resigns your current rated game.").font(.caption).foregroundStyle(.secondary) }
-            Text("Computer strength · engine estimate").font(.caption).foregroundStyle(.secondary)
-            NavigationLink("About ratings") { RatingsInfoView() }.font(.caption)
-            TextField("Requested rating", text: $model.ratingText).keyboardType(.numberPad).textFieldStyle(.roundedBorder).disabled(model.developerOpponent && model.mode == .normal)
-            Slider(value: Binding(get: { min(3500, max(100, Double(model.ratingText) ?? 1000)) }, set: { model.ratingText = String(Int($0)) }), in: 100...3500, step: 50).disabled(model.developerOpponent && model.mode == .normal)
-                .accessibilityLabel("Computer rating")
-            HStack { Text("100"); Spacer(); Text("3500") }.font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
-                        }
-                        if let error = model.error { Text(error).foregroundStyle(.red) }
-                    }.padding(.top, 12)
-                }
-            }
+        VStack(spacing: 18) {
             Button {
                 if model.mode == .bughouse { model.pause(); bughousePresented = true }
                 else { onStart(); if model.error != nil { expanded = true } }
-            } label: { Label("Start game", systemImage: "play.fill").frame(maxWidth: .infinity).padding(7) }.buttonStyle(.borderedProminent)
+            } label: { Label("Start game", systemImage: "play.fill").frame(maxWidth: .infinity).padding(7) }
+                .buttonStyle(ThemeActionButtonStyle()).accessibilityIdentifier("start-computer-game")
+            AppCard {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+                } label: {
+                    VStack(spacing: 7) {
+                        Text("Game options").font(.headline)
+                        Image(systemName: "chevron.down").font(.caption.bold())
+                    }.frame(maxWidth: .infinity, minHeight: 52).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityLabel("Game options").accessibilityIdentifier("game-options")
+                    .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+                if expanded { options }
+            }
         }
+        .onAppear {
+            guard !didLoadOptions else { return }; didLoadOptions = true
+            choice = model.developerOpponent && model.mode == .normal ? .developer : model.adaptive ? .adaptive : .custom
+            if choice == .custom { customRating = model.ratingText }
+        }
+        .onChange(of: choice) { _, value in apply(value) }
+        .onChange(of: customRating) { _, value in if choice == .custom { model.ratingText = value } }
         .onChange(of: model.error) { _, error in if error != nil { expanded = true } }
         .onChange(of: model.mode) { _, mode in
             model.error = nil
-            if model.developerOpponent && mode == .normal { model.ratingText = "2407"; model.adaptive = false }
-            else if model.rated { model.ratingText = String(matchedRating) }
+            if choice == .developer && mode != .normal { choice = .custom }
+            else { apply(choice) }
         }
         .fullScreenCover(isPresented: $bughousePresented, onDismiss: { if resumeOnBughouseDismiss { model.activate(library) } }) { BughousePlayView() }
+    }
+    private func apply(_ value: OpponentChoice) {
+        model.chooseOpponent(value, matchedRating: matchedRating, customRating: customRating)
+    }
+    private var options: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Menu {
+                Picker("Game type", selection: $model.mode) { ForEach(GameMode.allCases) { Text($0.title).tag($0) } }
+            } label: {
+                HStack { Label("Game type: " + model.mode.title, systemImage: "square.grid.2x2.fill"); Spacer(); Image(systemName: "chevron.down") }.frame(minHeight: 40)
+            }.buttonStyle(ThemeActionButtonStyle()).accessibilityIdentifier("game-style")
+            if model.mode != .bughouse {
+                if model.mode == .pawnWars { Toggle("Include kings", isOn: $model.pawnWarsKings) }
+                Picker("Your color", selection: $model.human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
+                VStack(spacing: 0) {
+                    ForEach(choices, id: \.rawValue) { option in
+                        Button { choice = option } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: choice == option ? "largecircle.fill.circle" : "circle").foregroundStyle(Color.accentColor)
+                                Text(option.title).foregroundStyle(.primary)
+                                Spacer()
+                            }.frame(minHeight: 48).contentShape(Rectangle())
+                        }.buttonStyle(.plain).accessibilityIdentifier("opponent-" + option.rawValue)
+                            .accessibilityAddTraits(choice == option ? .isSelected : [])
+                    }
+                }
+                if choice == .custom { customStrength }
+                if choice == .matched { Text("Bot strength · \(String(matchedRating))").font(.caption).foregroundStyle(.secondary) }
+                Toggle("Rated", isOn: $model.rated).disabled(choice == .adaptive)
+                if model.game?.rated == true && model.snapshot?.finished == false {
+                    Text("Starting another game resigns your current rated game.").font(.caption).foregroundStyle(.secondary)
+                }
+                NavigationLink("About ratings") { RatingsInfoView() }.font(.caption)
+            }
+            if let error = model.error { Text(error).foregroundStyle(.red) }
+        }.padding(.top, 8)
+    }
+    private var customStrength: some View {
+        VStack(spacing: 10) {
+            TextField("Rating", text: $customRating).keyboardType(.numberPad).textFieldStyle(.roundedBorder)
+            Slider(value: Binding(get: { min(3500, max(100, Double(customRating) ?? 1000)) }, set: { customRating = String(Int($0)) }), in: 100...3500, step: 50)
+                .accessibilityLabel("Computer rating")
+            HStack { Text("100"); Spacer(); Text("3500") }.font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+        }
     }
 }
 

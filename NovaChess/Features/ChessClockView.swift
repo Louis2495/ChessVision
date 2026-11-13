@@ -112,7 +112,7 @@ private struct ClockSetupView: View {
                             apply(control); dismiss()
                         } label: {
                             Text("Apply").font(.headline).frame(maxWidth: .infinity, minHeight: 44)
-                        }.buttonStyle(.borderedProminent).controlSize(.large).disabled(custom && minutes * 60 + seconds == 0)
+                        }.buttonStyle(ThemeActionButtonStyle()).controlSize(.large).disabled(custom && minutes * 60 + seconds == 0)
                     }
                 }.listRowBackground(ThemeCardBackground())
             }.modifier(AppSurface()).navigationTitle("Time control").toolbar { Button("Cancel") { dismiss() } }

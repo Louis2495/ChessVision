@@ -96,7 +96,7 @@ private struct RepertoireLineDetail: View {
                 Text("You play \(line.side.title)").font(.headline)
                 if let moves = try? line.validated() { Text(moves.map(\.san).joined(separator: " ")).font(.body.monospaced()) }
                 HStack { Button("Previous") { show(cursor - 1) }.disabled(cursor == 0); Spacer(); Text("\(String(GameStatistics.moveCount(plies: cursor)))/\(String(GameStatistics.moveCount(plies: line.moves.count)))"); Spacer(); Button("Next") { show(cursor + 1) }.disabled(cursor == line.moves.count) }
-                NavigationLink("Train this line") { RepertoireTrainerView(preferred: line.id) }.buttonStyle(.borderedProminent)
+                NavigationLink("Train this line") { RepertoireTrainerView(preferred: line.id) }.buttonStyle(ThemeActionButtonStyle())
             }.padding()
         }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle(line.name).onAppear { show(cursor) }
     }
@@ -134,7 +134,7 @@ struct RepertoireTrainerView: View {
                     Text(principal?.evaluation ?? "—").font(.title2.bold().monospacedDigit()).accessibilityLabel("Evaluation: \(principal?.evaluation ?? "pending")")
                     Text(finished ? "Line completed" : board.turn == line.side ? "Your move: follow your repertoire" : "Playing the opponent's reply…").font(.headline)
                     if !message.isEmpty { Text(message).foregroundStyle(.secondary) }
-                    HStack { Button("Show move") { hint() }.disabled(finished || board.turn != line.side); Spacer(); Button(preferred == nil ? "Next line" : "Restart line") { start() }.buttonStyle(.borderedProminent) }
+                    HStack { Button("Show move") { hint() }.disabled(finished || board.turn != line.side); Spacer(); Button(preferred == nil ? "Next line" : "Restart line") { start() }.buttonStyle(ThemeActionButtonStyle()) }
                 } else { ContentUnavailableView("Add a repertoire line first", systemImage: "books.vertical") }
             }.padding()
         }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Train repertoire")

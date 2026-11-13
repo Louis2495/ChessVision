@@ -88,7 +88,7 @@ struct OpeningExplorerView: View {
                     Text("Explore an account").font(.subheadline).foregroundStyle(.secondary)
                     Picker("Site", selection: $model.site) { ForEach(PublicChessSite.allCases) { Text($0.title).tag($0) } }.pickerStyle(.segmented).disabled(model.busy)
                     TextField("Public username", text: $model.username).textContentType(.username).submitLabel(.search).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).disabled(model.busy).onSubmit { if !model.busy && PublicGames.validUsername(model.username) { model.load() } }
-                    Button { model.load() } label: { Label("Load opening tree", systemImage: "arrow.down.circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(model.busy || !PublicGames.validUsername(model.username))
+                    Button { model.load() } label: { Label("Load opening tree", systemImage: "arrow.down.circle").frame(maxWidth: .infinity) }.buttonStyle(ThemeActionButtonStyle()).disabled(model.busy || !PublicGames.validUsername(model.username))
                     if model.busy { HStack { ProgressView(); Text(model.status).font(.caption); Spacer(); Button("Cancel") { model.cancel() } } }
                     else if !model.status.isEmpty { Text(model.status).font(.caption).foregroundStyle(.secondary) }
                     if let error = model.error { Text(error).foregroundStyle(.red).font(.footnote) }

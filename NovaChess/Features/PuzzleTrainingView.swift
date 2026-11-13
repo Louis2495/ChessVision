@@ -10,6 +10,7 @@ struct PuzzleTrainingView: View {
     @State private var finished = false
     @State private var message = ""
     @State private var played: [String] = []
+    @State private var resultBorder: Color = .clear
     @State private var replyTask: Task<Void, Never>?
     @State private var generation = UUID()
     var body: some View {
@@ -25,6 +26,8 @@ struct PuzzleTrainingView: View {
                     if let puzzle {
                         HStack { Text("Lichess difficulty · \(String(puzzle.difficultyRating))").font(.headline); Spacer(); TurnBadge(side: board.turn) }
                         MoveBoard(position: board, enabled: !finished && board.turn == learner, flipped: learner == .black, premoveSide: finished ? nil : learner, onMove: attempt).id(generation)
+                            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(resultBorder, lineWidth: 5).allowsHitTesting(false))
+                            .accessibilityValue(resultBorder == .red ? "Incorrect attempt" : finished ? "Puzzle completed" : "Puzzle in progress")
                         Text(finished ? "Position completed" : board.turn == learner ? "\(learner.title) to move" : "Playing the reply…").font(.headline)
                         if !message.isEmpty { Text(message).foregroundStyle(finished ? Color.green : Color.secondary) }
                         if !played.isEmpty { Text(played.joined(separator: "  ")).font(.subheadline.monospaced()) }
@@ -45,7 +48,7 @@ struct PuzzleTrainingView: View {
         guard let next = library.state.puzzle.next(in: library.puzzles, excluding: puzzle?.id) else { return }
         do {
             board = try next.startingPosition(); learner = board.turn; puzzle = next
-            cursor = 1; graded = false; finished = false; message = ""; played = []
+            cursor = 1; graded = false; finished = false; message = ""; played = []; resultBorder = .clear
         } catch { message = error.localizedDescription; puzzle = nil }
     }
     private func grade(_ correct: Bool) {
@@ -57,11 +60,11 @@ struct PuzzleTrainingView: View {
         guard puzzle.moves[cursor] == move.uci else {
             if let next = try? board.playing(move), next.isInCheck && next.legalMoves().isEmpty {
                 played.append((try? board.san(for: move)) ?? "Mate")
-                board = next; let assisted = graded; grade(true); finished = true
+                board = next; let assisted = graded; grade(true); finished = true; resultBorder = .yellow
                 message = assisted ? "Checkmate found. Your earlier hint or mistake is still reflected in the rating." : "Checkmate — solved!"
                 return
             }
-            grade(false); message = "That is not the intended move. Try again or use a hint."; return
+            resultBorder = .red; grade(false); message = "That is not the intended move. Try again or use a hint."; return
         }
         do {
             played.append(try board.san(for: move)); board = try board.playing(move); cursor += 1
@@ -71,7 +74,7 @@ struct PuzzleTrainingView: View {
     private func finishIfNeeded() {
         if let puzzle, cursor >= puzzle.moves.count {
             let assisted = graded
-            grade(true); finished = true
+            grade(true); finished = true; resultBorder = .yellow
             message = assisted ? "Completed. Your next puzzle will reflect the earlier mistake or hint." : "Solved without help. Your difficulty has increased."
         }
     }

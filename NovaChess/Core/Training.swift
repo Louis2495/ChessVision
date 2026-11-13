@@ -21,16 +21,18 @@ public struct PuzzleProgress: Codable, Sendable {
     public var rating: Double = 1000
     public var attempts = 0
     public var solved = 0
+    public var streak = 0
     public var completed: [String] = []
     public var placementAttempts = 0
     public var scaleVersion = 1
     public init() {}
-    private enum CodingKeys: CodingKey { case rating, attempts, solved, completed, placementAttempts, scaleVersion }
+    private enum CodingKeys: CodingKey { case rating, attempts, solved, completed, placementAttempts, scaleVersion, streak }
     public init(from decoder: Decoder) throws {
         let fields = try decoder.container(keyedBy: CodingKeys.self)
         rating = try fields.decode(Double.self, forKey: .rating)
         attempts = try fields.decode(Int.self, forKey: .attempts)
         solved = try fields.decode(Int.self, forKey: .solved)
+        streak = max(0, try fields.decodeIfPresent(Int.self, forKey: .streak) ?? 0)
         completed = try fields.decode([String].self, forKey: .completed)
         placementAttempts = try fields.decodeIfPresent(Int.self, forKey: .placementAttempts) ?? 0
         if try fields.decodeIfPresent(Int.self, forKey: .scaleVersion) != 1 {
@@ -42,7 +44,8 @@ public struct PuzzleProgress: Codable, Sendable {
         let expected = 1 / (1 + pow(10, Double(puzzle.difficultyRating - Int(rating)) / 400))
         rating = max(200, min(3500, rating + (placementAttempts < 10 ? 400.0 : placementAttempts < 25 ? 120.0 : 40.0) * ((correct ? 1 : 0) - expected)))
         placementAttempts += 1
-        attempts += 1; if correct { solved += 1 }
+        attempts += 1
+        if correct { solved += 1; streak += 1 } else { streak = 0 }
         if !completed.contains(puzzle.id) { completed.append(puzzle.id) }
     }
     public func next(in puzzles: [ChessPuzzle], excluding current: String? = nil) -> ChessPuzzle? {

@@ -23,19 +23,24 @@ struct PuzzleTrainingView: View {
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading) { Text("Your puzzle estimate").font(.caption).foregroundStyle(.secondary); Text(String(Int(library.state.puzzle.rating.rounded()))).font(.largeTitle.bold().monospacedDigit()) }
                         Spacer()
-                        VStack(alignment: .trailing) { Text("\(library.state.puzzle.solved) solved").font(.headline);  }
+                        VStack(alignment: .trailing, spacing: 6) {
+                            Text("\(library.state.puzzle.solved) solved").font(.headline)
+                            Text("🔥 " + String(library.state.puzzle.streak)).font(.subheadline.bold().monospacedDigit())
+                                .accessibilityLabel(CountText.value(library.state.puzzle.streak, "puzzle") + " solved in a row")
+                                .accessibilityIdentifier("puzzle-streak")
+                        }
                     }
                     }
-                    if let puzzle {
-                        HStack { Text("Lichess difficulty · \(String(puzzle.difficultyRating))").font(.headline); Spacer(); TurnBadge(side: board.turn) }
+                    if puzzle != nil {
                         MoveBoard(position: board, enabled: !finished && board.turn == learner, flipped: learner == .black, premoveSide: finished ? nil : learner, onMove: attempt).id(generation)
                             .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(resultBorder, lineWidth: 5).allowsHitTesting(false))
-                            .accessibilityValue(resultBorder == .red ? "Incorrect attempt" : finished ? "Puzzle completed" : "Puzzle in progress")
-                        Text(finished ? "Position completed" : board.turn == learner ? "\(learner.title) to move" : "Playing the reply…").font(.headline)
+                            .accessibilityValue(board.turn.title + " to move. " + (resultBorder == .red ? "Incorrect attempt" : finished ? "Puzzle completed" : "Puzzle in progress"))
+                        if finished { Text("Position completed").font(.headline) }
+                        else if board.turn != learner { Text("Playing the reply…").font(.headline) }
                         if !message.isEmpty { Text(message).foregroundStyle(finished ? Color.green : Color.secondary) }
                         if !played.isEmpty { Text(played.joined(separator: "  ")).font(.subheadline.monospaced()) }
                         HStack {
-                            Button { hint() } label: { Label("Hint", systemImage: "lightbulb").foregroundStyle(Color.yellow).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).controlSize(.large).disabled(finished || board.turn != learner)
+                            Button { hint() } label: { Label("Hint", systemImage: "lightbulb").frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(ThemeActionButtonStyle(backgroundHex: 0x39D5F5)).controlSize(.large).disabled(finished || board.turn != learner)
                             Button {
                                 if dailyDay != nil { if finished { startDaily() } else { dismiss() } }
                                 else { if !finished { grade(false) }; nextPuzzle() }

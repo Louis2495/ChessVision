@@ -335,3 +335,9 @@ The common Clock/Bughouse preset list adds 1+1 and removes 5+3/10+5. Improvement
 Home is the default tab, with the complete Clock utility and Daily puzzle. Clock's in-memory session survives closing/reopening its screen. Puzzles keeps adaptive practice and drops the offline-count caption. Learn now has 111 deeper opening lessons and a 17-position endgame trainer: legal board play against Stockfish, manual hints, optional technique tips, explicit mate/promotion/draw goals and saved completion.
 
 Analysis has a thin theme-filled bar outlined white/black by turn, without the separate turn square or Swipe text. Its engine label shows Stockfish 19 and the actual depth; the neural model is retained. Current Rating is the first/default exclusive opponent choice, followed by Adaptive, Developer and Custom. About ratings is removed. Draw/takeback/resign share a colored action row, custom expansion arrows reverse when open, and count labels use singular/plural words correctly. Openings hub captions are gone. See [endgame rules and navigation details](Documentation/ENDGAMES.md).
+
+## Version 0.29 Play landing and puzzle streak
+
+Play now opens directly on New game on its first visit, with Start game, Game options and the moved community/progress links. Saved games can be resumed; preparing the landing does not play hidden computer moves. The board stays uncluttered during play, and Offer draw is purple.
+
+Puzzle difficulty and visible side-to-move labels are removed. Hint has a bright cyan background, and a saved fire streak appears below the solved total. Only unassisted complete solves build the streak; wrong answers, hints and skips reset it, while daily replays cannot score twice. See [flow and streak details](Documentation/PLAY_LANDING.md).

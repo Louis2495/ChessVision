@@ -16,6 +16,7 @@ import SwiftUI
     @Published private(set) var computerPiecePreview: Position?
     @Published var error: String?
     @Published var premoves = PremoveQueue()
+    private static let awaitingSavedGame = "Your saved rated game is still loading. Try again in a moment."
     private weak var library: LibraryStore?
     private var task: Task<Void, Never>?
     private var reviewPrefetch: Task<Void, Never>?
@@ -26,10 +27,18 @@ import SwiftUI
         guard let game, let opening else { return false }
         return game.moves.count <= opening.moves.count && Array(opening.moves.prefix(game.moves.count)) == game.moves
     }
-    func activate(_ library: LibraryStore) {
-        self.library = library; visible = true
+    private func attach(_ library: LibraryStore) {
+        self.library = library
         if game == nil { game = library.state.computer }
         if game != nil && game?.id == nil { game?.id = UUID(); library.state.computer = game }
+    }
+    /// Load a saved position without playing a computer move behind the setup page.
+    func prepare(_ library: LibraryStore) {
+        attach(library); visible = false
+        if game != nil && snapshot == nil { run(playComputer: false) }
+    }
+    func activate(_ library: LibraryStore) {
+        attach(library); visible = true
         if game != nil { run() }
     }
     func pause() { reviewPrefetch?.cancel(); reviewPrefetch = nil; premoves.clear(); computerPiecePreview = nil; visible = false; task?.cancel(); generation = UUID(); busy = false }
@@ -47,8 +56,11 @@ import SwiftUI
         guard !(rated && adaptive) else { error = "Adaptive games are unrated. Choose one game type."; return false }
         let range = RatingPolicy.ratedBotRange(for: mode)
         guard !rated || range.contains(target) else { error = "For rated games, choose a bot strength from \(range.lowerBound) to \(range.upperBound). Other strengths are available unrated."; return false }
+        guard game?.rated != true || snapshot != nil else { error = Self.awaitingSavedGame; return false }
         if game?.rated == true && snapshot?.finished == false { resign() }
-        premoves.clear()
+        task?.cancel(); generation = UUID(); busy = false
+        reviewPrefetch?.cancel(); reviewPrefetch = nil
+        premoves.clear(); error = nil
         game = SavedComputerGame(mode: mode, human: human, targetRating: target, openingID: mode == .normal ? requestedOpening?.id : nil)
         game?.developerBot = developerOpponent && mode == .normal
         if game?.developerBot == true { game?.opponentName = "Developer"; game?.openingID = nil }
@@ -59,9 +71,9 @@ import SwiftUI
         computerPiecePreview = nil; snapshot = nil; error = nil; library?.state.computer = game
         run(); return true
     }
-    private func run() {
+    private func run(playComputer: Bool = true) {
         reviewPrefetch?.cancel(); reviewPrefetch = nil
-        guard visible, let game else { return }
+        guard (visible || !playComputer), let game else { return }
         task?.cancel(); generation = UUID(); let token = generation
         computerPiecePreview = nil; busy = true; error = nil
         task = Task {
@@ -72,6 +84,7 @@ import SwiftUI
                 if let resigned = game.resigned { state.status = resigned == .white ? "black" : "white" }
                 if game.agreedDraw == true { state.status = "draw" }
                 snapshot = state
+                if error == Self.awaitingSavedGame { error = nil }
                 recognizedOpening = nil
                 if game.mode == .normal {
                     var board = Position.initial
@@ -81,6 +94,7 @@ import SwiftUI
                     }
                 }
                 archiveIfFinished()
+                guard playComputer else { if token == generation { busy = false }; return }
                 if !state.finished && state.board.turn != game.human {
                     if game.adaptive == true, game.moves.count > 0, game.lastAdaptedPly != game.moves.count {
                         let prefix = Array(game.moves.dropLast())
@@ -210,6 +224,7 @@ struct ComputerPlayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model = ComputerGameModel()
     @State private var settingUp = false
+    @State private var showingLanding = true
     @State private var dismissedResult: UUID?
     @State private var rematching = false
     @State private var rematchSide = Side.white
@@ -232,7 +247,10 @@ struct ComputerPlayView: View {
     @State private var duckChoices: [VariantMove] = []
     var body: some View {
         NavigationStack {
-            playContent
+            ZStack {
+                if showingLanding { setupPage(isLanding: true) }
+                else { playContent }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     HStack(spacing: 20) {
@@ -242,18 +260,18 @@ struct ComputerPlayView: View {
                     }
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) { if model.game != nil && !settingUp { Button("New game") { settingUp = true } } }
+                ToolbarItem(placement: .topBarTrailing) { if model.game != nil && !settingUp && !showingLanding { Button("New game") { settingUp = true } } }
             }
             .sheet(isPresented: $historyPresented, onDismiss: {
-                if visible && scenePhase == .active { model.activate(library) }
+                if visible && scenePhase == .active && !showingLanding && !settingUp { model.activate(library) }
             }) { NavigationStack { GameHistoryView() } }
             .sheet(item: $reviewRoute) { route in
                 NavigationStack {
                     GameReviewView(id: route.id).toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { reviewRoute = nil } } }
                 }
             }
-            .task(id: "\(model.game?.id?.uuidString ?? "")|\(model.snapshot?.fen ?? "")") {
-                guard let game = model.game, let id = game.id else { return }
+            .task(id: "\(showingLanding)|\(model.game?.id?.uuidString ?? "")|\(model.snapshot?.fen ?? "")") {
+                guard !showingLanding, let game = model.game, let id = game.id else { return }
                 if SocialStore.shared.profile == nil { await SocialStore.shared.connect() }
                 do {
                     if let snapshot = model.snapshot {
@@ -267,7 +285,7 @@ struct ComputerPlayView: View {
             .onChange(of: model.snapshot?.result) { _, _ in scheduleReview() }
             .onChange(of: settingUp) { _, showing in
                 if showing { reviewPresentationTask?.cancel(); model.pause() }
-                else { if visible && scenePhase == .active { model.activate(library) }; scheduleReview() }
+                else { if visible && scenePhase == .active && !showingLanding { model.activate(library) }; scheduleReview() }
             }
             .onChange(of: rematching) { _, showing in
                 if showing { reviewPresentationTask?.cancel() } else { scheduleReview() }
@@ -288,16 +306,7 @@ struct ComputerPlayView: View {
                     }.navigationTitle("Rematch").toolbar { Button("Cancel") { rematching = false } }
                 }
             }
-            .navigationDestination(isPresented: $settingUp) {
-                GeometryReader { geometry in
-                    ScrollView {
-                        GameSetupForm(model: model, resumeOnBughouseDismiss: false) {
-                            if model.start() { settingUp = false }
-                        }.padding().frame(minHeight: geometry.size.height)
-                    }.scrollDismissesKeyboard(.interactively)
-                }.modifier(AppSurface())
-                    .navigationTitle("New game").navigationBarTitleDisplayMode(.inline)
-            }
+            .navigationDestination(isPresented: $settingUp) { setupPage(isLanding: false) }
             .confirmationDialog("Resign this game?", isPresented: $resigning, titleVisibility: .visible) { Button("Resign", role: .destructive) { model.resign() } }
             .sheet(isPresented: Binding(get: { !promotions.isEmpty }, set: { if !$0 { promotions = [] } })) {
                 PromotionPicker(side: queuePromotion ? (model.game?.human ?? .white) : (model.snapshot?.board.turn ?? .white), kinds: promotions.compactMap(\.promotion)) { kind in
@@ -308,17 +317,38 @@ struct ComputerPlayView: View {
                     promotions = []; selected = nil
                 }
             }
-            .onAppear { visible = true; model.activate(library); scheduleReview() }
+            .onAppear { visible = true; if showingLanding { model.prepare(library) } else if !settingUp { model.activate(library) }; scheduleReview() }
             .onDisappear { visible = false; reviewPresentationTask?.cancel(); model.pause(); composer = PremoveComposer() }
             .onChange(of: scenePhase) { _, phase in
                 guard visible else { return }
-                if phase == .active && !settingUp && !historyPresented && reviewRoute == nil { model.activate(library); scheduleReview() }
+                if phase == .active && !showingLanding && !settingUp && !historyPresented && reviewRoute == nil { model.activate(library); scheduleReview() }
                 else { reviewPresentationTask?.cancel(); model.pause() }
             }
             .onChange(of: premovesEnabled) { _, enabled in if !enabled { model.premoves.clear(); composer = PremoveComposer() } }
             .onChange(of: model.game?.id) { _, _ in composer = PremoveComposer(); selected = nil; selectedDrop = nil; dismissedResult = nil }
             .onChange(of: model.snapshot?.fen) { _, _ in positionChanged() }
         }
+    }
+    private func setupPage(isLanding: Bool) -> some View {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 20) {
+                    GameSetupForm(model: model, resumeOnBughouseDismiss: false) {
+                        if model.start() {
+                            if isLanding { showingLanding = false; model.activate(library) }
+                            else { settingUp = false }
+                        }
+                    }
+                    if isLanding, let game = model.game {
+                        let completed = library.state.history.contains { $0.id == game.id }
+                        Button(completed ? "View last game" : "Resume game", systemImage: "play.circle") {
+                            showingLanding = false; model.activate(library); scheduleReview()
+                        }.buttonStyle(.bordered).disabled(model.busy && model.snapshot == nil).accessibilityIdentifier("resume-computer-game")
+                    }
+                    PlayHubLinks()
+                }.padding().frame(minHeight: geometry.size.height)
+            }.scrollDismissesKeyboard(.interactively)
+        }.modifier(AppSurface()).navigationTitle("New game").navigationBarTitleDisplayMode(.inline)
     }
     private func positionChanged() {
         if let square = selected, model.snapshot?.board.squares[square]?.side != model.game?.human { selected = nil }
@@ -380,7 +410,7 @@ struct ComputerPlayView: View {
                     HStack(spacing: 6) {
                         if game.mode == .normal && !snapshot.finished {
                             Button { model.offerDraw() } label: { Label("Offer draw", systemImage: "equal.circle").frame(maxWidth: .infinity) }
-                                .disabled(model.busy).buttonStyle(ThemeActionButtonStyle(backgroundHex: 0xF5A623))
+                                .disabled(model.busy).buttonStyle(ThemeActionButtonStyle(backgroundHex: 0x8D4DE8))
                         }
                         Button { model.undo() } label: { Label("Take back", systemImage: "arrow.uturn.backward").frame(maxWidth: .infinity) }
                             .accessibilityHint("Undo your last move and the computer’s reply").disabled(game.moves.count < 2 || game.rated == true)
@@ -392,13 +422,7 @@ struct ComputerPlayView: View {
                 else {
                     Button("New game", systemImage: "plus.circle.fill") { settingUp = true }.buttonStyle(ThemeActionButtonStyle()).controlSize(.large)
                 }
-                AppCard {
-                    NavigationLink { PlayersView() } label: { Label("Players & friends", systemImage: "person.crop.circle.badge.plus") }
-                    NavigationLink { CorrespondenceView() } label: { Label("Play with friends · Correspondence", systemImage: "person.2") }
-                    NavigationLink { SavedGamesView() } label: { Label("Saved games", systemImage: "folder") }
-                    NavigationLink { StatisticsView() } label: { Label("Stats & world map", systemImage: "chart.bar") }
-                    NavigationLink { AchievementsView() } label: { Label("Achievements & ratings", systemImage: "medal") }
-                }
+
             }.padding()
         }.scrollDismissesKeyboard(.interactively).modifier(AppSurface()).navigationTitle("Play computer").navigationBarTitleDisplayMode(.inline)
         .onChange(of: model.snapshot?.finished) { _, finished in
@@ -408,7 +432,7 @@ struct ComputerPlayView: View {
     }
     private func scheduleReview() {
         reviewPresentationTask?.cancel()
-        guard model.snapshot?.finished == true, model.game?.mode != .normal else { return }
+        guard !showingLanding, !settingUp, model.snapshot?.finished == true, model.game?.mode != .normal else { return }
         reviewPresentationTask = Task { @MainActor in
             do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
             guard !Task.isCancelled else { return }
@@ -416,7 +440,7 @@ struct ComputerPlayView: View {
         }
     }
     private func presentReviewIfNeeded() {
-        guard visible, scenePhase == .active, !settingUp, !rematching, !historyPresented, promotions.isEmpty, reviewRoute == nil,
+        guard visible, scenePhase == .active, !showingLanding, !settingUp, !rematching, !historyPresented, promotions.isEmpty, reviewRoute == nil,
               model.snapshot?.finished == true, let id = model.game?.id,
               lastReviewedGame != id, library.state.history.contains(where: { $0.id == id }) else { return }
         lastReviewedGame = id; reviewRoute = CompletedReviewRoute(id: id)
@@ -537,6 +561,18 @@ struct ComputerPlayView: View {
     }
 }
 
+private struct PlayHubLinks: View {
+    var body: some View {
+        AppCard {
+            NavigationLink { PlayersView() } label: { Label("Players & friends", systemImage: "person.crop.circle.badge.plus") }
+            NavigationLink { CorrespondenceView() } label: { Label("Play with friends · Correspondence", systemImage: "person.2") }
+            NavigationLink { SavedGamesView() } label: { Label("Saved games", systemImage: "folder") }
+            NavigationLink { StatisticsView() } label: { Label("Stats & world map", systemImage: "chart.bar") }
+            NavigationLink { AchievementsView() } label: { Label("Achievements & ratings", systemImage: "medal") }
+        }
+    }
+}
+
 private struct GameSetupForm: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var bughousePresented = false
@@ -559,7 +595,7 @@ private struct GameSetupForm: View {
                 if model.mode == .bughouse { model.pause(); bughousePresented = true }
                 else { onStart(); if model.error != nil { expanded = true } }
             } label: { Label("Start game", systemImage: "play.fill").frame(maxWidth: .infinity).padding(7) }
-                .buttonStyle(ThemeActionButtonStyle()).accessibilityIdentifier("start-computer-game")
+                .buttonStyle(ThemeActionButtonStyle()).disabled(model.busy && model.game?.rated == true && model.snapshot == nil).accessibilityIdentifier("start-computer-game")
             AppCard {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }

@@ -220,3 +220,11 @@ The assertion-enabled full native feature suite passed. The live Developer workf
 The assertion-enabled full native feature suite passed, including existing variants, rated/adaptive games, premoves and reviews. A focused native endgame workflow passed real Stockfish arbitrary-FEN replies, SAN-only hints without board changes, pause/resume, cancellation across restart and immediate mate completion. Swift syntax parsing and project/resource validation passed. The shared test harness now compiles the endgame model as well.
 
 UI test definitions were updated for default Home navigation, clock relocation/session preservation, daily placement, Current Rating, the removed turn badge/Swipe label and endgame completion. They could not run in Linux without the iOS SDK/simulator. Actual SwiftUI type-checking, layout, gestures, clock reopen flow and Dynamic Type still require Xcode/iPhone verification; these are not claimed as device-tested.
+
+## Version 0.29 Play landing and puzzle header
+
+177 core tests passed, zero failures. New tests cover consecutive solve/reset behavior, serialization and legacy progress, daily replay protection for streaks, and contrast for the cyan Hint/purple Offer draw colors. The full assertion-enabled native suite passed across variants, premoves, rated/adaptive games, history and reviews.
+
+The focused Play landing workflow passed fresh setup without creating a game, saving/starting from the landing, passive saved-position preparation without a hidden bot reply, resuming with the same game ID, blocking premature replacement of a loading rated game, and settling that old game exactly once when replacement is requested. This check caught and verified the correction of the passive loader's busy flag.
+
+Swift syntax parsing and structural Xcode checks passed. UI test definitions cover the direct setup page/community links and minimal puzzle header/streak. They were not executed without the iOS SDK/simulator in this Linux environment; actual layout, tab navigation and visual verification still require Xcode/iPhone.

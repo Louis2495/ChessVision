@@ -58,7 +58,7 @@ extension NovaChessUITests {
         XCTAssertTrue(app.staticTexts["Line completed"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Play"].tap()
         if app.navigationBars["Game review"].waitForExistence(timeout: 2) { app.navigationBars.buttons["Done"].tap() }
-        XCTAssertTrue(app.navigationBars["Play computer"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["New game"].waitForExistence(timeout: 5))
     }
 }
 
@@ -146,7 +146,7 @@ extension NovaChessUITests {
         for _ in 0..<8 { if review.isHittable { break }; app.swipeUp() }
         review.tap()
         XCTAssertTrue(app.navigationBars["Game review"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Areas for improvement"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Areas for improvement"].exists)
         app.navigationBars.buttons["Done"].tap()
         let banner = app.buttons["game-result"]
         for _ in 0..<8 { if banner.isHittable { break }; app.swipeDown() }
@@ -213,7 +213,7 @@ extension NovaChessUITests {
     func testNewGameUsesExclusiveOpponentChoices() {
         let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Analysis"].tap(); app.tabBars.buttons["Play"].tap()
         if app.navigationBars["Game review"].waitForExistence(timeout: 2) { app.navigationBars.buttons["Done"].tap() }
-        app.buttons["New game"].firstMatch.tap()
+        if app.buttons["New game"].firstMatch.exists { app.buttons["New game"].firstMatch.tap() }
         let start = app.buttons["start-computer-game"], options = app.buttons["game-options"]
         XCTAssertTrue(start.waitForExistence(timeout: 5)); XCTAssertTrue(options.exists)
         XCTAssertLessThan(start.frame.minY, options.frame.minY)
@@ -304,5 +304,28 @@ extension NovaChessUITests {
         XCTAssertTrue(app.buttons["square-f7"].waitForExistence(timeout: 5))
         app.buttons["square-f7"].tap(); app.buttons["square-g7"].tap()
         XCTAssertTrue(app.staticTexts["Complete"].waitForExistence(timeout: 5))
+    }
+}
+
+
+extension NovaChessUITests {
+    func testFirstPlayVisitIsSetupWithCommunityLinks() {
+        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Play"].tap()
+        XCTAssertTrue(app.navigationBars["New game"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["start-computer-game"].exists)
+        XCTAssertTrue(app.buttons["game-options"].exists)
+        for label in ["Players & friends", "Achievements & ratings"] {
+            let button = app.buttons[label]
+            for _ in 0..<5 { if button.isHittable { break }; app.swipeUp() }
+            XCTAssertTrue(button.exists)
+        }
+    }
+    func testPuzzleHeaderIsMinimalAndStreakVisible() {
+        let app = XCUIApplication(); app.launch(); app.tabBars.buttons["Puzzles"].tap()
+        XCTAssertTrue(app.staticTexts["puzzle-streak"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["White to move"].exists)
+        XCTAssertFalse(app.staticTexts["Black to move"].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Lichess difficulty")).firstMatch.exists)
+        XCTAssertTrue(app.buttons["Hint"].exists)
     }
 }

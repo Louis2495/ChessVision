@@ -23,13 +23,13 @@ struct OpeningTrainingView: View {
                     Button { choosing = true } label: { Label(model.requestedOpening?.name ?? "Choose an opening", systemImage: "books.vertical") }.buttonStyle(.bordered)
                     Picker("Your color", selection: $model.human) { Text("White").tag(Side.white); Text("Black").tag(Side.black) }.pickerStyle(.segmented)
                     TextField("Engine strength estimate", text: $model.ratingText).keyboardType(.numberPad).textFieldStyle(.roundedBorder)
-                    Button("Train", systemImage: "play.fill") { model.activate(library); active = model.start() }.buttonStyle(ThemeActionButtonStyle()).disabled(model.requestedOpening == nil)
+                    Button("Train", systemImage: "play.fill") { active = model.start(); if active { model.activate(library) } }.buttonStyle(ThemeActionButtonStyle()).disabled(model.requestedOpening == nil || (model.game?.rated == true && model.snapshot == nil))
                 }
                 if let error = model.error { Text(error).foregroundStyle(.red) }
             }.padding()
         }.navigationTitle("Train an opening").modifier(AppSurface())
         .sheet(isPresented: $choosing) { OpeningPicker { model.requestedOpening = $0 } }
-        .onAppear { if active { model.activate(library) } }
+        .onAppear { if active { model.activate(library) } else { model.prepare(library) } }
         .onDisappear { model.pause() }
     }
 }
